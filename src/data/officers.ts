@@ -1,4 +1,4 @@
-import { Officer } from '../types';
+import type { Officer } from '../types';
 
 /**
  * 三國志IV 武將資料 — 精選主要角色

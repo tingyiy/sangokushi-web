@@ -1,4 +1,4 @@
-import { Scenario, Faction, City, Officer } from '../types';
+import type { Scenario, Faction, City, Officer } from '../types';
 import { baseCities } from './cities';
 import { baseOfficers } from './officers';
 

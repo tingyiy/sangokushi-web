@@ -1,4 +1,4 @@
-import { City } from '../types';
+import type { City } from '../types';
 
 /**
  * 三國志IV 主要城市資料 (43城)

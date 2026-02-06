@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GamePhase, Scenario, Faction, City, Officer, CommandCategory } from '../types';
+import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory } from '../types';
 
 interface GameState {
   phase: GamePhase;

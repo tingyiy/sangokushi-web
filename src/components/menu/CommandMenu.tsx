@@ -1,5 +1,5 @@
 import { useGameStore } from '../../store/gameStore';
-import { CommandCategory } from '../../types';
+import type { CommandCategory } from '../../types';
 
 const categories: CommandCategory[] = ['內政', '軍事', '人事', '外交', '謀略', '結束'];
 
