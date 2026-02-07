@@ -62,6 +62,8 @@ interface GameState {
   improveRelations: (targetFactionId: number) => void;
   /** Diplomacy: Form Alliance */
   formAlliance: (targetFactionId: number) => void;
+  /** 謀略: 流言 (Rumor) - Decrease city loyalty and population */
+  rumor: (targetCityId: number) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -525,4 +527,52 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   }
 
+
+  rumor: (targetCityId: number) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    if (!city || city.gold < 500) {
+      get().addLog('金不足（需500），無法執行流言。');
+      return;
+    }
+
+    const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+    if (officersInCity.length === 0) {
+      get().addLog('城中無人可派。');
+      return;
+    }
+    const messenger = officersInCity.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!targetCity || targetCity.factionId === state.playerFaction?.id) return;
+
+    // Success Check
+    // Success chance: Intelligence / 2 + 20
+    const success = (Math.random() * 100) < (messenger.intelligence / 2 + 20);
+
+    set({
+      cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c)
+    });
+
+    if (success) {
+      // Impact: decrease loyalty of officers in target city, decrease population slightly
+      const loyaltyImpact = Math.floor(messenger.intelligence / 10) + 5;
+      const popImpact = Math.floor(targetCity.population * 0.02);
+      
+      set({
+        officers: state.officers.map(o => 
+          (o.cityId === targetCityId && o.factionId === targetCity.factionId && !o.isGovernor)
+            ? { ...o, loyalty: Math.max(0, o.loyalty - loyaltyImpact) }
+            : o
+        ),
+        cities: state.cities.map(c => 
+          c.id === targetCityId 
+            ? { ...c, population: Math.max(0, c.population - popImpact) } 
+            : c
+        )
+      });
+      get().addLog(`${messenger.name} 在 ${targetCity.name} 散佈流言，民心動搖，將領忠誠下降！`);
+    } else {
+      get().addLog(`${messenger.name} 的流言計策被識破了。`);
+    }
+  }
 }));

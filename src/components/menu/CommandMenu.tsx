@@ -9,7 +9,7 @@ export function CommandMenu() {
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
     recruitOfficer, draftTroops, startDuel, endTurn, addLog,
-    improveRelations, formAlliance,
+    improveRelations, formAlliance, rumor,
   } = useGameStore();
 
   const city = cities.find(c => c.id === selectedCityId);
@@ -123,7 +123,34 @@ export function CommandMenu() {
             </div>
           )}
           {activeCommandCategory === '謀略' && (
-            <p className="no-action">謀略功能開發中…</p>
+            
+          {activeCommandCategory === '謀略' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+              {city.adjacentCityIds.map(adjId => {
+                const adjCity = cities.find(c => c.id === adjId);
+                if (!adjCity || adjCity.factionId === playerFaction?.id || !adjCity.factionId) return null;
+                const targetFaction = factions.find(f => f.id === adjCity.factionId);
+                return (
+                  <div key={adjCity.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                       <span style={{ fontWeight: 'bold' }}>{adjCity.name}</span>
+                       <span style={{ fontSize: '0.8em', color: targetFaction?.color }}>{targetFaction?.name}</span>
+                    </div>
+                    <button className="btn btn-action" style={{ fontSize: '0.8em', padding: '4px 8px', margin: 0, width: 'auto' }} onClick={() => rumor(adjCity.id)}>
+                      流言 (500金)
+                    </button>
+                  </div>
+                );
+              })}
+              {city.adjacentCityIds.every(adjId => {
+                const adjCity = cities.find(c => c.id === adjId);
+                return !adjCity || adjCity.factionId === playerFaction?.id || !adjCity.factionId;
+              }) && (
+                <p className="no-action">周邊無可施計的敵城。</p>
+              )}
+            </div>
+          )}
+
           )}
         </div>
       )}
