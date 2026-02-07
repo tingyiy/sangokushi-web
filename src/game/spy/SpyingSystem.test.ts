@@ -44,7 +44,7 @@ describe('SpyingSystem', () => {
     spyingSystem['config'].skillBonusPerPoint = 0.01;
     
     // 80 intelligence = 80 * 0.01 = +0.8 → 90% chance
-    jest.spyOn(Math, 'random').mockReturnValue(0.89);
+    vi.spyOn(Math, 'random').mockReturnValue(0.89);
     let result = spyingSystem.spy(
       { intelligence: 80, espionage: false },
       20,
@@ -54,7 +54,7 @@ describe('SpyingSystem', () => {
     expect(result.success).toBe(true);
     
     // 10 intelligence = +0.1 → 20% chance
-    jest.spyOn(Math, 'random').mockReturnValue(0.21);
+    vi.spyOn(Math, 'random').mockReturnValue(0.21);
     result = spyingSystem.spy(
       { intelligence: 10, espionage: false },
       20,
@@ -69,7 +69,7 @@ describe('SpyingSystem', () => {
   });
 
   test('spying on enemy city triggers info reveal', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.05); // force success
+    vi.spyOn(Math, 'random').mockReturnValue(0.05); // force success
     const result = spyingSystem.spy(
       { intelligence: 80, espionage: true },
       20,
@@ -86,7 +86,7 @@ describe('SpyingSystem', () => {
   });
 
   test('failed spy reduces enemy loyalty by 8 points', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.95); // force failure
+    vi.spyOn(Math, 'random').mockReturnValue(0.95); // force failure
     const result = spyingSystem.spy(
       { intelligence: 80, espionage: true },
       20,
@@ -104,18 +104,18 @@ describe('SpyingSystem', () => {
     });
     
     // 20% base → 10% effective
-    jest.spyOn(Math, 'random').mockReturnValue(0.09); // <10% → success
+    vi.spyOn(Math, 'random').mockReturnValue(0.09); // <10% → success
     let result = spy.spy(
-      { intelligence: 80, espionage: true },
+      { intelligence: 0, espionage: true },
       20,
       1,
       null // neutral
     );
     expect(result.success).toBe(true);
     
-    jest.spyOn(Math, 'random').mockReturnValue(0.11); // >10% → failure
+    vi.spyOn(Math, 'random').mockReturnValue(0.11); // >10% → failure
     result = spy.spy(
-      { intelligence: 80, espionage: true },
+      { intelligence: 0, espionage: true },
       20,
       1,
       null
@@ -124,7 +124,7 @@ describe('SpyingSystem', () => {
   });
 
   test('spy reports are stored and retrievable', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.01); // success
+    vi.spyOn(Math, 'random').mockReturnValue(0.01); // success
     spyingSystem.spy(
       { intelligence: 80, espionage: true },
       20,
@@ -138,7 +138,7 @@ describe('SpyingSystem', () => {
   });
 
   test('only 5 recent reports are kept', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.01); // success
+    vi.spyOn(Math, 'random').mockReturnValue(0.01); // success
     for (let i = 0; i < 10; i++) {
       spyingSystem.spy(
         { intelligence: 80, espionage: true },

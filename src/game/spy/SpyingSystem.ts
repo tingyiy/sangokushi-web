@@ -72,7 +72,7 @@ export class SpyingSystem {
       ? this.config.successMultipliers.neutral 
       : this.config.successMultipliers.enemy;
     
-    const finalChance = baseChance * multiplier;
+    const finalChance = Math.min(0.95, baseChance * multiplier);
     
     // Roll for success
     const succeeded = Math.random() < finalChance;

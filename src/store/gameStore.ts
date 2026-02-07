@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory } from '../types';
+import { useBattleStore } from './battleStore';
 
 interface DuelState {
   p1: Officer;
@@ -58,6 +59,8 @@ interface GameState {
   startDuel: () => void;
   duelAction: (action: 'attack' | 'heavy' | 'defend' | 'flee') => void;
   endDuel: () => void;
+  /** Military: Battle */
+  startBattle: (targetCityId: number) => void;
   /** Diplomacy: Improve relations (Gift) */
   improveRelations: (targetFactionId: number) => void;
   /** Diplomacy: Form Alliance */
@@ -368,7 +371,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     logs.push(logMsg);
 
-    let newP2Hp = Math.max(0, ds.p2Hp - p2Dmg);
+    const newP2Hp = Math.max(0, ds.p2Hp - p2Dmg);
 
     if (newP2Hp === 0) {
       set({ duelState: { ...ds, p2Hp: 0, logs: [...logs, `${ds.p2.name} 被擊敗了！`], result: 'win' } });
@@ -401,7 +404,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         logs.push(`${ds.p2.name} 的攻擊被閃避了！`);
     }
 
-    let newP1Hp = Math.max(0, ds.p1Hp - p1Dmg);
+    const newP1Hp = Math.max(0, ds.p1Hp - p1Dmg);
 
     if (newP1Hp === 0) {
        set({ duelState: { ...ds, p1Hp: 0, p2Hp: newP2Hp, logs: [...logs, `${ds.p1.name} 落馬了...`], result: 'lose' } });
@@ -421,6 +424,36 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   endDuel: () => {
      set({ phase: 'playing', duelState: null });
+  },
+
+  startBattle: (targetCityId: number) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!city || !targetCity || !state.playerFaction) return;
+
+    if (city.troops < 5000) {
+      get().addLog('兵力不足（需5000），無法出征。');
+      return;
+    }
+
+    const attackerOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id).slice(0, 5);
+    const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
+
+    if (attackerOfficers.length === 0) {
+      get().addLog('無將領可統兵。');
+      return;
+    }
+
+    useBattleStore.getState().initBattle(
+      state.playerFaction.id,
+      targetCity.factionId || 0,
+      targetCityId,
+      attackerOfficers,
+      defenderOfficers
+    );
+    
+    set({ phase: 'battle' });
   },
 
   improveRelations: (targetFactionId) => {
