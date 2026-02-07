@@ -12,10 +12,10 @@
 - **Duel System (Ikki-uchi):** Turn-based 1v1 combat with Attack, Heavy Blow, Defend, and Flee.
 - **Diplomacy System:** Hostility tracking, Goodwill (gifts), and Alliances based on Politics stats.
 - **Rumor (流言):** Plot command to lower enemy officer loyalty in adjacent cities.
+- **Fire Attacks (火計):** Tactical fire attacks in battle, terrain-dependent damage, 3-turn duration. [PR #1](https://github.com/tingyiy/sangokushi-web/pull/1)
 - **Spying (間諜):** Infiltrating cities to gather intelligence. [PR #2](https://github.com/tingyiy/sangokushi-web/pull/2)
 
 ## Future Enhancements (To Be Implemented)
-- **Fire Attacks (火計):** Implementing tactical fire attacks in battles.
 - **Naval Battles:** Combat on water bodies.
 - **Unit Testing:** Integrate a testing framework (e.g., Vitest) and achieve high coverage.
 - **Battle Engine:** Full hex-based tactical battle system.
