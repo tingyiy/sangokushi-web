@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from './gameStore';
-import type { Officer, City, Faction } from '../types';
+import type { Officer, City, Faction, Scenario } from '../types';
 
 /**
  * Test suite for stamina consumption system (Phase 1.7 of PLAN.md)
@@ -1048,5 +1048,597 @@ describe('gameStore - Stamina Consumption System', () => {
       const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 1);
       expect(updatedOfficer?.stamina).toBe(20);
     });
+  });
+});
+
+/**
+ * Additional Test Suites for Phase 0 Features
+ * - Battle Consequences
+ * - Save/Load System
+ * - Victory Conditions
+ */
+
+describe('Battle Consequences - resolveBattle', () => {
+  beforeEach(() => {
+    useGameStore.setState({
+      phase: 'playing',
+      scenario: null,
+      playerFaction: {
+        id: 1,
+        name: '曹操',
+        rulerId: 1,
+        color: '#3b82f6',
+        isPlayer: true,
+        relations: {},
+        allies: [],
+      },
+      cities: [],
+      officers: [],
+      factions: [],
+      year: 190,
+      month: 1,
+      selectedCityId: null,
+      activeCommandCategory: null,
+      log: [],
+      duelState: null,
+    });
+    localStorage.clear();
+  });
+
+  const createTestCity = (overrides: Partial<City> = {}): City => ({
+    id: 1,
+    name: '測試城',
+    x: 50,
+    y: 50,
+    factionId: 2,
+    population: 100000,
+    gold: 5000,
+    food: 10000,
+    commerce: 500,
+    agriculture: 500,
+    defense: 50,
+    troops: 20000,
+    adjacentCityIds: [2, 3],
+    floodControl: 50,
+    technology: 30,
+    peopleLoyalty: 70,
+    morale: 60,
+    training: 40,
+    crossbows: 0,
+    warHorses: 0,
+    batteringRams: 0,
+    catapults: 0,
+    ...overrides,
+  });
+
+  const createTestOfficer = (overrides: Partial<Officer> = {}): Officer => ({
+    id: 1,
+    name: '測試將領',
+    leadership: 80,
+    war: 85,
+    intelligence: 70,
+    politics: 60,
+    charisma: 75,
+    skills: ['步兵', '騎兵'],
+    factionId: 2,
+    cityId: 1,
+    stamina: 100,
+    loyalty: 80,
+    isGovernor: true,
+    ...overrides,
+  });
+
+  const createTestFaction = (overrides: Partial<Faction> = {}): Faction => ({
+    id: 1,
+    name: '測試勢力',
+    rulerId: 1,
+    color: '#ff0000',
+    isPlayer: true,
+    relations: {},
+    allies: [],
+    ...overrides,
+  });
+
+  describe('City Transfer', () => {
+    it('should transfer city ownership to winner faction', () => {
+      const city = createTestCity({ factionId: 2 });
+      const officer = createTestOfficer({ factionId: 2 });
+      const faction1 = createTestFaction({ id: 1, name: '攻方' });
+      const faction2 = createTestFaction({ id: 2, name: '守方' });
+
+      useGameStore.setState({
+        cities: [city],
+        officers: [officer],
+        factions: [faction1, faction2],
+      });
+
+      const battleUnits = [
+        { officerId: 10, troops: 3000, factionId: 1, status: 'active' },
+        { officerId: 20, troops: 0, factionId: 2, status: 'routed' },
+      ];
+
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+
+      const updatedCity = useGameStore.getState().cities.find(c => c.id === 1);
+      expect(updatedCity?.factionId).toBe(1);
+    });
+
+    it('should redistribute surviving troops to winning city', () => {
+      const city = createTestCity({ troops: 20000 });
+      const officer = createTestOfficer();
+      const faction1 = createTestFaction({ id: 1 });
+      const faction2 = createTestFaction({ id: 2 });
+
+      useGameStore.setState({
+        cities: [city],
+        officers: [officer],
+        factions: [faction1, faction2],
+      });
+
+      const battleUnits = [
+        { officerId: 10, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 20, troops: 0, factionId: 2, status: 'routed' },
+      ];
+
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+
+      const updatedCity = useGameStore.getState().cities.find(c => c.id === 1);
+      // 5000 troops * 0.8 (20% attrition) = 4000
+      expect(updatedCity?.troops).toBe(4000);
+    });
+  });
+
+  describe('Officer Capture', () => {
+    it('should capture defeated officers with base probability', () => {
+      const city = createTestCity();
+      const defeatedOfficer = createTestOfficer({ id: 20, factionId: 2 });
+      const faction1 = createTestFaction({ id: 1 });
+      const faction2 = createTestFaction({ id: 2 });
+
+      useGameStore.setState({
+        cities: [city],
+        officers: [defeatedOfficer],
+        factions: [faction1, faction2],
+      });
+
+      // Mock Math.random to always return capture
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.2);
+
+      const battleUnits = [
+        { officerId: 20, troops: 0, factionId: 2, status: 'routed' },
+      ];
+
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+
+      const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 20);
+      // Captured officers get factionId -1
+      expect(updatedOfficer?.factionId).toBe(-1);
+
+      mockRandom.mockRestore();
+    });
+
+    it('should allow defeated officers to flee to adjacent cities', () => {
+      const city = createTestCity({ adjacentCityIds: [2, 3] });
+      const defeatedOfficer = createTestOfficer({ id: 20, factionId: 2 });
+      const faction1 = createTestFaction({ id: 1 });
+      const faction2 = createTestFaction({ id: 2 });
+
+      useGameStore.setState({
+        cities: [city, { ...city, id: 2, name: '鄰城' }],
+        officers: [defeatedOfficer],
+        factions: [faction1, faction2],
+      });
+
+      // Mock Math.random to always return flee (capture fails)
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const battleUnits = [
+        { officerId: 20, troops: 0, factionId: 2, status: 'active' },
+      ];
+
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+
+      const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 20);
+      // Fled officers become unaffiliated (factionId: null)
+      expect(updatedOfficer?.factionId).toBeNull();
+      // Should have moved to an adjacent city
+      expect([2, 3]).toContain(updatedOfficer?.cityId);
+
+      mockRandom.mockRestore();
+    });
+  });
+
+  describe('Faction Relations', () => {
+    it('should increase hostility between winner and loser factions', () => {
+      const city = createTestCity();
+      const officer = createTestOfficer();
+      const faction1 = createTestFaction({
+        id: 1,
+        relations: { 2: 50 },
+      });
+      const faction2 = createTestFaction({
+        id: 2,
+        relations: { 1: 50 },
+      });
+
+      useGameStore.setState({
+        cities: [city],
+        officers: [officer],
+        factions: [faction1, faction2],
+      });
+
+      const battleUnits = [
+        { officerId: 10, troops: 3000, factionId: 1, status: 'active' },
+      ];
+
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+
+      const updatedFactions = useGameStore.getState().factions;
+      const updatedFaction1 = updatedFactions.find(f => f.id === 1);
+      const updatedFaction2 = updatedFactions.find(f => f.id === 2);
+
+      // Hostility should increase by 20
+      expect(updatedFaction1?.relations[2]).toBe(70);
+      expect(updatedFaction2?.relations[1]).toBe(70);
+    });
+  });
+});
+
+describe('Save/Load System', () => {
+  const createTestScenario = (): Scenario => ({
+    id: 1,
+    name: '測試劇本',
+    year: 190,
+    description: '測試用劇本',
+    factions: [
+      { id: 1, name: '測試勢力', rulerId: 1, color: '#ff0000', isPlayer: true, relations: {}, allies: [] },
+    ],
+    cities: [
+      {
+        id: 1,
+        name: '測試城',
+        x: 50,
+        y: 50,
+        factionId: 1,
+        population: 100000,
+        gold: 5000,
+        food: 10000,
+        commerce: 500,
+        agriculture: 500,
+        defense: 50,
+        troops: 20000,
+        adjacentCityIds: [],
+        floodControl: 50,
+        technology: 30,
+        peopleLoyalty: 70,
+        morale: 60,
+        training: 40,
+        crossbows: 0,
+        warHorses: 0,
+        batteringRams: 0,
+        catapults: 0,
+      },
+    ],
+    officers: [
+      {
+        id: 1,
+        name: '測試將領',
+        leadership: 80,
+        war: 85,
+        intelligence: 70,
+        politics: 60,
+        charisma: 75,
+        skills: ['步兵'],
+        factionId: 1,
+        cityId: 1,
+        stamina: 100,
+        loyalty: 80,
+        isGovernor: true,
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    useGameStore.setState({
+      phase: 'playing',
+      scenario: null,
+      playerFaction: {
+        id: 1,
+        name: '曹操',
+        rulerId: 1,
+        color: '#3b82f6',
+        isPlayer: true,
+        relations: {},
+        allies: [],
+      },
+      cities: [],
+      officers: [],
+      factions: [],
+      year: 190,
+      month: 1,
+      selectedCityId: null,
+      activeCommandCategory: null,
+      log: [],
+      duelState: null,
+    });
+    localStorage.clear();
+  });
+
+  describe('saveGame', () => {
+    it('should save game state to localStorage', () => {
+      const scenario = createTestScenario();
+      useGameStore.setState({
+        scenario,
+        playerFaction: scenario.factions[0],
+        cities: scenario.cities,
+        officers: scenario.officers,
+        factions: scenario.factions,
+        year: 200,
+        month: 6,
+      });
+
+      const result = useGameStore.getState().saveGame(1);
+
+      expect(result).toBe(true);
+      expect(localStorage.getItem('rtk4_save_1')).not.toBeNull();
+
+      const saveData = JSON.parse(localStorage.getItem('rtk4_save_1')!);
+      expect(saveData.year).toBe(200);
+      expect(saveData.month).toBe(6);
+      expect(saveData.version).toBe('1.0.0');
+    });
+
+    it('should support multiple save slots', () => {
+      const scenario = createTestScenario();
+      useGameStore.setState({
+        scenario,
+        playerFaction: scenario.factions[0],
+        cities: scenario.cities,
+        officers: scenario.officers,
+        factions: scenario.factions,
+        year: 200,
+        month: 6,
+      });
+
+      useGameStore.getState().saveGame(1);
+      useGameStore.getState().saveGame(2);
+      useGameStore.getState().saveGame(3);
+
+      expect(localStorage.getItem('rtk4_save_1')).not.toBeNull();
+      expect(localStorage.getItem('rtk4_save_2')).not.toBeNull();
+      expect(localStorage.getItem('rtk4_save_3')).not.toBeNull();
+    });
+  });
+
+  describe('loadGame', () => {
+    it('should load game state from localStorage', () => {
+      const scenario = createTestScenario();
+      const saveData = {
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        phase: 'playing',
+        scenario,
+        playerFactionId: 1,
+        cities: scenario.cities,
+        officers: scenario.officers,
+        factions: scenario.factions,
+        year: 210,
+        month: 12,
+        selectedCityId: 1,
+        log: ['測試日誌'],
+      };
+
+      localStorage.setItem('rtk4_save_1', JSON.stringify(saveData));
+
+      const result = useGameStore.getState().loadGame(1);
+
+      expect(result).toBe(true);
+      expect(useGameStore.getState().year).toBe(210);
+      expect(useGameStore.getState().month).toBe(12);
+    });
+
+    it('should return false for non-existent save slot', () => {
+      const result = useGameStore.getState().loadGame(99);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getSaveSlots', () => {
+    it('should return metadata for all save slots', () => {
+      const scenario = createTestScenario();
+      const saveData = {
+        version: '1.0.0',
+        timestamp: '2024-01-01T00:00:00.000Z',
+        phase: 'playing',
+        scenario,
+        playerFactionId: 1,
+        cities: scenario.cities,
+        officers: scenario.officers,
+        factions: scenario.factions,
+        year: 190,
+        month: 1,
+        selectedCityId: null,
+        log: [],
+      };
+
+      localStorage.setItem('rtk4_save_1', JSON.stringify(saveData));
+
+      const slots = useGameStore.getState().getSaveSlots();
+
+      expect(slots).toHaveLength(3);
+      expect(slots[0].slot).toBe(1);
+      expect(slots[0].date).toBe('2024-01-01T00:00:00.000Z');
+      expect(slots[0].version).toBe('1.0.0');
+      expect(slots[1].date).toBeNull();
+      expect(slots[2].date).toBeNull();
+    });
+  });
+
+  describe('deleteSave', () => {
+    it('should remove save slot from localStorage', () => {
+      const scenario = createTestScenario();
+      useGameStore.setState({
+        scenario,
+        playerFaction: scenario.factions[0],
+        cities: scenario.cities,
+        officers: scenario.officers,
+        factions: scenario.factions,
+      });
+
+      useGameStore.getState().saveGame(1);
+      expect(localStorage.getItem('rtk4_save_1')).not.toBeNull();
+
+      const result = useGameStore.getState().deleteSave(1);
+      expect(result).toBe(true);
+      expect(localStorage.getItem('rtk4_save_1')).toBeNull();
+    });
+  });
+});
+
+describe('Victory Condition', () => {
+  beforeEach(() => {
+    useGameStore.setState({
+      phase: 'playing',
+      scenario: null,
+      playerFaction: {
+        id: 1,
+        name: '曹操',
+        rulerId: 1,
+        color: '#3b82f6',
+        isPlayer: true,
+        relations: {},
+        allies: [],
+      },
+      cities: [],
+      officers: [],
+      factions: [],
+      year: 190,
+      month: 1,
+      selectedCityId: null,
+      activeCommandCategory: null,
+      log: [],
+      duelState: null,
+    });
+  });
+
+  const createTestCity = (id: number, factionId: number | null): City => ({
+    id,
+    name: `城${id}`,
+    x: 50,
+    y: 50,
+    factionId,
+    population: 100000,
+    gold: 5000,
+    food: 10000,
+    commerce: 500,
+    agriculture: 500,
+    defense: 50,
+    troops: 20000,
+    adjacentCityIds: [],
+    floodControl: 50,
+    technology: 30,
+    peopleLoyalty: 70,
+    morale: 60,
+    training: 40,
+    crossbows: 0,
+    warHorses: 0,
+    batteringRams: 0,
+    catapults: 0,
+  });
+
+  const createTestFaction = (id: number, isPlayer: boolean): Faction => ({
+    id,
+    name: `勢力${id}`,
+    rulerId: id,
+    color: '#ff0000',
+    isPlayer,
+    relations: {},
+    allies: [],
+  });
+
+  it('should detect victory when player controls all cities', () => {
+    const cities = [
+      createTestCity(1, 1),
+      createTestCity(2, 1),
+      createTestCity(3, 1),
+    ];
+    const factions = [createTestFaction(1, true)];
+
+    useGameStore.setState({
+      cities,
+      factions,
+      playerFaction: factions[0],
+    });
+
+    const result = useGameStore.getState().checkVictoryCondition();
+
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('victory');
+  });
+
+  it('should detect defeat when player has no cities', () => {
+    const cities = [
+      createTestCity(1, 2),
+      createTestCity(2, 2),
+    ];
+    const factions = [
+      createTestFaction(1, true),
+      createTestFaction(2, false),
+    ];
+
+    useGameStore.setState({
+      cities,
+      factions,
+      playerFaction: factions[0],
+    });
+
+    const result = useGameStore.getState().checkVictoryCondition();
+
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('defeat');
+  });
+
+  it('should return null when game is ongoing', () => {
+    const cities = [
+      createTestCity(1, 1),
+      createTestCity(2, 2),
+    ];
+    const factions = [
+      createTestFaction(1, true),
+      createTestFaction(2, false),
+    ];
+
+    useGameStore.setState({
+      cities,
+      factions,
+      playerFaction: factions[0],
+    });
+
+    const result = useGameStore.getState().checkVictoryCondition();
+
+    expect(result).toBeNull();
+  });
+
+  it('should detect defeat when AI faction controls all cities', () => {
+    const cities = [
+      createTestCity(1, 2),
+      createTestCity(2, 2),
+    ];
+    const factions = [
+      createTestFaction(1, true),
+      createTestFaction(2, false),
+    ];
+
+    useGameStore.setState({
+      cities,
+      factions,
+      playerFaction: factions[0],
+    });
+
+    const result = useGameStore.getState().checkVictoryCondition();
+
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('defeat');
+    expect(result?.message).toContain('勢力覆滅');
   });
 });
