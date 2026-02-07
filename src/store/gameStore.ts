@@ -525,7 +525,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         });
         get().addLog(`${messenger.name} 的結盟提議被 ${targetFaction.name} 拒絕了。`);
     }
-  }
+  },
 
 
   rumor: (targetCityId: number) => {

@@ -123,8 +123,6 @@ export function CommandMenu() {
             </div>
           )}
           {activeCommandCategory === '謀略' && (
-            
-          {activeCommandCategory === '謀略' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
               {city.adjacentCityIds.map(adjId => {
                 const adjCity = cities.find(c => c.id === adjId);
@@ -149,8 +147,6 @@ export function CommandMenu() {
                 <p className="no-action">周邊無可施計的敵城。</p>
               )}
             </div>
-          )}
-
           )}
         </div>
       )}
