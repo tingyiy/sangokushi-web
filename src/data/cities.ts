@@ -5,7 +5,7 @@ import type { City } from '../types';
  * x, y 為地圖上的相對座標 (0-100 百分比)
  * adjacentCityIds 表示鄰接可移動的城市
  */
-export const baseCities: Omit<City, 'factionId' | 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops'>[] = [
+export const baseCities: Omit<City, 'factionId' | 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults'>[] = [
   // ===== 北方 =====
   { id: 1,  name: '襄平', x: 85, y: 8,  adjacentCityIds: [2] },
   { id: 2,  name: '北平', x: 75, y: 12, adjacentCityIds: [1, 3, 5] },

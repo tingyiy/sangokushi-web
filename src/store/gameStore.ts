@@ -67,6 +67,18 @@ interface GameState {
   formAlliance: (targetFactionId: number) => void;
   /** 謀略: 流言 (Rumor) - Decrease city loyalty and population */
   rumor: (targetCityId: number) => void;
+  /** Battle: Resolve battle consequences - transfer city, capture officers, redistribute troops */
+  resolveBattle: (winnerFactionId: number, loserFactionId: number, cityId: number, battleUnits: { officerId: number; troops: number; factionId: number; status: string }[]) => void;
+  /** Save/Load: Save game to localStorage slot */
+  saveGame: (slot: number) => boolean;
+  /** Save/Load: Load game from localStorage slot */
+  loadGame: (slot: number) => boolean;
+  /** Save/Load: Get list of available save slots */
+  getSaveSlots: () => { slot: number; date: string | null; version: string | null }[];
+  /** Save/Load: Delete save slot */
+  deleteSave: (slot: number) => boolean;
+  /** Victory: Check victory/defeat conditions */
+  checkVictoryCondition: () => { type: 'victory' | 'defeat' | 'ongoing'; message: string } | null;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -732,5 +744,291 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       get().addLog(`${messenger.name} 的流言計策被識破了。（體力 -15）`);
     }
-  }
+  },
+
+  /**
+   * Phase 0.1: Battle Consequences
+   * Resolve battle outcomes: transfer city ownership, capture/defeat officers,
+   * redistribute surviving troops, and update faction relations.
+   * @param winnerFactionId - The faction that won the battle
+   * @param loserFactionId - The faction that lost the battle
+   * @param cityId - The city being fought over
+   * @param battleUnits - Array of battle units with final state
+   */
+  resolveBattle: (winnerFactionId, loserFactionId, cityId, battleUnits) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === cityId);
+    if (!city) return;
+
+    // Get surviving units for winner
+    const winnerUnits = battleUnits.filter(u => u.factionId === winnerFactionId && u.troops > 0 && u.status !== 'routed');
+
+    // Calculate surviving troops
+    const totalSurvivingTroops = winnerUnits.reduce((sum, u) => sum + u.troops, 0);
+    
+    // Get participating officer IDs from battle
+    const participatingOfficerIds = new Set(battleUnits.map(u => u.officerId));
+
+    // Process officer outcomes
+    const updatedOfficers = state.officers.map(o => {
+      // If officer was defending and lost
+      if (o.cityId === cityId && o.factionId === loserFactionId) {
+        // Check if this officer participated in battle
+        if (participatingOfficerIds.has(o.id)) {
+          const unit = battleUnits.find(u => u.officerId === o.id);
+          if (unit) {
+            // Officer was defeated (unit destroyed or routed)
+            if (unit.troops <= 0 || unit.status === 'routed') {
+              // Base 50% capture chance, modified by war stat difference
+              const captureRoll = Math.random() * 100;
+              const captureThreshold = 50 + (unit.status === 'routed' ? 20 : 0);
+              
+              if (captureRoll < captureThreshold) {
+                // Officer captured - becomes POW (represented by special factionId -1)
+                get().addLog(`${o.name} 兵敗被俘！`);
+                return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
+              } else {
+                // Officer escaped - becomes unaffiliated and flees to random adjacent city
+                const adjacentCities = city.adjacentCityIds;
+                const fleeCityId = adjacentCities.length > 0 
+                  ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
+                  : cityId;
+                get().addLog(`${o.name} 逃往 ${state.cities.find(c => c.id === fleeCityId)?.name || '他處'}。`);
+                return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
+              }
+            }
+          }
+        } else {
+          // Officer was in city but didn't fight - 30% chance to escape
+          if (Math.random() < 0.3) {
+            const adjacentCities = city.adjacentCityIds;
+            const fleeCityId = adjacentCities.length > 0 
+              ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
+              : cityId;
+            get().addLog(`${o.name} 棄城而逃。`);
+            return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
+          } else {
+            // Surrendered/captured
+            get().addLog(`${o.name} 被俘。`);
+            return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
+          }
+        }
+      }
+      return o;
+    });
+
+    // Transfer city ownership
+    const updatedCities = state.cities.map(c => {
+      if (c.id === cityId) {
+        return {
+          ...c,
+          factionId: winnerFactionId,
+          troops: Math.floor(totalSurvivingTroops * 0.8), // 20% attrition after battle
+        };
+      }
+      return c;
+    });
+
+    // Update faction relations - increase hostility significantly
+    const updatedFactions = state.factions.map(f => {
+      if (f.id === winnerFactionId) {
+        const currentHostility = f.relations[loserFactionId] ?? 60;
+        return { 
+          ...f, 
+          relations: { ...f.relations, [loserFactionId]: Math.min(100, currentHostility + 20) }
+        };
+      }
+      if (f.id === loserFactionId) {
+        const currentHostility = f.relations[winnerFactionId] ?? 60;
+        return { 
+          ...f, 
+          relations: { ...f.relations, [winnerFactionId]: Math.min(100, currentHostility + 20) }
+        };
+      }
+      return f;
+    });
+
+    set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions });
+    
+    const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
+    get().addLog(`${city.name} 已被 ${winnerFaction?.name || '敵軍'} 攻陷！剩餘守軍 ${Math.floor(totalSurvivingTroops * 0.8)}。`);
+  },
+
+  /**
+   * Phase 0.2: Save Game
+   * Serialize current game state to localStorage with version tracking.
+   * @param slot - Save slot number (1-3, matching RTK IV)
+   * @returns boolean indicating success
+   */
+  saveGame: (slot) => {
+    try {
+      const state = get();
+      const saveData = {
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        phase: state.phase,
+        scenario: state.scenario,
+        playerFactionId: state.playerFaction?.id,
+        cities: state.cities,
+        officers: state.officers,
+        factions: state.factions,
+        year: state.year,
+        month: state.month,
+        selectedCityId: state.selectedCityId,
+        log: state.log,
+      };
+      
+      localStorage.setItem(`rtk4_save_${slot}`, JSON.stringify(saveData));
+      get().addLog(`遊戲已儲存至存檔 ${slot}`);
+      return true;
+    } catch (e) {
+      console.error('Save game failed:', e);
+      get().addLog('儲存失敗！');
+      return false;
+    }
+  },
+
+  /**
+   * Phase 0.2: Load Game
+   * Deserialize game state from localStorage.
+   * @param slot - Save slot number (1-3)
+   * @returns boolean indicating success
+   */
+  loadGame: (slot) => {
+    try {
+      const saveDataStr = localStorage.getItem(`rtk4_save_${slot}`);
+      if (!saveDataStr) {
+        get().addLog(`存檔 ${slot} 不存在！`);
+        return false;
+      }
+      
+      const saveData = JSON.parse(saveDataStr);
+      
+      // Version check for future migrations
+      if (!saveData.version) {
+        console.warn('Save file has no version');
+      }
+      
+      // Restore player faction reference
+      const playerFaction = saveData.factions.find((f: Faction) => f.id === saveData.playerFactionId);
+      
+      set({
+        phase: saveData.phase,
+        scenario: saveData.scenario,
+        playerFaction: playerFaction || null,
+        cities: saveData.cities,
+        officers: saveData.officers,
+        factions: saveData.factions,
+        year: saveData.year,
+        month: saveData.month,
+        selectedCityId: saveData.selectedCityId,
+        log: [...saveData.log, `遊戲已從存檔 ${slot} 載入。`],
+        activeCommandCategory: null,
+        duelState: null,
+      });
+      
+      return true;
+    } catch (e) {
+      console.error('Load game failed:', e);
+      get().addLog('載入失敗！');
+      return false;
+    }
+  },
+
+  /**
+   * Phase 0.2: Get Save Slots
+   * Retrieve metadata for all save slots.
+   * @returns Array of save slot metadata
+   */
+  getSaveSlots: () => {
+    const slots = [];
+    for (let i = 1; i <= 3; i++) {
+      const saveDataStr = localStorage.getItem(`rtk4_save_${i}`);
+      if (saveDataStr) {
+        try {
+          const saveData = JSON.parse(saveDataStr);
+          slots.push({
+            slot: i,
+            date: saveData.timestamp,
+            version: saveData.version || 'unknown',
+          });
+        } catch {
+          slots.push({ slot: i, date: null, version: null });
+        }
+      } else {
+        slots.push({ slot: i, date: null, version: null });
+      }
+    }
+    return slots;
+  },
+
+  /**
+   * Phase 0.2: Delete Save
+   * Remove a save slot from localStorage.
+   * @param slot - Save slot number (1-3)
+   * @returns boolean indicating success
+   */
+  deleteSave: (slot) => {
+    try {
+      localStorage.removeItem(`rtk4_save_${slot}`);
+      get().addLog(`存檔 ${slot} 已刪除`);
+      return true;
+    } catch (e) {
+      console.error('Delete save failed:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Phase 0.3: Check Victory/Defeat Conditions
+   * Determines if the game has reached a victory or defeat state.
+   * Checks:
+   * - Victory: One faction controls all cities
+   * - Defeat: Player's faction has no cities
+   * @returns Victory/defeat info or null if game continues
+   */
+  checkVictoryCondition: () => {
+    const state = get();
+    if (!state.playerFaction) return null;
+
+    // Count cities per faction
+    const factionCityCounts = new Map<number, number>();
+    state.cities.forEach(city => {
+      if (city.factionId !== null) {
+        const count = factionCityCounts.get(city.factionId) || 0;
+        factionCityCounts.set(city.factionId, count + 1);
+      }
+    });
+
+    const totalCities = state.cities.length;
+    const playerCityCount = factionCityCounts.get(state.playerFaction.id) || 0;
+
+    // Check player defeat (no cities)
+    if (playerCityCount === 0) {
+      return {
+        type: 'defeat' as const,
+        message: '勢力覆滅！所有城池皆已失陷...',
+      };
+    }
+
+    // Check victory (player controls all cities)
+    if (playerCityCount === totalCities) {
+      return {
+        type: 'victory' as const,
+        message: `天下統一！${state.playerFaction.name} 一統江山！`,
+      };
+    }
+
+    // Check if any AI faction has won (for informational purposes)
+    for (const [factionId, count] of factionCityCounts.entries()) {
+      if (count === totalCities && factionId !== state.playerFaction.id) {
+        return {
+          type: 'defeat' as const,
+          message: `${state.factions.find(f => f.id === factionId)?.name || '敵軍'} 已統一天下...`,
+        };
+      }
+    }
+
+    return null;
+  },
 }));

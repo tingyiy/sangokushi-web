@@ -2,11 +2,13 @@ import type { Scenario, City, Officer } from '../types';
 import { baseCities } from './cities';
 import { baseOfficers } from './officers';
 
-/** Helper: create a full City from base + scenario overrides */
+/** Helper: create a full City from base + scenario overrides
+ * Phase 1.2: Updated with new city attributes
+ */
 function makeCity(
   id: number,
   factionId: number | null,
-  overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops'>> = {}
+  overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults'>> = {}
 ): City {
   const base = baseCities.find(c => c.id === id)!;
   return {
@@ -19,6 +21,17 @@ function makeCity(
     agriculture:overrides.agriculture ?? 500,
     defense:    overrides.defense ?? 50,
     troops:     overrides.troops ?? 10000,
+    // Phase 1.2: New city attributes with sensible defaults
+    floodControl: overrides.floodControl ?? 50,
+    technology:   overrides.technology ?? 30,
+    peopleLoyalty:overrides.peopleLoyalty ?? 70,
+    morale:       overrides.morale ?? 60,
+    training:     overrides.training ?? 40,
+    // Phase 1.2: Weapon inventory defaults
+    crossbows:    overrides.crossbows ?? 0,
+    warHorses:    overrides.warHorses ?? 0,
+    batteringRams:overrides.batteringRams ?? 0,
+    catapults:    overrides.catapults ?? 0,
   };
 }
 

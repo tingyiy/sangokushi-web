@@ -1,28 +1,45 @@
 import React, { useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useBattleStore } from '../store/battleStore';
-import BattleMap from './map/BattleMap'; // We'll create this or reuse
+import BattleMap from './map/BattleMap';
 
+/**
+ * BattleScreen Component
+ * Displays the tactical battle interface and handles battle resolution.
+ * Phase 0.1: Integrated with resolveBattle for proper battle consequences.
+ */
 const BattleScreen: React.FC = () => {
-  const { setPhase, addLog, cities, factions } = useGameStore();
+  const { setPhase, addLog, cities, factions, resolveBattle } = useGameStore();
   const battle = useBattleStore();
 
   useEffect(() => {
-    if (battle.isFinished) {
+    if (battle.isFinished && battle.winnerFactionId !== null) {
       const winner = factions.find(f => f.id === battle.winnerFactionId);
+      const loserFactionId = battle.winnerFactionId === battle.attackerId ? battle.defenderId : battle.attackerId;
       addLog(`戰鬥結束！勝利者：${winner?.name || '無'}`);
       
-      // Update city owner if attacker won
-      if (battle.winnerFactionId === battle.attackerId) {
-          // This should be handled in gameStore ideally
-          addLog(`攻陷了城市！`);
-      }
+      // Phase 0.1: Resolve battle consequences
+      // Prepare battle units data for resolveBattle
+      const battleUnitsData = battle.units.map(u => ({
+        officerId: u.officerId,
+        troops: u.troops,
+        factionId: u.factionId,
+        status: u.status,
+      }));
+      
+      // Call resolveBattle to handle city transfer, officer capture, etc.
+      resolveBattle(
+        battle.winnerFactionId,
+        loserFactionId,
+        battle.defenderCityId,
+        battleUnitsData
+      );
       
       setTimeout(() => {
         setPhase('playing');
       }, 3000);
     }
-  }, [battle.isFinished, battle.winnerFactionId, factions, addLog, setPhase, battle.attackerId]);
+  }, [battle.isFinished, battle.winnerFactionId, battle.attackerId, battle.defenderId, battle.defenderCityId, battle.units, factions, addLog, setPhase, resolveBattle]);
 
   const activeUnit = battle.units.find(u => u.id === battle.activeUnitId);
 
