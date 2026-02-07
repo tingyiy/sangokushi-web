@@ -58,6 +58,10 @@ interface GameState {
   startDuel: () => void;
   duelAction: (action: 'attack' | 'heavy' | 'defend' | 'flee') => void;
   endDuel: () => void;
+  /** Diplomacy: Improve relations (Gift) */
+  improveRelations: (targetFactionId: number) => void;
+  /** Diplomacy: Form Alliance */
+  formAlliance: (targetFactionId: number) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -76,15 +80,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setPhase: (phase) => set({ phase }),
 
-  selectScenario: (scenario) => set({
-    scenario,
-    cities: scenario.cities.map(c => ({ ...c })),
-    officers: scenario.officers.map(o => ({ ...o })),
-    factions: scenario.factions.map(f => ({ ...f })),
-    year: scenario.year,
-    month: 1,
-    phase: 'faction',
-  }),
+  selectScenario: (scenario) => {
+    // Initialize relations and allies for factions if missing
+    const initializedFactions = scenario.factions.map(f => ({
+      ...f,
+      relations: f.relations || scenario.factions.reduce((acc, other) => {
+        if (other.id !== f.id) acc[other.id] = 60; // Default hostility
+        return acc;
+      }, {} as Record<number, number>),
+      allies: f.allies || [],
+    }));
+
+    set({
+      scenario,
+      cities: scenario.cities.map(c => ({ ...c })),
+      officers: scenario.officers.map(o => ({ ...o })),
+      factions: initializedFactions,
+      year: scenario.year,
+      month: 1,
+      phase: 'faction',
+    });
+  },
 
   selectFaction: (factionId) => {
     const state = get();
@@ -403,6 +419,110 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   endDuel: () => {
      set({ phase: 'playing', duelState: null });
+  },
+
+  improveRelations: (targetFactionId) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    if (!city || city.gold < 1000) {
+      get().addLog('金不足（需1000），無法進行贈呈。');
+      return;
+    }
+    
+    // Find messenger (highest politics in city)
+    const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+    if (officersInCity.length === 0) {
+      get().addLog('城中無人可派。');
+      return;
+    }
+    const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+    
+    const targetFaction = state.factions.find(f => f.id === targetFactionId);
+    if (!targetFaction) return;
+
+    // Calculate effect
+    // Base reduction: Politics / 4 + 10
+    const reduction = Math.floor(messenger.politics / 4) + 10;
+    
+    set({
+      cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
+      factions: state.factions.map(f => {
+        if (f.id === state.playerFaction?.id) {
+          const currentHostility = f.relations[targetFactionId] ?? 60;
+          const newHostility = Math.max(0, currentHostility - reduction);
+          return { ...f, relations: { ...f.relations, [targetFactionId]: newHostility } };
+        }
+        // Also update the target's view of us (symmetric for simplicity in this implementation)
+        if (f.id === targetFactionId) {
+             const currentHostility = f.relations[state.playerFaction!.id] ?? 60;
+             const newHostility = Math.max(0, currentHostility - reduction);
+             return { ...f, relations: { ...f.relations, [state.playerFaction!.id]: newHostility } };
+        }
+        return f;
+      })
+    });
+    
+    get().addLog(`${messenger.name} 出使 ${targetFaction.name}，敵對心降低了 ${reduction}。`);
+  },
+
+  formAlliance: (targetFactionId) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    if (!city || city.gold < 2000) {
+      get().addLog('金不足（需2000），無法結盟。');
+      return;
+    }
+
+    const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+    if (officersInCity.length === 0) {
+      get().addLog('城中無人可派。');
+      return;
+    }
+    const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+    const targetFaction = state.factions.find(f => f.id === targetFactionId);
+    if (!targetFaction) return;
+
+    if (state.playerFaction?.allies.includes(targetFactionId)) {
+        get().addLog(`我方與 ${targetFaction.name} 已經是同盟了。`);
+        return;
+    }
+
+    // Success Check
+    // (Politics * 0.6) + (100 - Hostility) * 0.4 > 60?
+    const hostility = state.playerFaction?.relations[targetFactionId] ?? 60;
+    const score = (messenger.politics * 0.6) + ((100 - hostility) * 0.4);
+    const success = score > 50 + (Math.random() * 20); // Threshold 50-70
+
+    set({
+        cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 2000 } : c)
+    });
+
+    if (success) {
+        set({
+            factions: state.factions.map(f => {
+                if (f.id === state.playerFaction?.id) {
+                    return { ...f, allies: [...f.allies, targetFactionId] };
+                }
+                if (f.id === targetFactionId) {
+                    return { ...f, allies: [...f.allies, state.playerFaction!.id] };
+                }
+                return f;
+            })
+        });
+        get().addLog(`${messenger.name} 成功說服 ${targetFaction.name} 結為同盟！`);
+    } else {
+        // Failure increases hostility slightly
+        set({
+             factions: state.factions.map(f => {
+                if (f.id === state.playerFaction?.id) {
+                     const h = f.relations[targetFactionId] ?? 60;
+                     return { ...f, relations: { ...f.relations, [targetFactionId]: Math.min(100, h + 5) } };
+                }
+                return f;
+             })
+        });
+        get().addLog(`${messenger.name} 的結盟提議被 ${targetFaction.name} 拒絕了。`);
+    }
   }
 
 }));

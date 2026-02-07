@@ -9,6 +9,7 @@ export function CommandMenu() {
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
     recruitOfficer, draftTroops, startDuel, endTurn, addLog,
+    improveRelations, formAlliance,
   } = useGameStore();
 
   const city = cities.find(c => c.id === selectedCityId);
@@ -93,7 +94,33 @@ export function CommandMenu() {
             </>
           )}
           {activeCommandCategory === '外交' && (
-            <p className="no-action">外交功能開發中…</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+              {factions.filter(f => f.id !== playerFaction?.id).map(f => {
+                const hostility = playerFaction?.relations?.[f.id] ?? 60;
+                const isAlly = playerFaction?.allies?.includes(f.id);
+                return (
+                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: f.color, fontWeight: 'bold' }}>{f.name}</span>
+                        <span style={{ fontSize: '0.85em', color: '#ccc' }}>敵對: {hostility} {isAlly && <span style={{color: '#ffd700'}}>★</span>}</span>
+                     </div>
+                     <div style={{ display: 'flex', gap: '4px' }}>
+                        <button className="btn btn-action" style={{ fontSize: '0.8em', padding: '4px 8px', margin: 0, width: 'auto' }} onClick={() => improveRelations(f.id)}>
+                          贈呈
+                        </button>
+                        {!isAlly && (
+                          <button className="btn btn-action" style={{ fontSize: '0.8em', padding: '4px 8px', margin: 0, width: 'auto' }} onClick={() => formAlliance(f.id)}>
+                            結盟
+                          </button>
+                        )}
+                     </div>
+                  </div>
+                );
+              })}
+              {factions.filter(f => f.id !== playerFaction?.id).length === 0 && (
+                <p className="no-action">天下已統一。</p>
+              )}
+            </div>
           )}
           {activeCommandCategory === '謀略' && (
             <p className="no-action">謀略功能開發中…</p>

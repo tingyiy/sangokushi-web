@@ -63,6 +63,10 @@ export interface Faction {
   color: string;
   /** Is this faction player-controlled? */
   isPlayer: boolean;
+  /** Relations (Hostility 0-100) with other factions. Key: factionId */
+  relations: Record<number, number>;
+  /** Allied faction IDs */
+  allies: number[];
 }
 
 /** 劇本（Scenario） */
