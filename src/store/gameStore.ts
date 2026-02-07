@@ -717,14 +717,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       const popImpact = Math.floor(targetCity.population * 0.02);
       
       set({
-        officers: state.officers.map(o => 
+        officers: get().officers.map(o =>
           (o.cityId === targetCityId && o.factionId === targetCity.factionId && !o.isGovernor)
             ? { ...o, loyalty: Math.max(0, o.loyalty - loyaltyImpact) }
             : o
         ),
-        cities: state.cities.map(c => 
-          c.id === targetCityId 
-            ? { ...c, population: Math.max(0, c.population - popImpact) } 
+        cities: get().cities.map(c =>
+          c.id === targetCityId
+            ? { ...c, population: Math.max(0, c.population - popImpact) }
             : c
         )
       });
