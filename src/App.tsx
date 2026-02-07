@@ -3,6 +3,7 @@ import { TitleScreen } from './components/TitleScreen';
 import { ScenarioSelect } from './components/ScenarioSelect';
 import { GameScreen } from './components/GameScreen';
 import { DuelScreen } from './components/DuelScreen';
+import BattleScreen from './components/BattleScreen';
 import './App.css';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
       {(phase === 'scenario' || phase === 'faction') && <ScenarioSelect />}
       {phase === 'playing' && <GameScreen />}
       {phase === 'duel' && <DuelScreen />}
+      {phase === 'battle' && <BattleScreen />}
     </div>
   );
 }

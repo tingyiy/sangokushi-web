@@ -8,7 +8,7 @@ export function CommandMenu() {
     selectedCityId, cities, officers, factions, playerFaction,
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
-    recruitOfficer, draftTroops, startDuel, endTurn, addLog,
+    recruitOfficer, draftTroops, startDuel, startBattle, endTurn, addLog,
     improveRelations, formAlliance, rumor,
   } = useGameStore();
 
@@ -74,6 +74,17 @@ export function CommandMenu() {
               <button className="btn btn-action" onClick={startDuel}>
                 向鄰國發起單挑
               </button>
+              <div style={{ marginTop: '10px', width: '100%' }}>
+                {city.adjacentCityIds.map(adjId => {
+                  const adjCity = cities.find(c => c.id === adjId);
+                  if (!adjCity || adjCity.factionId === playerFaction?.id) return null;
+                  return (
+                    <button key={adjId} className="btn btn-action" onClick={() => startBattle(adjId)}>
+                      出征 {adjCity.name}
+                    </button>
+                  );
+                })}
+              </div>
             </>
           )}
           {activeCommandCategory === '人事' && (

@@ -14,9 +14,9 @@
 - **Rumor (流言):** Plot command to lower enemy officer loyalty in adjacent cities.
 - **Fire Attacks (火計):** Tactical fire attacks in battle, terrain-dependent damage, 3-turn duration. [PR #1](https://github.com/tingyiy/sangokushi-web/pull/1)
 - **Spying (間諜):** Infiltrating cities to gather intelligence. [PR #2](https://github.com/tingyiy/sangokushi-web/pull/2)
+- **Battle Engine:** Full hex-based tactical battle system with movement, combat, and terrain effects. [PR #3](https://github.com/tingyiy/sangokushi-web/pull/3)
 
 ## Future Enhancements (To Be Implemented)
 - **Naval Battles:** Combat on water bodies.
-- **Unit Testing:** Integrate a testing framework (e.g., Vitest) and achieve high coverage.
-- **Battle Engine:** Full hex-based tactical battle system.
+- **Unit Testing:** Integrate a testing framework (e.g., Vitest) and achieve high coverage. (Initial Vitest integration complete)
 - **Music & Sound:** Faithful recreation of original audio.

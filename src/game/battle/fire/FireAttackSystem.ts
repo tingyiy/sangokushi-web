@@ -82,8 +82,10 @@ export class FireAttackSystem {
   private isAdjacent(hex1: string, hex2: string): boolean {
     // In RTK IV, adjacent hexes share an edge (not just corner)
     // Simple implementation: hex IDs are "x_y"; adjacent if |dx| + |dy| == 1
-    const [x1, y1] = hex1.split('_').map(Number);
-    const [x2, y2] = hex2.split('_').map(Number);
+    // Handle prefixes like 'h2_2' -> [2, 2]
+    const parse = (id: string) => id.split('_').map(p => parseInt(p.replace(/^\D+/, ''), 10));
+    const [x1, y1] = parse(hex1);
+    const [x2, y2] = parse(hex2);
     return Math.abs(x1 - x2) + Math.abs(y1 - y2) === 1;
   }
 
