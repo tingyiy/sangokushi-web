@@ -69,7 +69,10 @@ export function CityPanel() {
                   統{o.leadership} 武{o.war} 智{o.intelligence} 政{o.politics} 魅{o.charisma}
                 </span>
                 {isOwnCity && (
-                  <span className="officer-loyalty">忠{o.loyalty}</span>
+                  <>
+                    <span className="officer-loyalty">忠{o.loyalty}</span>
+                    <span className="officer-stamina" style={{ color: o.stamina < 20 ? '#ff6b6b' : '#4ade80' }}>體{o.stamina}</span>
+                  </>
                 )}
               </div>
             ))}
