@@ -2,6 +2,7 @@ import { useGameStore } from './store/gameStore';
 import { TitleScreen } from './components/TitleScreen';
 import { ScenarioSelect } from './components/ScenarioSelect';
 import { GameScreen } from './components/GameScreen';
+import { DuelScreen } from './components/DuelScreen';
 import './App.css';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
       {phase === 'title' && <TitleScreen />}
       {(phase === 'scenario' || phase === 'faction') && <ScenarioSelect />}
       {phase === 'playing' && <GameScreen />}
+      {phase === 'duel' && <DuelScreen />}
     </div>
   );
 }

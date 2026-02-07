@@ -1,6 +1,17 @@
 import { create } from 'zustand';
 import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory } from '../types';
 
+interface DuelState {
+  p1: Officer;
+  p2: Officer;
+  p1Hp: number;
+  p2Hp: number;
+  round: number;
+  turn: 0 | 1;
+  logs: string[];
+  result: 'win' | 'lose' | 'draw' | 'flee' | null;
+}
+
 interface GameState {
   phase: GamePhase;
   /** Current scenario data */
@@ -22,6 +33,8 @@ interface GameState {
   activeCommandCategory: CommandCategory | null;
   /** Game log messages */
   log: string[];
+  /** Duel State */
+  duelState: DuelState | null;
 
   // Actions
   setPhase: (phase: GamePhase) => void;
@@ -41,6 +54,10 @@ interface GameState {
   recruitOfficer: (officerId: number) => void;
   /** Military: draft troops */
   draftTroops: (cityId: number, amount: number) => void;
+  /** Military: Duel */
+  startDuel: () => void;
+  duelAction: (action: 'attack' | 'heavy' | 'defend' | 'flee') => void;
+  endDuel: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -55,6 +72,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedCityId: null,
   activeCommandCategory: null,
   log: [],
+  duelState: null,
 
   setPhase: (phase) => set({ phase }),
 
@@ -238,4 +256,153 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     get().addLog(`${city.name}：徵兵 ${actual} 人`);
   },
+
+  startDuel: () => {
+    const state = get();
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    if (!city) return;
+
+    // Find best player officer in city
+    const pOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+    if (pOfficers.length === 0) {
+      get().addLog('城中無將！');
+      return;
+    }
+    const p1 = pOfficers.reduce((prev, current) => (prev.war > current.war ? prev : current));
+
+    // Find random enemy in adjacent cities
+    const enemyCityIds = city.adjacentCityIds.filter(id => {
+       const neighbor = state.cities.find(c => c.id === id);
+       return neighbor && neighbor.factionId && neighbor.factionId !== state.playerFaction?.id;
+    });
+
+    if (enemyCityIds.length === 0) {
+      get().addLog('四周無敵軍。');
+      return;
+    }
+
+    const targetCityId = enemyCityIds[Math.floor(Math.random() * enemyCityIds.length)];
+    const targetCity = state.cities.find(c => c.id === targetCityId)!;
+    
+    const eOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId);
+     if (eOfficers.length === 0) {
+      get().addLog(`${targetCity.name} 是一座空城。`);
+      return;
+    }
+    const p2 = eOfficers[Math.floor(Math.random() * eOfficers.length)];
+
+    set({
+      phase: 'duel',
+      duelState: {
+        p1,
+        p2,
+        p1Hp: 100,
+        p2Hp: 100,
+        round: 1,
+        turn: 0,
+        logs: [`${p1.name} 向 ${targetCity.name} 的 ${p2.name} 發起了挑戰！`, '戰鬥開始！'],
+        result: null,
+      }
+    });
+  },
+
+  duelAction: (action) => {
+    const state = get();
+    const ds = state.duelState;
+    if (!ds || ds.result) return;
+
+    let p1Dmg = 0;
+    let p2Dmg = 0;
+    let logMsg = '';
+    const logs = [...ds.logs];
+
+    // Player Phase
+    if (action === 'flee') {
+      set({ duelState: { ...ds, logs: [...logs, `${ds.p1.name} 逃跑了！`], result: 'flee' } });
+      return;
+    }
+
+    // Hit calculation
+    // Base damage = War / 10 + Random(1-10)
+    
+    let hitChance = 80 + (ds.p1.war - ds.p2.war);
+    let damageMult = 1;
+    
+    if (action === 'heavy') {
+      hitChance -= 20;
+      damageMult = 1.5;
+    } else if (action === 'defend') {
+      damageMult = 0; // Don't attack
+    }
+
+    if (action !== 'defend') {
+        const roll = Math.random() * 100;
+        if (roll < hitChance) {
+           const base = Math.max(1, ds.p1.war / 5);
+           const dmg = Math.floor((base + Math.random() * 10) * damageMult);
+           p2Dmg = dmg;
+           logMsg = `${ds.p1.name} 使用 ${action === 'heavy' ? '大喝' : '攻擊'}，造成了 ${dmg} 點傷害！`;
+        } else {
+           logMsg = `${ds.p1.name} 的攻擊落空了！`;
+        }
+    } else {
+       logMsg = `${ds.p1.name} 採取了防禦姿態。`;
+    }
+    logs.push(logMsg);
+
+    let newP2Hp = Math.max(0, ds.p2Hp - p2Dmg);
+
+    if (newP2Hp === 0) {
+      set({ duelState: { ...ds, p2Hp: 0, logs: [...logs, `${ds.p2.name} 被擊敗了！`], result: 'win' } });
+      return;
+    }
+
+    // AI Phase
+    const aiAction = ds.p2Hp < 30 ? 'heavy' : 'attack'; 
+    let aiHitChance = 80 + (ds.p2.war - ds.p1.war);
+    let aiDamageMult = 1;
+
+    if (aiAction === 'heavy') {
+        aiHitChance -= 20;
+        aiDamageMult = 1.5;
+    }
+    
+    // Player defense bonus
+    if (action === 'defend') {
+        aiDamageMult *= 0.5;
+        logs.push(`(防禦生效！傷害減半)`);
+    }
+
+    const aiRoll = Math.random() * 100;
+    if (aiRoll < aiHitChance) {
+        const base = Math.max(1, ds.p2.war / 5);
+        const dmg = Math.floor((base + Math.random() * 10) * aiDamageMult);
+        p1Dmg = dmg;
+        logs.push(`${ds.p2.name} 還擊！造成了 ${dmg} 點傷害！`);
+    } else {
+        logs.push(`${ds.p2.name} 的攻擊被閃避了！`);
+    }
+
+    let newP1Hp = Math.max(0, ds.p1Hp - p1Dmg);
+
+    if (newP1Hp === 0) {
+       set({ duelState: { ...ds, p1Hp: 0, p2Hp: newP2Hp, logs: [...logs, `${ds.p1.name} 落馬了...`], result: 'lose' } });
+       return;
+    }
+
+    set({
+      duelState: {
+        ...ds,
+        p1Hp: newP1Hp,
+        p2Hp: newP2Hp,
+        logs: logs,
+        round: ds.round + 1,
+      }
+    });
+  },
+
+  endDuel: () => {
+     set({ phase: 'playing', duelState: null });
+  }
+
 }));

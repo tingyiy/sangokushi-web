@@ -82,7 +82,8 @@ export type GamePhase =
   | 'scenario'     // 劇本選擇
   | 'faction'      // 勢力選擇
   | 'playing'      // 遊戲中
-  | 'battle';      // 戰鬥
+  | 'battle'       // 戰鬥
+  | 'duel';        // 單挑
 
 /** 指令分類 */
 export type CommandCategory = '內政' | '軍事' | '人事' | '外交' | '謀略' | '結束';

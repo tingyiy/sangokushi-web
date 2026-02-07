@@ -8,7 +8,7 @@ export function CommandMenu() {
     selectedCityId, cities, officers, factions, playerFaction,
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
-    recruitOfficer, draftTroops, endTurn, addLog,
+    recruitOfficer, draftTroops, startDuel, endTurn, addLog,
   } = useGameStore();
 
   const city = cities.find(c => c.id === selectedCityId);
@@ -69,6 +69,9 @@ export function CommandMenu() {
               </button>
               <button className="btn btn-action" onClick={() => draftTroops(city.id, 10000)}>
                 徵兵 10000
+              </button>
+              <button className="btn btn-action" onClick={startDuel}>
+                向鄰國發起單挑
               </button>
             </>
           )}
