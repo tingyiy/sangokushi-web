@@ -23,6 +23,8 @@ export type RTK4Skill = typeof RTK4_SKILLS[number];
 export interface Officer {
   id: number;
   name: string;           // 繁體中文名
+  /** 頭像ID (Portrait ID) - maps to portrait image filename */
+  portraitId: number;
   /** 統率 (Leadership) */
   leadership: number;
   /** 武力 (War / Martial) */
@@ -33,7 +35,7 @@ export interface Officer {
   politics: number;
   /** 魅力 (Charisma) */
   charisma: number;
-  /** 
+  /**
    * 技能列表 - RTK IV 22個技能
    * Phase 1.1: Officer Skill System
    */
@@ -119,6 +121,8 @@ export interface Faction {
 export interface Scenario {
   id: number;
   name: string;
+  /** 副標題 (Subtitle) - e.g., "火燒洛陽" */
+  subtitle: string;
   year: number;
   description: string;
   factions: Faction[];
@@ -131,6 +135,7 @@ export type GamePhase =
   | 'title'        // 標題畫面
   | 'scenario'     // 劇本選擇
   | 'faction'      // 勢力選擇
+  | 'settings'     // 遊戲設定 (NEW: Phase 0.5)
   | 'playing'      // 遊戲中
   | 'battle'       // 戰鬥
   | 'duel'         // 單挑
@@ -145,4 +150,16 @@ export interface TurnCommand {
   name: string;
   description: string;
   execute: () => void;
+}
+
+/** 遊戲設定 (Game Settings) - Phase 0.5 */
+export interface GameSettings {
+  /** 戰爭方式 - watch: 觀看戰鬥, skip: 跳過戰鬥 */
+  battleMode: 'watch' | 'skip';
+  /** 遊戲方式 - historical: 歷史模式, fictional: 虛構模式 */
+  gameMode: 'historical' | 'fictional';
+  /** 登錄武將出場 - all: 全部, choose: 選擇 */
+  customOfficers: 'all' | 'choose';
+  /** 清信靈敏度 (1-5) - 情報敏感度 */
+  intelligenceSensitivity: 1 | 2 | 3 | 4 | 5;
 }

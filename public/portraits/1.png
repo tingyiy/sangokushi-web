@@ -1,0 +1,13 @@
+<!-- Portrait Placeholder - 1.png -->
+<!-- This is a placeholder portrait. Replace with actual artwork. -->
+<svg width="128" height="160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3a3a4a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a2a3a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="160" fill="url(#bg1)"/>
+  <text x="64" y="85" font-family="serif" font-size="48" fill="#6b7280" text-anchor="middle" dominant-baseline="middle">劉</text>
+  <rect x="4" y="4" width="120" height="152" fill="none" stroke="#4b5563" stroke-width="2"/>
+</svg>

@@ -1,5 +1,14 @@
 import { useGameStore } from '../store/gameStore';
+import { Portrait } from './Portrait';
+import { CityIllustration } from './CityIllustration';
 
+/**
+ * CityPanel Component - Updated Phase 0.5
+ * Displays city information with:
+ * - City illustration (procedural SVG based on city stats)
+ * - Officer portraits next to names
+ * - City stats and information
+ */
 export function CityPanel() {
   const { cities, officers, factions, selectedCityId, playerFaction } = useGameStore();
 
@@ -25,12 +34,17 @@ export function CityPanel() {
 
   return (
     <div className="city-panel">
+      {/* City name with faction color */}
       <h3 className="city-name" style={{ color: faction?.color ?? '#9ca3af' }}>
         {city.name}
         {faction && <span className="city-faction">（{faction.name}）</span>}
         {!faction && <span className="city-faction">（空城）</span>}
       </h3>
 
+      {/* City illustration - Phase 0.5 */}
+      <CityIllustration city={city} />
+
+      {/* City stats */}
       <div className="city-stats">
         <div className="stat-row">
           <span>人口</span><span>{city.population.toLocaleString()}</span>
@@ -55,12 +69,20 @@ export function CityPanel() {
         </div>
       </div>
 
+      {/* Affiliated officers with portraits - Phase 0.5 */}
       {affiliated.length > 0 && (
         <div className="officer-section">
           <h4>武將</h4>
           <div className="officer-list">
             {affiliated.map(o => (
               <div key={o.id} className="officer-row">
+                {/* Portrait - Phase 0.5 */}
+                <Portrait
+                  portraitId={o.portraitId}
+                  name={o.name}
+                  size="small"
+                  className="officer-portrait"
+                />
                 <span className="officer-name">
                   {o.isGovernor && <span className="governor-badge">太守</span>}
                   {o.name}
@@ -80,12 +102,20 @@ export function CityPanel() {
         </div>
       )}
 
+      {/* Unaffiliated officers with portraits - Phase 0.5 */}
       {isOwnCity && unaffiliated.length > 0 && (
         <div className="officer-section">
           <h4>在野武將</h4>
           <div className="officer-list">
             {unaffiliated.map(o => (
               <div key={o.id} className="officer-row unaffiliated">
+                {/* Portrait - Phase 0.5 */}
+                <Portrait
+                  portraitId={o.portraitId}
+                  name={o.name}
+                  size="small"
+                  className="officer-portrait"
+                />
                 <span className="officer-name">{o.name}</span>
                 <span className="officer-stats">
                   統{o.leadership} 武{o.war} 智{o.intelligence} 政{o.politics} 魅{o.charisma}
