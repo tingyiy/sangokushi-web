@@ -127,6 +127,8 @@ export interface Faction {
   name: string;
   /** 君主 officer id */
   rulerId: number;
+  /** 軍師 officer id */
+  advisorId: number | null;
   /** 勢力顏色 (hex) */
   color: string;
   /** Is this faction player-controlled? */
@@ -135,6 +137,14 @@ export interface Faction {
   relations: Record<number, number>;
   /** Allied faction IDs */
   allies: number[];
+  /** 停戰協定 */
+  ceasefires: {
+    factionId: number;
+    expiresMonth: number;
+    expiresYear: number;
+  }[];
+  /** 人質武將 ids */
+  hostageOfficerIds: number[];
 }
 
 /** 劇本（Scenario） */
