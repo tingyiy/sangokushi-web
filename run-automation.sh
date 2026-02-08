@@ -10,10 +10,10 @@ cd /home/ec2-user/.openclaw/workspace/sangokushi-web \
     && exit 1; \
 fi
 
-echo " Using Claude Opus to find the next feature to implement..."
+echo " Using Kimi K2.5 to find the next feature to implement..."
 
-# STEP 1: Ask Opus to identify the next  task
-NEXT_FEATURE_INFO=$(opencode -m "amazon-bedrock/us.anthropic.claude-opus-4-6-v1" run "
+# STEP 1: Ask Kimi K2.5 to identify the next  task
+NEXT_FEATURE_INFO=$(opencode -m "opencode/kimi-k2.5-free" run "
 You are tasked with selecting the next feature to implement from IMPL-INDEX.md.
 
 Read IMPL-INDEX.md.  
@@ -23,7 +23,7 @@ Feature: <name>
 Description: <text>
 
 Do not add explanations, markdown, or commentary.
-" 2>&1)
+" 2>&1 | tee /dev/stderr)
 
 # If no item found
 if echo "$NEXT_FEATURE_INFO" | grep -q "Feature:"; then
@@ -45,6 +45,7 @@ Feature: $FEATURE_NAME
 Description: $FEATURE_DESC
 
 Follow exactly:
+0. Read the detail implement plan mentioned in IMPL-INDEX.md
 1. Create a new feature branch named: 'feat/rtk4-<lowercase-feature-name>-<random-5chars>'
 2. Write clean, comment-rich TypeScript/JavaScript code in correct files.
 3. Write unit tests using Vitest or Jest — achieve ≥90% coverage (run 'npm run test' to verify)
@@ -60,7 +61,7 @@ Follow exactly:
 13. If any step fails, return: 'ERROR: <detailed-message>' and exit with code 1.
 
 Do not explain. Do not summarize. Just do it.
-" 2>&1)
+" 2>&1 | tee /dev/stderr)
 
 # STEP 3: Handle outcome
 if echo "$OUTPUT" | grep -q "PR_CREATED:"; then
