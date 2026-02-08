@@ -2,37 +2,89 @@
 
 A phased plan to bring this project from early prototype to full RTK IV feature parity, based on the gap analysis in [GAP.md](./GAP.md).
 
-**Current state:** Working skeleton with 1 scenario, 49 officers, basic domestic/military/diplomacy/strategy commands, functional duel system, and rudimentary hex battle engine. AI makes zero decisions. Battle victory does not transfer city ownership.
+**Current state:** Working skeleton with 1 scenario, ~45 officers, basic domestic/military/diplomacy/strategy commands, functional duel system, rudimentary hex battle engine, save/load system, and victory/defeat detection. Phase 0 is complete. AI makes zero decisions. Major UI gaps remain vs. RTK IV: no officer portraits, no pre-game settings, no city illustrations, no domestic status panel, no terrain map, no officer visit events.
 
 ---
 
-## Phase 0 -- Critical Fixes (Week 1)
+## ~~Phase 0 -- Critical Fixes (Week 1)~~ COMPLETED
 
-Fix showstopper bugs that make the current game non-functional.
+~~Fix showstopper bugs that make the current game non-functional.~~
 
-### 0.1 Battle Consequences
-- **Problem:** Winning a battle does not transfer city ownership, capture officers, or adjust troops.
+### ~~0.1 Battle Consequences~~ COMPLETED
+- ~~**Problem:** Winning a battle does not transfer city ownership, capture officers, or adjust troops.~~
+- ~~**Tasks:**~~
+  - ~~In `gameStore.ts`, add a `resolveBattle(winnerFactionId, defenderCityId)` action.~~
+  - ~~On battle end: transfer city to winner, redistribute surviving troops, captured/routed officers become POWs or flee.~~
+  - ~~Wire `BattleScreen` to call `resolveBattle` when `battleStore.isFinished` becomes true.~~
+  - ~~Add tests for city transfer, officer capture, and troop recalculation.~~
+
+### ~~0.2 Save / Load Game~~ COMPLETED
+- ~~**Problem:** No persistence; progress is lost on refresh.~~
+- ~~**Tasks:**~~
+  - ~~Serialize full `gameStore` state to `localStorage` (JSON).~~
+  - ~~Add `saveGame()` and `loadGame()` actions to `gameStore`.~~
+  - ~~Add Save/Load buttons to `GameHeader` or a new menu overlay.~~
+  - ~~Support multiple save slots (3 slots, matching RTK IV).~~
+  - ~~Add version field to save data for future migration.~~
+
+### ~~0.3 Victory Condition~~ COMPLETED
+- ~~**Problem:** No win/lose detection.~~
+- ~~**Tasks:**~~
+  - ~~Check at each turn end: if one faction controls all cities, trigger victory screen.~~
+  - ~~Check at each turn end: if the player's faction has no cities, trigger defeat screen.~~
+  - ~~Create a simple `VictoryScreen` / `DefeatScreen` component.~~
+
+---
+
+## Phase 0.5 -- Game Setup Flow & UI Foundation (Week 1-2)
+
+Critical UI screens and flows that are present in RTK IV but completely missing from the current prototype. These were identified from actual RTK IV gameplay screenshots.
+
+### 0.5.1 Scenario Selection Screen Overhaul
+- **Problem:** Current scenario list is a plain vertical button list with no preview. RTK IV shows a styled list with year, title, and subtitle (e.g., "西元 189年 董卓廢少帝・火燒洛陽").
 - **Tasks:**
-  - In `gameStore.ts`, add a `resolveBattle(winnerFactionId, defenderCityId)` action.
-  - On battle end: transfer city to winner, redistribute surviving troops, captured/routed officers become POWs or flee.
-  - Wire `BattleScreen` to call `resolveBattle` when `battleStore.isFinished` becomes true.
-  - Add tests for city transfer, officer capture, and troop recalculation.
+  - Redesign `ScenarioSelect` to show a styled list matching RTK IV format: "西元 {year}年 {title}・{subtitle}".
+  - Add a "中止" (Cancel) button alongside each scenario row.
+  - Style with the classic green-on-dark pattern background (or a suitable thematic background).
 
-### 0.2 Save / Load Game
-- **Problem:** No persistence; progress is lost on refresh.
+### 0.5.2 Faction Selection Screen Overhaul
+- **Problem:** Current faction selection is a plain grid of colored buttons. RTK IV shows a **minimap** on the left with city positions, and a **portrait grid** on the right showing ruler face portraits with faction-colored banners. Supports pagination ("下頁") for many factions.
 - **Tasks:**
-  - Serialize full `gameStore` state to `localStorage` (JSON).
-  - Add `saveGame()` and `loadGame()` actions to `gameStore`.
-  - Add Save/Load buttons to `GameHeader` or a new menu overlay.
-  - Support multiple save slots (3 slots, matching RTK IV).
-  - Add version field to save data for future migration.
+  - Add a minimap component on the left side showing city positions and connections on a terrain background.
+  - Replace plain buttons with a portrait grid: each cell shows the ruler's painted portrait, faction-colored banner, and ruler name.
+  - Add pagination ("下頁" / "上頁") if factions exceed the visible grid (e.g., 9 per page).
+  - Add header bar showing: scenario name, "選擇君主 {n}人", 決定 (confirm), 下頁 (next page), 中止 (cancel).
+  - Requires officer portrait assets (see 0.5.5).
 
-### 0.3 Victory Condition
-- **Problem:** No win/lose detection.
+### 0.5.3 Pre-Game Settings Screen (新遊戲設定)
+- **Problem:** Entirely missing. RTK IV has a settings confirmation screen after selecting a faction, before gameplay starts.
 - **Tasks:**
-  - Check at each turn end: if one faction controls all cities, trigger victory screen.
-  - Check at each turn end: if the player's faction has no cities, trigger defeat screen.
-  - Create a simple `VictoryScreen` / `DefeatScreen` component.
+  - Create a `GameSettingsScreen` component shown between faction selection and gameplay start.
+  - Display read-only summary: 選擇劇本 (selected scenario), 選擇君主 (selected ruler).
+  - Configurable options:
+    - **戰爭方式 (Battle Mode):** 看 (Watch) / 不看 (Skip) -- whether to show tactical battle or auto-resolve.
+    - **遊戲方式 (Game Mode):** 歷史 (Historical) / 虛構 (Fictional) -- historical mode triggers scripted events; fictional mode is sandbox.
+    - **登錄武將出場 (Custom Officer Appearance):** 出場 (All appear) / 選擇 (Player chooses which custom officers appear).
+    - **清信靈敏度 (Intelligence Sensitivity):** 1-5 slider -- affects how responsive AI/events are to player actions.
+  - Store settings in gameStore state.
+  - Add 決定 (Confirm) and 中止 (Cancel) buttons.
+
+### 0.5.4 Officer Portrait System
+- **Problem:** No officer portraits exist. RTK IV displays painted portraits in multiple contexts: faction selection, city info panel, officer detail, event dialogs. Currently only mentioned as "polish" in Phase 7.5, but portraits are fundamental to the RTK IV experience.
+- **Tasks:**
+  - Add `portraitId` field to `Officer` type (or use existing if already defined).
+  - Create a portrait asset pipeline: source or generate portrait images for all officers.
+  - Create a `Portrait` React component that renders an officer's portrait by ID with fallback placeholder.
+  - Integrate portraits into: faction selection grid, city info panel, officer detail view, event dialogs.
+  - Store portraits in `public/portraits/` or as imported assets.
+
+### 0.5.5 City Illustration System (城市圖鑑)
+- **Problem:** RTK IV shows a painted illustration of the selected city (buildings, walls, farmland, terrain) alongside the officer portrait in the city info view. This is entirely missing.
+- **Tasks:**
+  - Design or source city illustration assets (can be a single template with variations based on development level, or unique per city).
+  - Create a `CityIllustration` component that renders the city scene.
+  - Show city illustration in the right-side panel when a city is selected, below the officer portrait area.
+  - Illustration should visually reflect city attributes: higher commerce = more market buildings, higher defense = stronger walls, higher agriculture = more farmland.
 
 ---
 
@@ -109,7 +161,7 @@ Existing: 招攬 (recruit unaffiliated).
 - **Add 處斬 (Execute):** Execute a captured officer. Lowers loyalty of officers who had high affinity with the executed.
 - **Add 追放 (Dismiss):** Release an officer from service. They become unaffiliated.
 - **Add 移動 (Transfer):** Move officers between cities controlled by the same faction.
-- **Add 太守任命 (Appoint Governor):** Change which officer is governor of a city.
+- **Add 太守任命 (Appoint Governor):** Change which officer is governor of a city. In RTK IV, the turn-start phase "請決定主管" prompts the player to assign/confirm governors for each city.
 - **Add 軍師任命 (Appoint Advisor):** Designate an officer as faction advisor. Enables advisor suggestions.
 
 ### 2.4 外交 (Diplomacy) Expansion
@@ -311,6 +363,16 @@ Without AI, the game has no challenge. This is the highest-impact single system.
 - Bumper harvest: food bonus.
 - Implement in `endTurn` after income calculation.
 
+### 6.4.1 Officer Visit / Audience Events (在野武將求見)
+- **Problem:** In RTK IV, wandering (unaffiliated) officers may spontaneously request an audience with the player at turn start. A dialog appears: "X主公，有位叫 Y 的人在 Z 求見，同他會面嗎？" with 可 (Accept) / 否 (Decline) buttons. Accepting triggers a recruitment attempt. This is a key mechanic for discovering and recruiting officers without spending an action on 搜索. Entirely missing from the plan.
+- **Tasks:**
+  - At the start of each turn, roll for each player-owned city whether an unaffiliated officer in that city requests an audience.
+  - Probability based on the city's population, ruler charisma, and number of unaffiliated officers in the city.
+  - Show a modal dialog with the officer's name, city, and Accept/Decline buttons.
+  - If accepted: show officer stats and attempt recruitment (auto-success or high-probability since they came willingly).
+  - If declined: officer remains unaffiliated but may leave the city.
+  - Queue multiple visit events if several officers request audience in the same turn.
+
 ### 6.5 Historical Events
 - Scripted events that trigger at specific year/month/conditions:
   - 赤壁之戰 (208): Fire on the river if conditions met.
@@ -364,28 +426,88 @@ Without AI, the game has no challenge. This is the highest-impact single system.
 - Tutorial / help overlay for new players.
 - Mobile-responsive layout.
 
+### 7.6 Strategic Map Overhaul (大地圖)
+- **Problem:** The current strategic map is an SVG with circles for cities and lines for adjacency. RTK IV has a richly painted terrain map with mountains, rivers, coastlines, and plains. City markers are colored faction flags/banners, not circles. The map is scrollable/pannable and shows the entire China landscape.
+- **Reference:** A terrain reference map has been generated at [`public/terrain-map.svg`](./public/terrain-map.svg). It uses a `viewBox="0 0 1000 850"` coordinate system (city x,y from `cities.ts` multiplied by 10). It includes:
+  - **Landmass shape** matching historical China with coastal outline
+  - **Ocean** with wave texture (東海, 南海)
+  - **Plains** (green fertile regions): 中原, 河北平原, 荊州, 四川盆地, 嶺南
+  - **Mountains** with peak details: 太行山脈, 燕山, 秦嶺, 大巴山, 巫山, 岷山/西南山地, 南嶺, 東南丘陵
+  - **Desert/arid terrain** in northwest: 西涼/涼州 (Gansu corridor)
+  - **Rivers**: 黃河 (Yellow River, full course with bend), 長江 (Yangtze, upper/middle/lower), 漢水, 淮河, 渭水, 嘉陵江, 湘江, 贛江
+  - **Lakes**: 洞庭湖 (near 江陵), 鄱陽湖 (near 柴桑), 太湖 (near 建業)
+  - **All 43 city markers** at correct positions with labels
+  - **Road network** connecting all adjacent cities
+  - **Geographic labels**: province names (涼州, 幽州, 并州, etc.), mountain ranges, rivers, seas
+- **Tasks:**
+  - Use `public/terrain-map.svg` as the base reference and refine into the production strategic map background.
+  - Replace city circles with faction-colored flag/banner markers matching RTK IV style.
+  - Add map scrolling/panning (click-drag or edge-scroll).
+  - Add map zooming (mouse wheel or pinch).
+  - Show troop count labels near city banners.
+  - Support different map appearances per season (optional: snow in winter as seen in RTK IV).
+  - Consider rendering the terrain as a `<canvas>` or `<img>` background behind the interactive SVG layer for better performance.
+
+### 7.7 Domestic Status Record Panel (內政狀況記錄)
+- **Problem:** RTK IV has a tabbed information panel (內政狀況記錄) accessible from the main game screen, showing a spreadsheet-style overview of all cities and their stats. It has tabs for: 全國 (National overview), 情報 (Intelligence), 那臣 (Officials/Officers). This is a critical information tool for strategic planning. Entirely missing from the current implementation.
+- **Tasks:**
+  - Create `DomesticStatusPanel` component with 3 tab views:
+    - **全國 (National):** Table of all player-owned cities with columns for: city name, population, troops, gold, food, commerce, agriculture, defense, and other attributes.
+    - **情報 (Intelligence):** Known information about enemy cities (integrates with fog of war when implemented).
+    - **那臣 (Officials):** Table of all officers showing: name, city assignment, stats, loyalty, stamina, governor status.
+  - Add toggle buttons to show/hide this panel from the main game screen.
+  - Support column sorting by clicking headers.
+  - Highlight cities that need attention (low food, low loyalty, etc.).
+
+### 7.8 Map Toolbar / Quick Info Buttons (地圖工具列)
+- **Problem:** RTK IV has a small toolbar in the top-right of the map view with quick-access buttons: 居民情報 (Resident Info), 力關係 (Power Relations), 變金 (Financial overview), etc. These open information overlays without leaving the map. Currently missing.
+- **Tasks:**
+  - Create a floating toolbar component positioned at the top-right of the map area.
+  - Add buttons for:
+    - **居民情報 (Resident Info):** Opens city detail overlay for the selected city.
+    - **力關係 (Power Relations):** Shows a diagram/table of faction relationships, hostilities, and alliances.
+    - **變金 (Finance):** Shows income/expense summary for the player's faction.
+    - **全國 (National):** Opens the Domestic Status Record panel (7.7).
+  - Each button opens a panel overlay on the map without navigating away from the main screen.
+
+### 7.9 Governor Assignment Phase (主管指定フェーズ)
+- **Problem:** In RTK IV, at the start of a turn (or when entering the command phase), the player sees "請決定主管・結束" which prompts them to assign governors to cities before issuing commands. This structured flow ensures each city has a designated commander before actions begin. Currently, governor assignment is just one of many personnel commands with no special flow.
+- **Tasks:**
+  - At the start of each player turn, if any player city lacks a governor, enter a "governor assignment" sub-phase.
+  - Show a prompt "請決定主管" for each city needing a governor, with a list of available officers.
+  - After all governors are assigned (or the player skips), proceed to the normal command phase.
+  - Show the currently selected governor's info (name, stats) in the left panel during this phase.
+
 ---
 
 ## Dependency Graph
 
 ```
-Phase 0 (Critical Fixes)
+Phase 0 (Critical Fixes) ── COMPLETED
   ├── 0.1 Battle Consequences  ──────────────────────────────────┐
   ├── 0.2 Save/Load                                             │
   └── 0.3 Victory Condition                                     │
                                                                  │
+Phase 0.5 (Game Setup Flow & UI Foundation)                      │
+  ├── 0.5.1 Scenario Selection Overhaul                          │
+  ├── 0.5.2 Faction Selection Overhaul (needs 0.5.4 portraits)   │
+  ├── 0.5.3 Pre-Game Settings Screen                             │
+  ├── 0.5.4 Officer Portrait System ──── used by 0.5.2, 0.5.5,  │
+  │         6.4.1 events, 7.7 panels                             │
+  └── 0.5.5 City Illustration System                             │
+                                                                 │
 Phase 1 (Data Expansion)                                         │
-  ├── 1.1 Skill System (22 skills) ──┬── gates Phase 2 commands │
-  ├── 1.2 City Attributes ───────────┤                          │
-  ├── 1.3 Officer Data (400+) ───────┤                          │
-  └── 1.4 Treasure System ───────────┘                          │
+  ├── 1.1 Skill System (22 skills) ──┬── gates Phase 2 commands  │
+  ├── 1.2 City Attributes ───────────┤                           │
+  ├── 1.3 Officer Data (400+) ───────┤                           │
+  └── 1.4 Treasure System ───────────┘                           │
                                                                  │
 Phase 2 (Commands) ─── depends on Phase 1 ──────────────────────┤
-  ├── 2.1 內政 Expansion (needs 1.2 city attrs)                 │
-  ├── 2.2 軍事 Expansion (needs 1.2 weapons)                    │
-  ├── 2.3 人事 Expansion (needs 1.4 treasures)                  │
-  ├── 2.4 外交 Expansion                                        │
-  └── 2.5 謀略 Expansion (needs 1.1 skills)                     │
+  ├── 2.1 內政 Expansion (needs 1.2 city attrs)                  │
+  ├── 2.2 軍事 Expansion (needs 1.2 weapons)                     │
+  ├── 2.3 人事 Expansion (needs 1.4 treasures)                   │
+  ├── 2.4 外交 Expansion                                         │
+  └── 2.5 謀略 Expansion (needs 1.1 skills)                      │
                                                                  │
 Phase 3 (Battle Overhaul) ─── depends on Phases 1+2 ────────────┘
   ├── 3.1 Unit Types (needs 1.2 weapons)
@@ -409,10 +531,15 @@ Phase 6 (Advanced Systems) ─── depends on Phases 1-4
   ├── 6.2 Ranks (needs 2.3 personnel)
   ├── 6.3 Fog of War (needs 2.5 espionage)
   ├── 6.4-6.5 Events (needs Phase 1 data)
+  ├── 6.4.1 Officer Visit Events (needs 0.5.4 portraits)
   ├── 6.6 Officer Lifecycle (needs 1.3 birth/death data)
   └── 6.7 Population/Tax (needs 1.2 city attrs)
 
-Phase 7 (Polish) ─── no hard dependencies
+Phase 7 (Polish) ─── no hard dependencies, but benefits from all prior phases
+  ├── 7.6 Strategic Map Overhaul (can start early, improves with data)
+  ├── 7.7 Domestic Status Panel (needs city/officer data from Phase 1)
+  ├── 7.8 Map Toolbar (needs 7.7 panels to exist)
+  └── 7.9 Governor Assignment Phase (needs 2.3 太守任命)
 ```
 
 ---
@@ -421,15 +548,16 @@ Phase 7 (Polish) ─── no hard dependencies
 
 | Phase | Scope | Est. Effort | Priority |
 |-------|-------|-------------|----------|
-| **Phase 0** | 3 tasks | ~1 week | **Critical** |
+| **Phase 0** | 3 tasks | ~~1 week~~ DONE | **Critical** |
+| **Phase 0.5** | 5 tasks (setup flow, portraits, city art) | ~2 weeks | **Critical** |
 | **Phase 1** | 4 tasks | ~2 weeks | **Critical** |
 | **Phase 2** | 5 categories, ~25 commands | ~2 weeks | **High** |
 | **Phase 3** | 8 major subsystems | ~3 weeks | **High** |
 | **Phase 4** | 7 AI subsystems | ~2 weeks | **High** |
 | **Phase 5** | 5 scenarios + officer placement | ~2 weeks | **Medium** |
-| **Phase 6** | 7 advanced systems | ~4 weeks | **Medium** |
-| **Phase 7** | Polish, multiplayer, UI | ~4 weeks | **Low** |
-| **Total** | | **~20 weeks** | |
+| **Phase 6** | 8 advanced systems (incl. officer visits) | ~4 weeks | **Medium** |
+| **Phase 7** | Polish, multiplayer, UI, map, panels | ~5 weeks | **Low-Medium** |
+| **Total** | | **~23 weeks** | |
 
 ---
 
