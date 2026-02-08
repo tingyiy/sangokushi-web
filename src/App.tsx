@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useGameStore } from './store/gameStore';
 import { TitleScreen } from './components/TitleScreen';
 import { ScenarioSelect } from './components/ScenarioSelect';
+import { FactionSelect } from './components/FactionSelect';
+import { GameSettingsScreen } from './components/GameSettingsScreen';
 import { GameScreen } from './components/GameScreen';
 import { DuelScreen } from './components/DuelScreen';
 import BattleScreen from './components/BattleScreen';
@@ -13,6 +15,7 @@ import './App.css';
  * Main App Component
  * Routes between different game screens based on current phase.
  * Phase 0.3: Integrated victory/defeat condition checking.
+ * Phase 0.5: Added FactionSelect and GameSettingsScreen routes.
  */
 function App() {
   const { phase, checkVictoryCondition, setPhase, addLog } = useGameStore();
@@ -35,7 +38,9 @@ function App() {
   return (
     <div className="app">
       {phase === 'title' && <TitleScreen />}
-      {(phase === 'scenario' || phase === 'faction') && <ScenarioSelect />}
+      {phase === 'scenario' && <ScenarioSelect />}
+      {phase === 'faction' && <FactionSelect />}
+      {phase === 'settings' && <GameSettingsScreen />}
       {phase === 'playing' && <GameScreen />}
       {phase === 'duel' && <DuelScreen />}
       {phase === 'battle' && <BattleScreen />}
