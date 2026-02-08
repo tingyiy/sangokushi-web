@@ -54,12 +54,13 @@ function makeOfficer(
 }
 
 // ============================================================
-// 劇本一：190年 反董卓聯盟
+// 劇本一：189年 董卓廢少帝
 // ============================================================
-const scenario190: Scenario = {
+const scenario189: Scenario = {
   id: 1,
-  name: '反董卓聯盟',
-  year: 190,
+  name: '董卓廢少帝',
+  subtitle: '火燒洛陽',
+  year: 189,
   description: '董卓廢少帝，立獻帝，遷都長安。各路諸侯起兵討伐，天下大亂。',
   factions: [
     { id: 1, name: '曹操',   rulerId: 20, color: '#2563eb', isPlayer: false, relations: {}, allies: [] },
@@ -168,4 +169,4 @@ const scenario190: Scenario = {
   ],
 };
 
-export const scenarios: Scenario[] = [scenario190];
+export const scenarios: Scenario[] = [scenario189];

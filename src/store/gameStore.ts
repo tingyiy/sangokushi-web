@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory } from '../types';
+import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings } from '../types';
 import { useBattleStore } from './battleStore';
 
 interface DuelState {
@@ -25,6 +25,10 @@ interface GameState {
   officers: Officer[];
   /** Live game factions */
   factions: Faction[];
+  /** Currently selected faction (for pre-confirm selection) - Phase 0.5 */
+  selectedFactionId: number | null;
+  /** Game settings - Phase 0.5 */
+  gameSettings: GameSettings;
   /** Current game year / month */
   year: number;
   month: number;
@@ -41,6 +45,9 @@ interface GameState {
   setPhase: (phase: GamePhase) => void;
   selectScenario: (scenario: Scenario) => void;
   selectFaction: (factionId: number) => void;
+  setSelectedFactionId: (factionId: number | null) => void;
+  setGameSettings: (settings: Partial<GameSettings>) => void;
+  confirmSettings: () => void;
   selectCity: (cityId: number | null) => void;
   setActiveCommandCategory: (cat: CommandCategory | null) => void;
   addLog: (message: string) => void;
@@ -88,6 +95,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   cities: [],
   officers: [],
   factions: [],
+  selectedFactionId: null,
+  gameSettings: {
+    battleMode: 'watch',
+    gameMode: 'historical',
+    customOfficers: 'all',
+    intelligenceSensitivity: 3,
+  },
   year: 190,
   month: 1,
   selectedCityId: null,
@@ -129,9 +143,20 @@ export const useGameStore = create<GameState>((set, get) => ({
         isPlayer: f.id === factionId,
       })),
       playerFaction: { ...faction, isPlayer: true },
-      phase: 'playing',
+      phase: 'settings',
       log: [`${faction.name}，天命所歸。${state.year}年${state.month}月，征途開始！`],
     });
+  },
+
+  setSelectedFactionId: (factionId) => set({ selectedFactionId: factionId }),
+
+  setGameSettings: (settings) => set(state => ({
+    gameSettings: { ...state.gameSettings, ...settings },
+  })),
+
+  confirmSettings: () => {
+    set({ phase: 'playing' });
+    get().addLog('遊戲設定完成，開始征戰！');
   },
 
   selectCity: (cityId) => set({ selectedCityId: cityId, activeCommandCategory: null }),
