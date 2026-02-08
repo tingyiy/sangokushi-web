@@ -394,4 +394,66 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       mockRandom.mockRestore();
     });
   });
+
+  describe('Bug Fixes & Validations', () => {
+    it('startBattle requires 5000 troops', () => {
+        useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, troops: 1000 } : c) });
+        useGameStore.getState().startBattle(2);
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('兵力不足'));
+    });
+
+    it('requestJointAttack safe against empty officer list', () => {
+        // Remove all officers
+        useGameStore.setState({ officers: [] });
+        // Should not throw
+        useGameStore.getState().requestJointAttack(2, 2);
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無人可派'));
+    });
+
+    it('demandSurrender counts cities by factionId', () => {
+        // Setup: Player has 6 cities (factionId 1), Target has 1 city (factionId 2)
+        // Ensure city ID != faction ID to test the bug fix
+        const cities = [
+            { id: 10, factionId: 1 }, { id: 11, factionId: 1 }, { id: 12, factionId: 1 }, 
+            { id: 13, factionId: 1 }, { id: 14, factionId: 1 }, { id: 15, factionId: 1 },
+            { id: 20, factionId: 2 }
+        ].map(c => ({ ...useGameStore.getState().cities[0], ...c, name: 'C' + c.id }));
+        
+        useGameStore.setState({ cities });
+        
+        // Mock random to succeed
+        const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.01);
+        useGameStore.getState().demandSurrender(2);
+        
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('向我軍投降'));
+        mockRandom.mockRestore();
+    });
+
+    it('exchangeHostage validates constraints', () => {
+        // Fail if officer not in faction
+        useGameStore.setState({ 
+            officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 2 } : o) 
+        });
+        useGameStore.getState().exchangeHostage(1, 2);
+        expect(useGameStore.getState().factions.find(f => f.id === 2)?.hostageOfficerIds).not.toContain(1);
+
+        // Fail if already hostage
+        useGameStore.setState({ 
+            officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 1, cityId: -2 } : o) 
+        });
+        useGameStore.getState().exchangeHostage(1, 2);
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('已經是人質'));
+    });
+
+    it('transferOfficer validates target ownership', () => {
+        // Target city 2 is enemy (faction 2)
+        useGameStore.getState().transferOfficer(1, 2);
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('只能移動到我方城市'));
+    });
+
+    it('rewardOfficer handles treasure stub', () => {
+        useGameStore.getState().rewardOfficer(1, 'treasure');
+        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('尚未實裝'));
+    });
+  });
 });

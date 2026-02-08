@@ -163,7 +163,10 @@ export function CommandMenu() {
                       <div className="btn-group">
                         {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>太守</button>}
                         <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>軍師</button>
-                        <select className="select-tiny" onChange={(e) => transferOfficer(o.id, parseInt(e.target.value))}>
+                        <select className="select-tiny" onChange={(e) => {
+                          if (!e.target.value) return;
+                          transferOfficer(o.id, parseInt(e.target.value));
+                        }}>
                            <option value="">移動</option>
                            {city.adjacentCityIds.map(adjId => {
                               const adjCity = cities.find(c => c.id === adjId);

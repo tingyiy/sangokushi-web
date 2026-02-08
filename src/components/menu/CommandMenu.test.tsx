@@ -41,6 +41,14 @@ describe('CommandMenu', () => {
       endTurn: mockEndTurn,
       developCommerce: mockDevelopCommerce,
       addLog: vi.fn(),
+      recruitOfficer: vi.fn(), 
+      draftTroops: vi.fn(),
+      startDuel: vi.fn(),
+      startBattle: vi.fn(),
+      searchOfficer: vi.fn(),
+      improveRelations: vi.fn(),
+      formAlliance: vi.fn(),
+      rumor: vi.fn(),
     });
   });
 
@@ -59,12 +67,13 @@ describe('CommandMenu', () => {
 
   it('renders actions when category is active', () => {
     (useGameStore as unknown as vi.Mock).mockReturnValue({
-      ...useGameStore({} as any),
+      ...(useGameStore as unknown as vi.Mock)(),
       activeCommandCategory: '內政',
       selectedCityId: 1,
       cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2] }],
       playerFaction: { id: 1 },
       officers: [{ id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, skills: ['製造'] }],
+      developCommerce: mockDevelopCommerce,
     });
     
     render(<CommandMenu />);
