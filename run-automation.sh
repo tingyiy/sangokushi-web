@@ -23,7 +23,7 @@ Feature: <name>
 Description: <text>
 
 Do not add explanations, markdown, or commentary.
-" 2>&1 | tee /dev/stderr)
+" 2>&1 | tee automation.log)
 
 # If no item found
 if echo "$NEXT_FEATURE_INFO" | grep -q "Feature:"; then
@@ -61,7 +61,7 @@ Follow exactly:
 13. If any step fails, return: 'ERROR: <detailed-message>' and exit with code 1.
 
 Do not explain. Do not summarize. Just do it.
-" 2>&1 | tee /dev/stderr)
+" 2>&1 | tee -a automation.log)
 
 # STEP 3: Handle outcome
 if echo "$OUTPUT" | grep -q "PR_CREATED:"; then
@@ -81,3 +81,4 @@ else echo "⚠️ No PR_CREATED or ERROR found — assuming incomplete work."
     echo "✅ Cleaned. Awaiting next run."
     exit 0
 fi
+
