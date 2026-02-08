@@ -419,7 +419,13 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
             { id: 20, factionId: 2 }
         ].map(c => ({ ...useGameStore.getState().cities[0], ...c, name: 'C' + c.id }));
         
-        useGameStore.setState({ cities });
+        useGameStore.setState({ 
+            cities,
+            selectedCityId: 10,
+            officers: useGameStore.getState().officers.map(o => 
+                o.id === 1 ? { ...o, cityId: 10 } : o
+            ),
+        });
         
         // Mock random to succeed
         const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.01);
