@@ -3,10 +3,10 @@ import type { BattleState, BattleUnit, BattleMap, TerrainType } from '../types/b
 import type { Officer } from '../types';
 
 interface BattleActions {
-  initBattle: (attackerId: number, defenderId: number, defenderCityId: number, attackerOfficers: Officer[], defenderOfficers: Officer[]) => void;
+  initBattle: (attackerId: number, defenderId: number, defenderCityId: number, attackerOfficers: Officer[], defenderOfficers: Officer[], attackerMorale?: number, defenderMorale?: number, attackerTraining?: number) => void;
   selectUnit: (unitId: string | null) => void;
   moveUnit: (unitId: string, q: number, r: number) => void;
-  attackUnit: (attackerUnitId: string, targetUnitId: string) => void;
+  attackUnit: (attackerUnitId: string, targetUnitId: string, attackerTraining?: number) => void;
   endUnitTurn: (unitId: string) => void;
   nextDay: () => void;
   checkBattleEnd: () => void;
@@ -47,11 +47,12 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   winnerFactionId: null,
   battleMap: generateMap(DEFAULT_MAP_WIDTH, DEFAULT_MAP_HEIGHT),
 
-  initBattle: (attackerId, defenderId, defenderCityId, attackerOfficers, defenderOfficers) => {
+  initBattle: (attackerId, defenderId, defenderCityId, attackerOfficers, defenderOfficers, attackerMorale = 60, defenderMorale = 60) => {
     const units: BattleUnit[] = [];
     const width = DEFAULT_MAP_WIDTH;
     const height = DEFAULT_MAP_HEIGHT;
     
+    // Phase 1.2: Use city morale for unit morale
     // Attacker units (left side)
     attackerOfficers.forEach((off, i) => {
       units.push({
@@ -61,7 +62,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         factionId: attackerId,
         troops: 5000, // Default for now
         maxTroops: 5000,
-        morale: 80,
+        morale: attackerMorale,
         x: 1,
         y: 2 + i * 2,
         z: -1 - (2 + i * 2),
@@ -80,7 +81,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         factionId: defenderId,
         troops: 5000,
         maxTroops: 5000,
-        morale: 80,
+        morale: defenderMorale,
         x: width - 2,
         y: 2 + i * 2,
         z: -(width - 2) - (2 + i * 2),
@@ -120,17 +121,20 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     });
   },
 
-  attackUnit: (attackerUnitId, targetUnitId) => {
+  attackUnit: (attackerUnitId, targetUnitId, attackerTraining = 40) => {
     const state = get();
     const attacker = state.units.find(u => u.id === attackerUnitId);
     const target = state.units.find(u => u.id === targetUnitId);
     if (!attacker || !target) return;
 
+    // Phase 1.2: Apply training modifier to attack calculations
     // Basic RTK IV damage formula: (Atk * Troops) / Def
-    // Simplified:
+    // Training bonus: +0% to +50% damage based on training level
+    const trainingBonus = 1 + (attackerTraining / 200);  // +0% to +50%
     const baseDamage = (attacker.officer.war * attacker.troops) / 1000;
     const targetDefense = (target.officer.leadership * target.troops) / 1000;
-    const damage = Math.floor(Math.max(100, (baseDamage / Math.max(1, targetDefense)) * 500));
+    const rawDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus;
+    const damage = Math.floor(Math.max(100, rawDamage));
     
     // Counter attack
     const counterDamage = Math.floor(damage * 0.3);

@@ -13,7 +13,7 @@ fi
 echo " Using Claude Opus to find the next feature to implement..."
 
 # STEP 1: Ask Opus to identify the next  task
-NEXT_FEATURE_INFO=$(opencode -m "amazon-bedrock/us.anthropic.claude-opus-4-6-v1" run "
+NEXT_FEATURE_INFO=$(opencode -m "opencode/kimi-k2.5-free" run "
 You are tasked with selecting the next feature to implement from IMPL-INDEX.md.
 
 Read IMPL-INDEX.md.  

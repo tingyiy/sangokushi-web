@@ -1,13 +1,15 @@
 import { useGameStore } from '../store/gameStore';
 import { Portrait } from './Portrait';
 import { CityIllustration } from './CityIllustration';
+import { treasures } from '../data/treasures';
 
 /**
- * CityPanel Component - Updated Phase 0.5
+ * CityPanel Component - Updated Phase 1
  * Displays city information with:
  * - City illustration (procedural SVG based on city stats)
- * - Officer portraits next to names
- * - City stats and information
+ * - All 14 city attributes (Phase 1.2)
+ * - Officer portraits, skills, and treasures (Phase 1.1, 1.4)
+ * - Weapon inventory (Phase 1.2)
  */
 export function CityPanel() {
   const { cities, officers, factions, selectedCityId, playerFaction } = useGameStore();
@@ -44,7 +46,7 @@ export function CityPanel() {
       {/* City illustration - Phase 0.5 */}
       <CityIllustration city={city} />
 
-      {/* City stats */}
+      {/* City stats - Phase 1.2: All 14 attributes */}
       <div className="city-stats">
         <div className="stat-row">
           <span>人口</span><span>{city.population.toLocaleString()}</span>
@@ -67,9 +69,36 @@ export function CityPanel() {
         <div className="stat-row">
           <span>防禦</span><span>{city.defense}</span>
         </div>
+        {/* Phase 1.2: New city attributes */}
+        <div className="stat-row">
+          <span>治水</span><span>{city.floodControl}</span>
+        </div>
+        <div className="stat-row">
+          <span>技術</span><span>{city.technology}</span>
+        </div>
+        <div className="stat-row">
+          <span>民忠</span><span>{city.peopleLoyalty}</span>
+        </div>
+        <div className="stat-row">
+          <span>士氣</span><span>{city.morale}</span>
+        </div>
+        <div className="stat-row">
+          <span>訓練</span><span>{city.training}</span>
+        </div>
       </div>
 
-      {/* Affiliated officers with portraits - Phase 0.5 */}
+      {/* Phase 1.2: Weapon inventory - only show for own cities */}
+      {isOwnCity && (
+        <div className="weapon-section">
+          <h5>武器庫存</h5>
+          <div className="stat-row"><span>弩</span><span>{city.crossbows}</span></div>
+          <div className="stat-row"><span>軍馬</span><span>{city.warHorses}</span></div>
+          <div className="stat-row"><span>衝車</span><span>{city.batteringRams}</span></div>
+          <div className="stat-row"><span>投石機</span><span>{city.catapults}</span></div>
+        </div>
+      )}
+
+      {/* Affiliated officers with portraits, skills, and treasures - Phase 0.5, 1.1, 1.4 */}
       {affiliated.length > 0 && (
         <div className="officer-section">
           <h4>武將</h4>
@@ -90,6 +119,17 @@ export function CityPanel() {
                 <span className="officer-stats">
                   統{o.leadership} 武{o.war} 智{o.intelligence} 政{o.politics} 魅{o.charisma}
                 </span>
+                {/* Phase 1.1: Officer skills */}
+                <span className="officer-skills">
+                  {o.skills.slice(0, 3).join('·')}
+                  {o.skills.length > 3 && `+${o.skills.length - 3}`}
+                </span>
+                {/* Phase 1.4: Treasure display */}
+                {o.treasureId && (
+                  <span className="officer-treasure">
+                    {treasures.find(t => t.id === o.treasureId)?.name}
+                  </span>
+                )}
                 {isOwnCity && (
                   <>
                     <span className="officer-loyalty">忠{o.loyalty}</span>
@@ -119,6 +159,11 @@ export function CityPanel() {
                 <span className="officer-name">{o.name}</span>
                 <span className="officer-stats">
                   統{o.leadership} 武{o.war} 智{o.intelligence} 政{o.politics} 魅{o.charisma}
+                </span>
+                {/* Phase 1.1: Officer skills for unaffiliated */}
+                <span className="officer-skills">
+                  {o.skills.slice(0, 3).join('·')}
+                  {o.skills.length > 3 && `+${o.skills.length - 3}`}
                 </span>
               </div>
             ))}

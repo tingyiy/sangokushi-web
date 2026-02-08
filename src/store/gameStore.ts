@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings } from '../types';
 import { useBattleStore } from './battleStore';
+import { hasSkill } from '../utils/skills';
 
 interface DuelState {
   p1: Officer;
@@ -177,13 +178,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // Simple AI: each non-player faction develops a random owned city
+    // Phase 1.2: peopleLoyalty affects monthly income
     const updatedCities = state.cities.map(c => {
       // Monthly income for all cities with factions
       if (c.factionId !== null) {
+        const loyaltyMultiplier = c.peopleLoyalty / 100;  // 0.0 to 1.0
+        const goldIncome = Math.floor(c.commerce * 0.5 * loyaltyMultiplier);
+        const foodIncome = Math.floor(c.agriculture * 0.8 * loyaltyMultiplier);
         return {
           ...c,
-          gold: c.gold + Math.floor(c.commerce * 0.5),
-          food: c.food + Math.floor(c.agriculture * 0.8),
+          gold: c.gold + goldIncome,
+          food: c.food + foodIncome,
         };
       }
       return c;
@@ -574,12 +579,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       ),
     });
 
+    // Phase 1.2: Pass city morale and training to battle
     useBattleStore.getState().initBattle(
       state.playerFaction.id,
       targetCity.factionId || 0,
       targetCityId,
       attackerOfficers,
-      defenderOfficers
+      defenderOfficers,
+      city.morale,
+      targetCity.morale,
+      city.training
     );
     
     set({ phase: 'battle' });
@@ -727,6 +736,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = officersInCity.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
     
+    // Phase 1.1: Check for 流言 skill
+    if (!hasSkill(messenger, '流言')) {
+      get().addLog(`${messenger.name} 不具備流言技能，無法執行此計策。`);
+      return;
+    }
+    
     if (messenger.stamina < 15) {
       get().addLog(`${messenger.name} 體力不足（需 15），無法執行指令。`);
       return;
@@ -761,7 +776,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ),
         cities: get().cities.map(c =>
           c.id === targetCityId
-            ? { ...c, population: Math.max(0, c.population - popImpact) }
+            ? { ...c, population: Math.max(0, c.population - popImpact), peopleLoyalty: Math.max(0, c.peopleLoyalty - 5) }
             : c
         )
       });

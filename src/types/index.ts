@@ -19,12 +19,30 @@ export const RTK4_SKILLS = [
 /** RTK IV Skill type */
 export type RTK4Skill = typeof RTK4_SKILLS[number];
 
+/** 寶物類型 */
+export type TreasureType = 'book' | 'sword' | 'weapon' | 'horse' | 'seal';
+
+/** 寶物（Treasure / Item）— equipment for officers */
+export interface Treasure {
+  id: number;
+  name: string;
+  type: TreasureType;
+  /** Which stat gets a bonus when equipped */
+  statBonuses: Partial<Record<'leadership' | 'war' | 'intelligence' | 'politics' | 'charisma', number>>;
+  /** Special effect description (for display) */
+  specialEffect: string | null;
+}
+
 /** 武將（Officer）— a named historical character */
 export interface Officer {
   id: number;
   name: string;           // 繁體中文名
   /** 頭像ID (Portrait ID) - maps to portrait image filename */
   portraitId: number;
+  /** 出生年份 - for age calculation */
+  birthYear: number;
+  /** 死亡年份 - for historical accuracy */
+  deathYear: number;
   /** 統率 (Leadership) */
   leadership: number;
   /** 武力 (War / Martial) */
@@ -50,6 +68,8 @@ export interface Officer {
   loyalty: number;
   /** 是否為太守 (governor of current city) */
   isGovernor: boolean;
+  /** 裝備的寶物ID，null = 無裝備 - Phase 1.4 */
+  treasureId: number | null;
 }
 
 /** 城市（City / Province） */
