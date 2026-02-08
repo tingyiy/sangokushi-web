@@ -1091,7 +1091,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5), // Basic defense
       city.morale,
       targetCity.morale,
-      city.training
+      city.training,
+      state.battleFormation?.unitTypes
     );
     
     set({ phase: 'battle' });

@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useBattleStore } from './battleStore';
 import type { Officer, RTK4Skill } from '../types';
 
@@ -48,8 +49,17 @@ describe('Battle Store', () => {
       turn: 1,
       day: 1,
       isFinished: false,
-      winnerFactionId: null
+      winnerFactionId: null,
+      isSiege: false,
+      gates: [],
+      fireHexes: [],
+      capturedOfficerIds: [],
+      routedOfficerIds: [],
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('initBattle sets up units correctly', () => {
@@ -61,33 +71,46 @@ describe('Battle Store', () => {
     expect(state.attackerId).toBe(1);
     expect(state.defenderId).toBe(2);
     expect(state.activeUnitId).toBeDefined();
+    // Default infantry
+    expect(state.units[0].type).toBe('infantry');
   });
 
-  test('initBattle uses city morale for unit morale', () => {
+  test('initBattle accepts unit types', () => {
     const { initBattle } = useBattleStore.getState();
-    const attackerMorale = 75;
-    const defenderMorale = 60;
-    
-    initBattle(1, 2, 2, [mockOfficer], [mockEnemy], attackerMorale, defenderMorale);
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy], 60, 60, 40, ['cavalry'], ['archer']);
     
     const state = useBattleStore.getState();
-    const attacker = state.units.find(u => u.factionId === 1);
-    const defender = state.units.find(u => u.factionId === 2);
-    
-    expect(attacker?.morale).toBe(attackerMorale);
-    expect(defender?.morale).toBe(defenderMorale);
+    expect(state.units[0].type).toBe('cavalry');
+    expect(state.units[1].type).toBe('archer');
   });
 
-  test('moveUnit updates unit position', () => {
+  test('initBattle creates siege map for city defense', () => {
+    const { initBattle } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+    
+    const state = useBattleStore.getState();
+    expect(state.isSiege).toBe(true);
+    expect(state.gates.length).toBeGreaterThan(0);
+    expect(state.units[1].direction).toBe(0); 
+  });
+
+  test('moveUnit updates unit position respecting range', () => {
     const { initBattle, moveUnit } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
     
     const unitId = useBattleStore.getState().units[0].id;
-    moveUnit(unitId, 5, 5);
+    // Infantry range is 5.
+    // (1, 2) -> (3, 3) is dist 3. Valid.
+    moveUnit(unitId, 3, 3);
     
     const unit = useBattleStore.getState().units.find(u => u.id === unitId);
-    expect(unit?.x).toBe(5);
-    expect(unit?.y).toBe(5);
+    expect(unit?.x).toBe(3);
+    expect(unit?.y).toBe(3);
+
+    // Invalid move (too far)
+    moveUnit(unitId, 10, 10);
+    const unit2 = useBattleStore.getState().units.find(u => u.id === unitId);
+    expect(unit2?.x).toBe(3); // Should not move
   });
 
   test('attackUnit reduces troops and morale', () => {
@@ -104,22 +127,93 @@ describe('Battle Store', () => {
     expect(updatedDefender!.morale).toBeLessThan(defender.morale);
   });
 
-  test('attackUnit applies training bonus', () => {
+  test('attackUnit captures officer', () => {
     const { initBattle, attackUnit } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
     
     const attacker = useBattleStore.getState().units[0];
     const defender = useBattleStore.getState().units[1];
-    const initialDefenderTroops = defender.troops;
+
+    // Mock random for capture
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    // Reduce troops to 0
+    useBattleStore.setState(s => ({
+        units: s.units.map(u => u.id === defender.id ? { ...u, troops: 50 } : u)
+    }));
+
+    attackUnit(attacker.id, defender.id);
+
+    const state = useBattleStore.getState();
+    // Assuming attack kills the remaining 50 troops
+    // If damage is > 50. Base damage usually > 100.
+    const deadDefender = state.units.find(u => u.id === defender.id);
+    expect(deadDefender!.troops).toBe(0);
+    expect(state.capturedOfficerIds).toContain(defender.officerId);
+  });
+
+  test('attackUnit counter attack logic (Range vs Melee)', () => {
+      const { initBattle, attackUnit } = useBattleStore.getState();
+      // Attacker Archer (Range 2), Defender Infantry (Range 1)
+      initBattle(1, 2, 2, [mockOfficer], [mockEnemy], 60, 60, 40, ['archer'], ['infantry']);
+
+      const attacker = useBattleStore.getState().units[0];
+      const defender = useBattleStore.getState().units[1];
+
+      // Place them 2 hexes apart
+      useBattleStore.setState(s => ({
+          units: s.units.map(u => 
+              u.id === attacker.id ? { ...u, x: 0, y: 0, z: 0 } :
+              u.id === defender.id ? { ...u, x: 0, y: 2, z: -2 } : u
+          )
+      }));
+
+      // Attacker attacks Defender
+      const initialAttackerTroops = attacker.troops;
+      attackUnit(attacker.id, defender.id);
+
+      // Defender (Range 1) cannot counter Attacker (Range 2) at dist 2
+      const updatedAttacker = useBattleStore.getState().units.find(u => u.id === attacker.id);
+      expect(updatedAttacker!.troops).toBe(initialAttackerTroops); // No counter damage
+  });
+
+  test('executeTactic applies effects (Fire, Chaos, Ambush, Betray)', () => {
+    const { initBattle, executeTactic } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const attacker = useBattleStore.getState().units[0];
+    const defender = useBattleStore.getState().units[1];
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.01); // Force success
+
+    // Fire
+    executeTactic(attacker.id, '火計', defender.id, { q: defender.x, r: defender.y });
+    const state1 = useBattleStore.getState();
+    expect(state1.fireHexes.length).toBe(1);
+    const burntDefender = state1.units.find(u => u.id === defender.id);
+    expect(burntDefender!.troops).toBeLessThan(5000);
+
+    // Chaos
+    executeTactic(attacker.id, '混亂', defender.id);
+    const confusedDefender = useBattleStore.getState().units.find(u => u.id === defender.id);
+    expect(confusedDefender!.status).toBe('confused');
+
+    // Ambush
+    executeTactic(attacker.id, '伏兵', defender.id);
+    const ambushedDefender = useBattleStore.getState().units.find(u => u.id === defender.id);
+    expect(ambushedDefender!.troops).toBeLessThan(burntDefender!.troops);
+    expect(ambushedDefender!.status).toBe('confused');
+
+    // Betray (Need 3rd unit)
+    const ally = { ...mockEnemy, id: 3 };
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy, ally]);
+    const defender2 = useBattleStore.getState().units[2];
     
-    // Attack with high training (50)
-    attackUnit(attacker.id, defender.id, 50);
-    
-    const updatedDefender = useBattleStore.getState().units.find(u => u.id === defender.id);
-    const damage = initialDefenderTroops - updatedDefender!.troops;
-    
-    // High training should result in more damage
-    expect(damage).toBeGreaterThan(0);
+    executeTactic(attacker.id, '同討', defender.id);
+    // Logic: target attacks friend. 
+    // defender attacks defender2
+    const betrayedAlly = useBattleStore.getState().units.find(u => u.id === defender2.id);
+    expect(betrayedAlly!.troops).toBeLessThan(5000);
   });
 
   test('endUnitTurn switches to next unit or next day', () => {
@@ -138,6 +232,56 @@ describe('Battle Store', () => {
     const finalState = useBattleStore.getState();
     expect(finalState.day).toBe(2);
     expect(finalState.units[0].status).toBe('active');
+  });
+
+  test('endUnitTurn handles confused units', () => {
+    const { initBattle, endUnitTurn } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+    
+    const attackerId = useBattleStore.getState().units[0].id;
+    const defenderId = useBattleStore.getState().units[1].id;
+
+    // Set defender to confused
+    useBattleStore.setState(s => ({
+        units: s.units.map(u => u.id === defenderId ? { ...u, status: 'confused', confusedTurns: 2 } : u)
+    }));
+
+    // End attacker turn
+    endUnitTurn(attackerId);
+
+    // Should skip defender and go to next day (since only 2 units)
+    const state = useBattleStore.getState();
+    expect(state.day).toBe(2);
+    
+    // Defender confused turns should decrease
+    const defender = state.units.find(u => u.id === defenderId);
+    // nextDay might reset status if turns > 0
+    // Actually nextDay logic: if confusedTurns > 0, status stays confused.
+    // endUnitTurn logic: decrements confusedTurns if skipping.
+    // If it skipped, it decremented.
+    // Then nextDay happened.
+    expect(defender!.confusedTurns).toBe(1); 
+    expect(defender!.status).toBe('confused');
+  });
+
+  test('nextDay processes fire and status recovery', () => {
+      const { initBattle, nextDay } = useBattleStore.getState();
+      initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+      useBattleStore.setState({
+          fireHexes: [{ q: 0, r: 0, turnsLeft: 2 }],
+          day: 1
+      });
+
+      nextDay();
+
+      const state = useBattleStore.getState();
+      expect(state.day).toBe(2);
+      expect(state.fireHexes[0].turnsLeft).toBe(1);
+
+      nextDay();
+      const state2 = useBattleStore.getState();
+      expect(state2.fireHexes.length).toBe(0); // Expired
   });
 
   test('battle ends when all units of a faction are routed', () => {

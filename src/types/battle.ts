@@ -4,7 +4,7 @@ export type TerrainType = 'plain' | 'forest' | 'mountain' | 'river' | 'city' | '
 
 export type UnitType = 'infantry' | 'cavalry' | 'archer';
 
-export type UnitStatus = 'active' | 'done' | 'routed';
+export type UnitStatus = 'active' | 'done' | 'routed' | 'confused';
 
 export interface BattleUnit {
   id: string;
@@ -13,26 +13,45 @@ export interface BattleUnit {
   factionId: number;
   troops: number;
   morale: number;
+  training: number;
   maxTroops: number;
   x: number;
   y: number;
-  z: number; // Cube coordinates: x + y + z = 0
+  z: number;
   type: UnitType;
   status: UnitStatus;
-  direction: number; // 0-5 for hex directions
+  direction: number;
+  confusedTurns?: number;
+  chained?: boolean;
 }
 
 export interface BattleMap {
   width: number;
   height: number;
-  terrain: TerrainType[][]; // Store as [q][r] or [x][y] offset
+  terrain: TerrainType[][];
 }
+
+export interface FireHex {
+  q: number;
+  r: number;
+  turnsLeft: number;
+}
+
+export interface GateState {
+  q: number;
+  r: number;
+  hp: number;
+  maxHp: number;
+}
+
+export type BattleWeather = 'sunny' | 'rain' | 'cloudy' | 'storm';
 
 export interface BattleState {
   units: BattleUnit[];
   turn: number;
   day: number;
-  weather: 'sunny' | 'rain' | 'cloudy';
+  weather: BattleWeather;
+  windDirection: number;
   activeUnitId: string | null;
   attackerId: number;
   defenderId: number;
@@ -41,4 +60,10 @@ export interface BattleState {
   isFinished: boolean;
   winnerFactionId: number | null;
   battleMap: BattleMap;
+  isSiege: boolean;
+  gates: GateState[];
+  fireHexes: FireHex[];
+  selectedTactic: string | null;
+  capturedOfficerIds: number[];
+  routedOfficerIds: number[];
 }
