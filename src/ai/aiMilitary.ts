@@ -44,8 +44,8 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
 
     if (targetCity) {
       decisions.push({
-        action: 'startBattle',
-        params: [targetCity.id],
+        action: 'aiStartBattle',
+        params: [city.id, targetCity.id],
         description: `${city.name} 向 ${targetCity.name} 發動了攻勢！`
       });
       continue;

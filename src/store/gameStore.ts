@@ -110,6 +110,7 @@ export interface GameState {
   endDuel: () => void;
   /** Military: Battle */
   startBattle: (targetCityId: number) => void;
+  aiStartBattle: (fromCityId: number, targetCityId: number) => void;
   /** Diplomacy: Improve relations (Gift) */
   improveRelations: (targetFactionId: number) => void;
   /** Diplomacy: Form Alliance */
@@ -136,6 +137,11 @@ export interface GameState {
   gatherIntelligence: (targetCityId: number) => void;
   /** 謀略: 流言 (Rumor) - Decrease city loyalty and population */
   rumor: (targetCityId: number) => void;
+  /** AI Actions: Context-aware versions for AI use */
+  aiRecruitOfficer: (cityId: number, officerId: number) => void;
+  aiSearchOfficer: (cityId: number) => void;
+  aiSpy: (cityId: number, targetCityId: number) => void;
+  aiRumor: (cityId: number, targetCityId: number) => void;
   /** Battle: Resolve battle consequences - transfer city, capture officers, redistribute troops */
   resolveBattle: (winnerFactionId: number, loserFactionId: number, cityId: number, battleUnits: { officerId: number; troops: number; factionId: number; status: string }[], capturedOfficerIds?: number[], routedOfficerIds?: number[]) => void;
   /** Save/Load: Save game to localStorage slot */
@@ -1155,7 +1161,59 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().addLog(`出征 ${targetCity.name}！（所有參戰將領體力 -30）`);
   },
 
-  improveRelations: (targetFactionId) => {
+  aiStartBattle: (fromCityId: number, targetCityId: number) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === fromCityId);
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!city || !targetCity) return;
+
+    // AI logic selects officers
+    // Pick highest leadership officers in the city
+    const availableOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === city.factionId).sort((a, b) => b.leadership - a.leadership);
+    if (availableOfficers.length === 0) return;
+
+    const attackerOfficers = availableOfficers.slice(0, 5);
+    const attackerUnitTypes = attackerOfficers.map(() => 'infantry' as UnitType);
+
+    // AI stamina check (simplified: proceed if commander has stamina, ignore cost if low to ensure AI acts)
+    const commander = attackerOfficers[0];
+    if (commander.stamina < 30) return; // AI constraint
+
+    // Deduct resources if AI has them, else free (cheating slightly for AI simplicity/challenge)
+    // For now, respect resource costs
+    const crossbowsUsed = 0;
+    const warHorsesUsed = 0;
+    
+    if (city.crossbows < crossbowsUsed || city.warHorses < warHorsesUsed) {
+        // Fallback to infantry (already set)
+    }
+
+    set({
+      cities: state.cities.map(c => c.id === city.id ? { ...c, crossbows: c.crossbows - crossbowsUsed, warHorses: c.warHorses - warHorsesUsed } : c),
+      officers: state.officers.map(o =>
+        attackerOfficers.some(ao => ao.id === o.id)
+          ? { ...o, stamina: Math.max(0, o.stamina - 30) }
+          : o
+      ),
+    });
+
+    useBattleStore.getState().initBattle(
+      city.factionId || 0,
+      targetCity.factionId || 0,
+      targetCityId,
+      attackerOfficers,
+      state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5),
+      city.morale,
+      targetCity.morale,
+      city.training,
+      attackerUnitTypes
+    );
+    
+    set({ phase: 'battle' });
+    get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 軍從 ${city.name} 出征 ${targetCity.name}！`);
+  },
+
+  improveRelations: (targetFactionId: number) => {
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
@@ -1744,6 +1802,137 @@ export const useGameStore = create<GameState>((set, get) => ({
    * @param cityId - The city being fought over
    * @param battleUnits - Array of battle units with final state
    */
+  aiRecruitOfficer: (cityId, officerId) => {
+      // Temporarily set selected city for context, then restore (or just pass context if refactored)
+      // Since refactoring everything is large, let's make a context-aware helper or just duplicate logic slightly modified
+      // Duplicating logic for safety and clarity:
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!city || !officer || officer.factionId !== null) return;
+      const factionId = city.factionId;
+      if (!factionId) return;
+
+      const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === factionId);
+      if (recruiters.length === 0) return;
+      const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
+      
+      if (recruiter.stamina < 15) return;
+
+      const chance = Math.min(90, 30 + recruiter.charisma - officer.politics);
+      const success = Math.random() * 100 < chance;
+
+      set({
+        officers: state.officers.map(o => {
+          if (o.id === recruiter.id) return { ...o, stamina: o.stamina - 15 };
+          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 60 };
+          return o;
+        }),
+      });
+      if (success) get().addLog(`${state.factions.find(f => f.id === factionId)?.name} 的 ${recruiter.name} 成功招攬了 ${officer.name}。`);
+  },
+
+  aiSearchOfficer: (cityId) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return;
+      const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === city.factionId);
+      if (recruiters.length === 0) return;
+      const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
+      if (recruiter.stamina < 15) return;
+
+      const unaffiliated = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
+      let found = false;
+      let foundOfficer: Officer | null = null;
+
+      for (const officer of unaffiliated) {
+        let chance = 30 + recruiter.charisma / 2;
+        if (hasSkill(recruiter, '人才')) chance += 15;
+        if (Math.random() * 100 < chance) {
+          foundOfficer = officer;
+          found = true;
+          break;
+        }
+      }
+
+      set({
+        officers: state.officers.map(o => o.id === recruiter.id ? { ...o, stamina: o.stamina - 15 } : o)
+      });
+
+      if (found && foundOfficer) {
+        get().addLog(`${recruiter.name} 在 ${city.name} 發現了在野武將 ${foundOfficer.name}。`);
+      }
+  },
+
+  aiSpy: (cityId, targetCityId) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return;
+      const messengers = state.officers.filter(o => o.cityId === cityId && o.factionId === city.factionId);
+      if (messengers.length === 0) return;
+      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      
+      if (!hasSkill(messenger, '情報') && !hasSkill(messenger, '諜報')) return;
+      if (messenger.stamina < 15) return;
+
+      const targetCity = state.cities.find(c => c.id === targetCityId);
+      const result = spyingSystem.spy(
+        { intelligence: messenger.intelligence, espionage: hasSkill(messenger, '諜報') },
+        targetCityId,
+        city.factionId!,
+        targetCity?.factionId || null
+      );
+
+      set({
+        cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o)
+      });
+      
+      if (result.success) get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 對 ${targetCity?.name} 進行了諜報活動。`);
+  },
+
+  aiRumor: (cityId, targetCityId) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city || city.gold < 500) return;
+
+      const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === city.factionId);
+      if (messengers.length === 0) return;
+      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      
+      if (!hasSkill(messenger, '流言')) return;
+      if (messenger.stamina < 15) return;
+      
+      const targetCity = state.cities.find(c => c.id === targetCityId);
+      if (!targetCity) return;
+
+      const success = (Math.random() * 100) < (messenger.intelligence / 2 + 20);
+
+      set({
+        cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+      });
+
+      if (success) {
+        const loyaltyImpact = Math.floor(messenger.intelligence / 10) + 5;
+        const popImpact = Math.floor(targetCity.population * 0.02);
+        
+        set({
+          officers: get().officers.map(o =>
+            (o.cityId === targetCityId && o.factionId === targetCity.factionId && !o.isGovernor)
+              ? { ...o, loyalty: Math.max(0, o.loyalty - loyaltyImpact) }
+              : o
+          ),
+          cities: get().cities.map(c =>
+            c.id === targetCityId
+              ? { ...c, population: Math.max(0, c.population - popImpact), peopleLoyalty: Math.max(0, c.peopleLoyalty - 5) }
+              : c
+          )
+        });
+        get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 在 ${targetCity.name} 散佈了流言。`);
+      }
+  },
+
   resolveBattle: (winnerFactionId, loserFactionId, cityId, battleUnits, capturedOfficerIds = []) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);

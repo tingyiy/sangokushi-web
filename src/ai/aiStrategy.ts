@@ -20,16 +20,16 @@ export function evaluateStrategy(context: AIFactionContext): AIDecision[] {
       
       // 1. Spy
       decisions.push({
-        action: 'spy',
-        params: [target.id],
+        action: 'aiSpy',
+        params: [city.id, target.id],
         description: `${city.name}：派人潛入 ${target.name} 刺探情報。`
       });
       
       // 2. Rumor
       if (city.gold > 3000) {
           decisions.push({
-              action: 'rumor',
-              params: [target.id],
+              action: 'aiRumor',
+              params: [city.id, target.id],
               description: `${city.name}：在 ${target.name} 散布流言以動搖民心。`
           });
       }

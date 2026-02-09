@@ -15,7 +15,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     if (officer.loyalty < 80 && context.faction.rulerId !== officer.id && cityOfOfficer && cityOfOfficer.gold >= 500) {
       decisions.push({
         action: 'rewardOfficer',
-        params: [officer.id, 'gold', 100],
+        params: [officer.id, 'gold', 500],
         description: `主公賜予 ${officer.name} 獎金以安撫其心。`
       });
     }
@@ -30,8 +30,8 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     if (freeOfficers.length > 0) {
       const target = freeOfficers[0];
       decisions.push({
-        action: 'recruitOfficer',
-        params: [target.id],
+        action: 'aiRecruitOfficer',
+        params: [city.id, target.id],
         description: `${city.name}：嘗試登庸在野武將 ${target.name}。`
       });
       continue;
@@ -52,7 +52,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     // 4. Search for officers
     if (officersInCity.length < 3 && city.gold >= 500) {
       decisions.push({
-        action: 'searchOfficer',
+        action: 'aiSearchOfficer',
         params: [city.id],
         description: `${city.name}：派遣武將在城內搜索人才。`
       });

@@ -101,7 +101,7 @@ describe('AI Engine', () => {
       ]
     };
     const decisions = runAI(stateWithFreeOfficer);
-    expect(decisions.some(d => d.action === 'recruitOfficer')).toBe(true);
+    expect(decisions.some(d => d.action === 'aiRecruitOfficer')).toBe(true);
   });
 
   it('should generate military decisions when troops are low', () => {
@@ -125,6 +125,6 @@ describe('AI Engine', () => {
       ]
     };
     const decisions = runAI(offensiveState);
-    expect(decisions.some(d => d.action === 'startBattle')).toBe(true);
+    expect(decisions.some(d => d.action === 'aiStartBattle')).toBe(true);
   });
 });

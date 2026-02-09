@@ -173,7 +173,7 @@ describe('AI Subsystems', () => {
   describe('Strategy', () => {
     it('should spy on enemy neighbors', () => {
       const decisions = evaluateStrategy(context);
-      expect(decisions.some(d => d.action === 'spy')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiSpy')).toBe(true);
     });
   });
 });
