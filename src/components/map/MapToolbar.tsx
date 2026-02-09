@@ -6,15 +6,23 @@ import { useGameStore } from '../../store/gameStore';
  */
 interface Props {
   onShowStatus: () => void;
+  onShowSave: () => void;
+  onShowLoad: () => void;
 }
 
-export function MapToolbar({ onShowStatus }: Props) {
+export function MapToolbar({ onShowStatus, onShowSave, onShowLoad }: Props) {
   const { setPhase } = useGameStore();
 
   return (
     <div className="map-toolbar">
       <button className="toolbar-btn" title="查看全勢力" onClick={onShowStatus}>
         📊
+      </button>
+      <button className="toolbar-btn" title="儲存" onClick={onShowSave}>
+        💾
+      </button>
+      <button className="toolbar-btn" title="載入" onClick={onShowLoad}>
+        📂
       </button>
       <button className="toolbar-btn" title="設定" onClick={() => setPhase('settings')}>
         ⚙️

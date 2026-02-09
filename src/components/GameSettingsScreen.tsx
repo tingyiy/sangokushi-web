@@ -45,9 +45,19 @@ export function GameSettingsScreen() {
   } = useGameStore();
 
   return (
-    <div className="settings-screen">
-      <div className="settings-box">
-        <h2 className="settings-title">遊戲設定</h2>
+    <div className="settings-screen brocade-bg">
+      <div className="settings-box rtk-frame">
+        <div className="settings-top-bar">
+          <h2 className="settings-title">遊戲設定</h2>
+          <div className="settings-buttons">
+            <button className="btn btn-confirm" onClick={confirmSettings}>
+              決定
+            </button>
+            <button className="btn btn-abort" onClick={() => setPhase('faction')}>
+              中止
+            </button>
+          </div>
+        </div>
 
         {/* Read-only summary */}
         <div className="settings-section">
@@ -124,15 +134,6 @@ export function GameSettingsScreen() {
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="settings-buttons">
-          <button className="btn btn-confirm" onClick={confirmSettings}>
-            決定
-          </button>
-          <button className="btn btn-abort" onClick={() => setPhase('faction')}>
-            中止
-          </button>
-        </div>
       </div>
     </div>
   );

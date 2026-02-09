@@ -12,14 +12,18 @@ import { treasures } from '../data/treasures';
  * - Weapon inventory (Phase 1.2)
  */
 export function CityPanel() {
-  const { cities, officers, factions, selectedCityId, playerFaction, isCityRevealed } = useGameStore();
+  const {
+    cities,
+    officers,
+    factions,
+    selectedCityId,
+    playerFaction,
+    isCityRevealed,
+    selectCity,
+  } = useGameStore();
 
   if (selectedCityId === null) {
-    return (
-      <div className="city-panel">
-        <p className="panel-hint">點擊地圖上的城市查看資訊</p>
-      </div>
-    );
+    return null;
   }
 
   const city = cities.find(c => c.id === selectedCityId);
@@ -36,7 +40,14 @@ export function CityPanel() {
   const isRevealed = isCityRevealed(city.id);
 
   return (
-    <div className="city-panel">
+    <div className="city-panel city-panel-overlay">
+      <button
+        className="city-panel-close"
+        onClick={() => selectCity(null)}
+        aria-label="關閉城市資訊"
+      >
+        ×
+      </button>
       {/* City name with faction color */}
       <h3 className="city-name" style={{ color: faction?.color ?? '#9ca3af' }}>
         {city.name}

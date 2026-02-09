@@ -50,7 +50,7 @@ export function FactionSelect() {
   };
 
   return (
-    <div className="faction-select-screen">
+    <div className="faction-select-screen brocade-bg">
       {/* Header bar */}
       <div className="faction-header">
         <span className="scenario-name">{scenario?.name}</span>
@@ -118,29 +118,20 @@ export function FactionSelect() {
                     }
                   }}
                 >
-                  {/* Faction color banner */}
-                  <div
-                    className="faction-banner"
-                    style={{ backgroundColor: faction.color }}
-                  />
                   {/* Ruler portrait */}
                   <div className="faction-portrait">
                     {ruler ? (
                       <Portrait
                         portraitId={ruler.portraitId}
                         name={ruler.name}
-                        size="medium"
+                        size="large"
                       />
                     ) : (
                       <div className="portrait-placeholder">?</div>
                     )}
                   </div>
-                  {/* Faction name */}
-                  <div className="faction-info">
-                    <span className="faction-name">{faction.name}</span>
-                    {ruler && (
-                      <span className="ruler-name">{ruler.name}</span>
-                    )}
+                  <div className="faction-label">
+                    <span className="faction-name">{ruler?.name ?? faction.name}</span>
                   </div>
                 </div>
               );

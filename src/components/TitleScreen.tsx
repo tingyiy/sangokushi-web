@@ -1,22 +1,43 @@
 import { useGameStore } from '../store/gameStore';
 
 export function TitleScreen() {
-  const setPhase = useGameStore(s => s.setPhase);
+  const { setPhase, getSaveSlots, loadGame } = useGameStore();
+  const saveSlots = getSaveSlots();
+  const availableSlots = saveSlots.filter(slot => slot.date);
+  const hasSaves = availableSlots.length > 0;
+
+  const handleLoad = () => {
+    if (!hasSaves) return;
+    const latestSlot = availableSlots.reduce((latest, current) => {
+      if (!latest) return current;
+      const latestTime = latest.date ? Date.parse(latest.date) : 0;
+      const currentTime = current.date ? Date.parse(current.date) : 0;
+      return currentTime > latestTime ? current : latest;
+    }, availableSlots[0]);
+    if (latestSlot) {
+      loadGame(latestSlot.slot);
+    }
+  };
 
   return (
-    <div className="title-screen">
-      <div className="title-content">
-        <h1 className="title-main">三國志IV</h1>
-        <h2 className="title-sub">Wall of Fire ─ 網頁重製版</h2>
-        <p className="title-desc">
-          靈感來自光榮《三國志IV》的開源策略遊戲
-        </p>
-        <div className="title-buttons">
-          <button className="btn btn-primary" onClick={() => setPhase('scenario')}>
-            開始新遊戲
-          </button>
-        </div>
-        <p className="title-footer">繁體中文版 · Open Source</p>
+    <div className="title-screen brocade-bg">
+      <div className="title-menu rtk-frame">
+        <button className="title-menu-item" onClick={() => setPhase('scenario')}>
+          開始新遊戲
+        </button>
+        <button
+          className="title-menu-item"
+          disabled={!hasSaves}
+          onClick={handleLoad}
+        >
+          載入進度存檔
+        </button>
+        <button
+          className="title-menu-item"
+          onClick={() => setPhase('rulerCreation')}
+        >
+          登錄武將數值
+        </button>
       </div>
     </div>
   );

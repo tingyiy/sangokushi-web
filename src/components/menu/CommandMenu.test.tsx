@@ -19,14 +19,15 @@ describe('CommandMenu', () => {
   const mockSetActiveCommandCategory = vi.fn();
   const mockEndTurn = vi.fn();
   const mockDevelopCommerce = vi.fn();
+  const mockAddLog = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     (useGameStore as unknown as vi.Mock).mockReturnValue({
       selectedCityId: 1,
       cities: [
-        { id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2] },
-        { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1] },
+        { id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], taxRate: 'medium' },
+        { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1], taxRate: 'medium' },
       ],
       officers: [
         { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, stamina: 100, loyalty: 100, skills: ['製造'] },
@@ -40,15 +41,43 @@ describe('CommandMenu', () => {
       setActiveCommandCategory: mockSetActiveCommandCategory,
       endTurn: mockEndTurn,
       developCommerce: mockDevelopCommerce,
-      addLog: vi.fn(),
+      addLog: mockAddLog,
+      developAgriculture: vi.fn(),
+      reinforceDefense: vi.fn(),
+      developFloodControl: vi.fn(),
+      developTechnology: vi.fn(),
+      trainTroops: vi.fn(),
+      manufacture: vi.fn(),
+      disasterRelief: vi.fn(),
       recruitOfficer: vi.fn(), 
+      recruitPOW: vi.fn(),
+      rewardOfficer: vi.fn(),
+      executeOfficer: vi.fn(),
+      dismissOfficer: vi.fn(),
+      appointGovernor: vi.fn(),
+      appointAdvisor: vi.fn(),
+      transferOfficer: vi.fn(),
       draftTroops: vi.fn(),
       startDuel: vi.fn(),
       startBattle: vi.fn(),
       searchOfficer: vi.fn(),
+      recruitOfficerByName: vi.fn(),
+      recruitOfficerByItem: vi.fn(),
       improveRelations: vi.fn(),
       formAlliance: vi.fn(),
+      requestJointAttack: vi.fn(),
+      proposeCeasefire: vi.fn(),
+      demandSurrender: vi.fn(),
+      breakAlliance: vi.fn(),
+      exchangeHostage: vi.fn(),
+      counterEspionage: vi.fn(),
+      inciteRebellion: vi.fn(),
+      arson: vi.fn(),
+      spy: vi.fn(),
+      gatherIntelligence: vi.fn(),
       rumor: vi.fn(),
+      setTaxRate: vi.fn(),
+      promoteOfficer: vi.fn(),
     });
   });
 
@@ -80,6 +109,12 @@ describe('CommandMenu', () => {
     expect(screen.getByText(/商業開發/)).toBeDefined();
     
     fireEvent.click(screen.getByText(/商業開發/));
+    const officerCell = screen.getByText('荀彧');
+    const officerRow = officerCell.closest('tr');
+    expect(officerRow).toBeTruthy();
+    if (officerRow) {
+      fireEvent.click(officerRow);
+    }
     expect(mockDevelopCommerce).toHaveBeenCalledWith(1);
   });
 });

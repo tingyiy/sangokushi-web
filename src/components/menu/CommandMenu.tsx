@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import type { CommandCategory } from '../../types';
 import { FormationDialog } from '../FormationDialog';
 import { TransportDialog } from '../TransportDialog';
+import { OfficerSelectionOverlay } from '../OfficerSelectionOverlay';
 import { hasSkill } from '../../utils/skills';
 
 const categories: CommandCategory[] = ['內政', '軍事', '人事', '外交', '謀略', '結束'];
@@ -21,6 +22,10 @@ export function CommandMenu() {
   } = useGameStore();
 
   const [dialog, setDialog] = useState<{ type: 'formation' | 'transport', targetCityId: number } | null>(null);
+  const [selection, setSelection] = useState<{
+    title: string;
+    onSelect: (officerId: number) => void;
+  } | null>(null);
 
   const city = cities.find(c => c.id === selectedCityId);
   const isOwnCity = city?.factionId === playerFaction?.id;
@@ -50,6 +55,25 @@ export function CommandMenu() {
     ? officers.filter(o => o.cityId === selectedCityId && o.factionId === playerFaction?.id)
     : [];
 
+  const openOfficerSelection = (title: string, action: (officerId: number) => void) => {
+    if (ownOfficers.length === 0) {
+      addLog('本城無可用武將。');
+      return;
+    }
+    setSelection({ title, onSelect: action });
+  };
+
+  const executeWithOfficer = (title: string, action: () => void) => {
+    openOfficerSelection(title, (officerId) => {
+      const officer = officers.find(o => o.id === officerId);
+      if (officer) {
+        addLog(`${officer.name} 執行「${title}」。`);
+      }
+      action();
+      setSelection(null);
+    });
+  };
+
   return (
     <div className="command-menu">
       <div className="command-categories">
@@ -68,12 +92,12 @@ export function CommandMenu() {
         <div className="command-actions">
           {activeCommandCategory === '內政' && (
             <>
-              <button className="btn btn-action" onClick={() => developCommerce(city.id)}>商業開發（500金）</button>
-              <button className="btn btn-action" onClick={() => developAgriculture(city.id)}>農業開發（500金）</button>
-              <button className="btn btn-action" onClick={() => reinforceDefense(city.id)}>強化城防（300金）</button>
-              <button className="btn btn-action" onClick={() => developFloodControl(city.id)}>治水（500金）</button>
-              <button className="btn btn-action" onClick={() => developTechnology(city.id)}>技術開發（800金）</button>
-              <button className="btn btn-action" onClick={() => trainTroops(city.id)}>訓練（500糧）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('商業開發', () => developCommerce(city.id))}>商業開發（500金）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('農業開發', () => developAgriculture(city.id))}>農業開發（500金）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('強化城防', () => reinforceDefense(city.id))}>強化城防（300金）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('治水', () => developFloodControl(city.id))}>治水（500金）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('技術開發', () => developTechnology(city.id))}>技術開發（800金）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('訓練', () => trainTroops(city.id))}>訓練（500糧）</button>
               
               <div className="sub-menu">
                 <h5>稅率設定</h5>
@@ -86,20 +110,20 @@ export function CommandMenu() {
 
               <div className="sub-menu">
                 <h5>製造 (1000金)</h5>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 30} onClick={() => manufacture(city.id, 'crossbows')}>弩</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 40} onClick={() => manufacture(city.id, 'warHorses')}>軍馬</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 60} onClick={() => manufacture(city.id, 'batteringRams')}>衝車</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 80} onClick={() => manufacture(city.id, 'catapults')}>投石機</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 30} onClick={() => executeWithOfficer('製造弩', () => manufacture(city.id, 'crossbows'))}>弩</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 40} onClick={() => executeWithOfficer('製造軍馬', () => manufacture(city.id, 'warHorses'))}>軍馬</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 60} onClick={() => executeWithOfficer('製造衝車', () => manufacture(city.id, 'batteringRams'))}>衝車</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 80} onClick={() => executeWithOfficer('製造投石機', () => manufacture(city.id, 'catapults'))}>投石機</button>
               </div>
               
-              <button className="btn btn-action" onClick={() => disasterRelief(city.id)}>賑災（500金+1000糧）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('賑災', () => disasterRelief(city.id))}>賑災（500金+1000糧）</button>
             </>
           )}
 
           {activeCommandCategory === '軍事' && (
             <>
-              <button className="btn btn-action" onClick={() => draftTroops(city.id, 1000)}>徵兵 1000</button>
-              <button className="btn btn-action" onClick={() => draftTroops(city.id, 5000)}>徵兵 5000</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('徵兵 1000', () => draftTroops(city.id, 1000))}>徵兵 1000</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer('徵兵 5000', () => draftTroops(city.id, 5000))}>徵兵 5000</button>
               
               <div className="sub-menu">
                 <h5>輸送</h5>
@@ -262,6 +286,15 @@ export function CommandMenu() {
             </div>
           )}
         </div>
+      )}
+
+      {selection && (
+        <OfficerSelectionOverlay
+          officers={ownOfficers}
+          title={selection.title}
+          onSelect={selection.onSelect}
+          onClose={() => setSelection(null)}
+        />
       )}
 
       {dialog?.type === 'formation' && (

@@ -33,7 +33,7 @@ describe('CityIllustration Component', () => {
     const { container } = render(<CityIllustration city={mockCity} />);
     const svg = container.querySelector('svg');
     expect(svg).toBeTruthy();
-    expect(svg).toHaveAttribute('viewBox', '0 0 300 150');
+    expect(svg).toHaveAttribute('viewBox', '0 0 400 200');
   });
 
   test('renders city walls based on defense', () => {

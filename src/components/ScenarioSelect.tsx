@@ -10,8 +10,8 @@ export function ScenarioSelect() {
   const { selectScenario, setPhase } = useGameStore();
 
   return (
-    <div className="scenario-screen">
-      <div className="scenario-box">
+    <div className="scenario-screen brocade-bg">
+      <div className="scenario-box rtk-frame">
         <div className="scenario-header">
           <h2>請選擇劇本。</h2>
           <button className="btn btn-abort" onClick={() => setPhase('title')}>
