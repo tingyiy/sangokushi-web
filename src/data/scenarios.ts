@@ -8,7 +8,7 @@ import { baseOfficers } from './officers';
 function makeCity(
   id: number,
   factionId: number | null,
-  overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults'>> = {}
+  overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults' | 'taxRate'>> = {}
 ): City {
   const base = baseCities.find(c => c.id === id)!;
   return {
@@ -32,6 +32,8 @@ function makeCity(
     warHorses:    overrides.warHorses ?? 0,
     batteringRams:overrides.batteringRams ?? 0,
     catapults:    overrides.catapults ?? 0,
+    // Phase 6.7: Tax rate
+    taxRate:      overrides.taxRate ?? 'medium',
   };
 }
 
@@ -42,7 +44,7 @@ function makeOfficer(
   id: number,
   factionId: number | null,
   cityId: number,
-  overrides: Partial<Pick<Officer, 'loyalty' | 'isGovernor' | 'treasureId'>> = {}
+  overrides: Partial<Pick<Officer, 'loyalty' | 'isGovernor' | 'treasureId' | 'rank'>> = {}
 ): Officer {
   const base = baseOfficers.find(o => o.id === id)!;
   return {
@@ -53,6 +55,8 @@ function makeOfficer(
     loyalty: overrides.loyalty ?? (factionId === null ? 0 : 80),
     isGovernor: overrides.isGovernor ?? false,
     treasureId: overrides.treasureId ?? null,
+    // Phase 6.2: Rank
+    rank: overrides.rank ?? '一般',
   };
 }
 
