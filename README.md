@@ -20,9 +20,9 @@ This project aims to bring RTK IV's core gameplay -- its officer management, tur
 
 ## Current Status / 目前進度
 
-Phases 0 through 5 of the [implementation plan](./IMPL-INDEX.md) are complete. The game is playable with:
+Core RTK IV mechanics and the visual overhaul are complete. The game is playable with:
 
-實作計畫第 0 至第 5 階段已完成，目前可遊玩的內容包括：
+核心系統與視覺重製已完成，目前可遊玩的內容包括：
 
 - **6 historical scenarios** spanning 189-234 AD (董卓亂政 through 星落五丈原)
   **6 個歷史劇本**，橫跨西元 189-234 年（從董卓亂政到星落五丈原）
@@ -35,11 +35,13 @@ Phases 0 through 5 of the [implementation plan](./IMPL-INDEX.md) are complete. T
 - **AI system** with subsystems for development, military, personnel, diplomacy, and strategy
   **AI 系統**，包含開發、軍事、人事、外交、謀略五大子系統
 - **24 treasures**, duel system, save/load (3 slots), victory/defeat detection
+- **RTK IV-style UI/visuals**: brocade backgrounds, ornamental frames, classic dialog styling, title menu rework
+- **Strategic map upgrades**: banner-style city flags, improved terrain visibility, gameplay minimap, date badge overlay
+- **Command & info flow**: compact command grid, city info overlay, officer selection stat table, enhanced city illustrations
+- **Palette & typography polish**: serif CJK font, warmer green/brown palette, framed buttons (決定/中止)
   **24 件寶物**、一騎討、存讀檔（3 個存檔欄）、勝敗判定
 
-Remaining work (Phases 6-7): advisor system, officer ranks, fog of war, random/historical events, new ruler creation, sound, and UI polish. See [IMPL-4-7.md](./IMPL-4-7.md) for details.
-
-尚未完成的部分（第 6-7 階段）：軍師助言、官職系統、戰場迷霧、隨機/歷史事件、新君主建立、音效及介面美化。詳見 [IMPL-4-7.md](./IMPL-4-7.md)。
+If you want to track future enhancements, use issues or a new roadmap doc.
 
 ---
 
@@ -97,9 +99,8 @@ src/
 
 ## Documentation
 
-- [PLAN.md](./PLAN.md) -- High-level feature roadmap / 功能開發路線圖
 - [GAP.md](./GAP.md) -- Feature gap analysis vs RTK IV / 與原作差異分析
-- [IMPL-INDEX.md](./IMPL-INDEX.md) -- Detailed implementation plan index / 詳細實作計畫索引
+- [FEATURES.md](./FEATURES.md) -- Feature snapshot / 功能摘要
 - [AGENTS.md](./AGENTS.md) -- Guidelines for AI coding assistants / AI 程式助手指引
 
 ## License / 授權聲明
