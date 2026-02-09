@@ -15,7 +15,7 @@ Detailed implementation plans for bringing this project to RTK IV feature parity
 | [IMPL-1.md](./IMPL-1.md) | Phase 1: Core Data Expansion | Skill system mechanics, city attribute wiring, officer data (400+), treasure system (24 items) | Critical | ✅ Completed |
 | [IMPL-2.md](./IMPL-2.md) | Phase 2: Command Expansion | 25 new commands across 5 categories (內政/軍事/人事/外交/謀略), army formation dialog | High | ✅ Completed |
 | [IMPL-3.md](./IMPL-3.md) | Phase 3: Battle System Overhaul | Unit type differentiation, siege battles, 13 battle tactics, morale/routing, POW system, naval battles | High | ✅ Completed |
-| [IMPL-4-7.md](./IMPL-4-7.md) | Phases 4-7: AI, Scenarios, Advanced Systems, Polish | AI engine, 5 new scenarios, advisor/ranks/fog/events, map overhaul, UI panels | Medium-Low | Not started |
+| [IMPL-4-7.md](./IMPL-4-7.md) | Phases 4-7: AI, Scenarios, Advanced Systems, Polish | AI engine, 5 new scenarios, advisor/ranks/fog/events, map overhaul, UI panels | Medium-Low | ✅ Completed (Phase 4) |
 
 ---
 

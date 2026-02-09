@@ -4,6 +4,8 @@ import type { UnitType } from '../types/battle';
 import { useBattleStore } from './battleStore';
 import { hasSkill } from '../utils/skills';
 import { spyingSystem } from '../game/spy/SpyingSystem';
+import { runAI } from '../ai/aiEngine';
+import type { AIDecision } from '../ai/types';
 
 interface DuelState {
   p1: Officer;
@@ -17,7 +19,7 @@ interface DuelState {
   isBattleDuel?: boolean;
 }
 
-interface GameState {
+export interface GameState {
   phase: GamePhase;
   /** Current scenario data */
   scenario: Scenario | null;
@@ -146,6 +148,8 @@ interface GameState {
   deleteSave: (slot: number) => boolean;
   /** Victory: Check victory/defeat conditions */
   checkVictoryCondition: () => { type: 'victory' | 'defeat' | 'ongoing'; message: string } | null;
+  /** AI: Apply decisions made by AI engine */
+  applyAIDecisions: (decisions: AIDecision[]) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -237,22 +241,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       newYear += 1;
     }
 
-    // Update ceasefires: remove expired ones
-    const updatedFactions = state.factions.map(f => ({
-      ...f,
-      ceasefires: f.ceasefires.filter(c => {
-        if (c.expiresYear < newYear) return false;
-        if (c.expiresYear === newYear && c.expiresMonth < newMonth) return false;
-        return true;
-      })
-    }));
-
-    // Simple AI: each non-player faction develops a random owned city
-    // Phase 1.2: peopleLoyalty affects monthly income
+    // 1. All faction income
     const updatedCities = state.cities.map(c => {
-      // Monthly income for all cities with factions
       if (c.factionId !== null) {
-        const loyaltyMultiplier = c.peopleLoyalty / 100;  // 0.0 to 1.0
+        const loyaltyMultiplier = c.peopleLoyalty / 100;
         const goldIncome = Math.floor(c.commerce * 0.5 * loyaltyMultiplier);
         const foodIncome = Math.floor(c.agriculture * 0.8 * loyaltyMultiplier);
         return {
@@ -270,15 +262,49 @@ export const useGameStore = create<GameState>((set, get) => ({
       stamina: Math.min(100, o.stamina + 20),
     }));
 
+    // Update state before running AI
     set({
       month: newMonth,
       year: newYear,
       cities: updatedCities,
       officers: updatedOfficers,
-      factions: updatedFactions,
       selectedCityId: null,
       activeCommandCategory: null,
       log: [...state.log.slice(-49), `── ${newYear}年${newMonth}月 ──`],
+    });
+
+    // 2. AI turns
+    const aiState = get(); // Get fresh state after income
+    const decisions = runAI(aiState);
+    get().applyAIDecisions(decisions);
+
+    // Update factions (ceasefires etc)
+    set(state => ({
+      factions: state.factions.map(f => ({
+        ...f,
+        ceasefires: f.ceasefires.filter(c => {
+          if (c.expiresYear < state.year) return false;
+          if (c.expiresYear === state.year && c.expiresMonth < state.month) return false;
+          return true;
+        })
+      }))
+    }));
+  },
+
+  applyAIDecisions: (decisions) => {
+    decisions.forEach(d => {
+      const currentStore = get();
+      const action = currentStore[d.action as keyof GameState];
+      if (typeof action === 'function') {
+        try {
+          (action as (...args: unknown[]) => void)(...d.params);
+          if (d.description) {
+            get().addLog(d.description);
+          }
+        } catch (error) {
+          console.error(`AI Action failed: ${String(d.action)}`, error);
+        }
+      }
     });
   },
 
