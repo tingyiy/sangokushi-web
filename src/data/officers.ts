@@ -7,7 +7,7 @@ import type { Officer } from '../types';
  *
  * factionId 和 cityId 由劇本決定，此處提供基礎能力值
  */
-type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'stamina' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank'>;
+type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'stamina' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank' | 'relationships'>;
 
 export const baseOfficers: BaseOfficer[] = [
   // ===== 蜀漢 =====

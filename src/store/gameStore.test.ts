@@ -44,6 +44,7 @@ const createTestOfficer = (overrides: Partial<Officer> = {}): Officer => ({
   loyalty: 80,
   isGovernor: false,
   rank: '一般',
+  relationships: [],
   portraitId: 1,
   birthYear: 160,
   deathYear: 220,
@@ -99,6 +100,8 @@ describe('gameStore - Stamina Consumption System', () => {
       activeCommandCategory: null,
       log: [],
       duelState: null,
+      revealedCities: {},
+      pendingGovernorAssignmentCityId: null,
     });
   });
 
@@ -1260,6 +1263,52 @@ describe('gameStore - Stamina Consumption System', () => {
       spy.mockRestore();
     });
   });
+
+  describe('aiRecruitPOW', () => {
+    it('successfully recruits POW', () => {
+      const city = createTestCity({ id: 1, factionId: 1 });
+      const recruiter = createTestOfficer({ id: 1, factionId: 1, cityId: 1, charisma: 100 });
+      const pow = createTestOfficer({ id: 2, factionId: -1 as any, cityId: 1, loyalty: 0 });
+      
+      useGameStore.setState({
+        cities: [city],
+        officers: [recruiter, pow],
+        factions: [createTestFaction({ id: 1 })]
+      });
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.01);
+      useGameStore.getState().aiRecruitPOW(1, 2);
+
+      const updatedPow = useGameStore.getState().officers.find(o => o.id === 2);
+      expect(updatedPow?.factionId).toBe(1);
+    });
+  });
+
+  describe('Fog of War', () => {
+    it('correctly reports city revealed state', () => {
+      const playerFactionId = 1;
+      const playerCity = createTestCity({ id: 1, factionId: playerFactionId, adjacentCityIds: [2] });
+      const enemyCity = createTestCity({ id: 2, factionId: 2, adjacentCityIds: [1] });
+      const farCity = createTestCity({ id: 3, factionId: 2, adjacentCityIds: [] });
+
+      useGameStore.setState({
+        playerFaction: { id: playerFactionId } as any,
+        cities: [playerCity, enemyCity, farCity],
+        revealedCities: { 3: { untilYear: 200, untilMonth: 1 } },
+        year: 190,
+        month: 1
+      });
+
+      const store = useGameStore.getState();
+      expect(store.isCityRevealed(1)).toBe(true); // Own city
+      expect(store.isCityRevealed(2)).toBe(true); // Adjacent
+      expect(store.isCityRevealed(3)).toBe(true); // Revealed by spy
+      
+      // Test expired reveal
+      useGameStore.setState({ year: 201 });
+      expect(useGameStore.getState().isCityRevealed(3)).toBe(false);
+    });
+  });
 });
 
 /**
@@ -1743,6 +1792,8 @@ describe('Victory Condition', () => {
       activeCommandCategory: null,
       log: [],
       duelState: null,
+      revealedCities: {},
+      pendingGovernorAssignmentCityId: null,
     });
   });
 

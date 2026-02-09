@@ -4,11 +4,13 @@ import { TitleScreen } from './components/TitleScreen';
 import { ScenarioSelect } from './components/ScenarioSelect';
 import { FactionSelect } from './components/FactionSelect';
 import { GameSettingsScreen } from './components/GameSettingsScreen';
+import { RulerCreation } from './components/RulerCreation';
 import { GameScreen } from './components/GameScreen';
 import { DuelScreen } from './components/DuelScreen';
 import BattleScreen from './components/BattleScreen';
 import VictoryScreen from './components/VictoryScreen';
 import DefeatScreen from './components/DefeatScreen';
+import { audioSystem } from './systems/audio';
 import './App.css';
 
 /**
@@ -16,9 +18,35 @@ import './App.css';
  * Routes between different game screens based on current phase.
  * Phase 0.3: Integrated victory/defeat condition checking.
  * Phase 0.5: Added FactionSelect and GameSettingsScreen routes.
+ * Phase 7.1: Added RulerCreation route.
+ * Phase 7.4: Integrated Audio System.
  */
 function App() {
   const { phase, checkVictoryCondition, setPhase, addLog } = useGameStore();
+
+  // Phase 7.4: Update BGM based on phase
+  useEffect(() => {
+    switch (phase) {
+      case 'title':
+      case 'scenario':
+      case 'faction':
+      case 'settings':
+      case 'rulerCreation':
+        audioSystem.playBGM('title');
+        break;
+      case 'playing':
+        audioSystem.playBGM('strategy');
+        break;
+      case 'battle':
+        audioSystem.playBGM('battle');
+        break;
+      case 'duel':
+        audioSystem.playBGM('duel');
+        break;
+      default:
+        audioSystem.stopBGM();
+    }
+  }, [phase]);
 
   // Phase 0.3: Check victory/defeat conditions when in playing phase
   useEffect(() => {
@@ -41,6 +69,7 @@ function App() {
       {phase === 'scenario' && <ScenarioSelect />}
       {phase === 'faction' && <FactionSelect />}
       {phase === 'settings' && <GameSettingsScreen />}
+      {phase === 'rulerCreation' && <RulerCreation />}
       {phase === 'playing' && <GameScreen />}
       {phase === 'duel' && <DuelScreen />}
       {phase === 'battle' && <BattleScreen />}

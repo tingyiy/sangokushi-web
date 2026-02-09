@@ -15,7 +15,7 @@ describe('AI Subsystems', () => {
       { id: 2, name: 'City 2', factionId: 2, gold: 10000, food: 10000, troops: 10000, adjacentCityIds: [1], peopleLoyalty: 100, floodControl: 100, defense: 100, x: 1, y: 1 },
     ],
     officers: [
-      { id: 1, name: 'Off 1', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['製造'], isGovernor: true },
+      { id: 1, name: 'Off 1', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['製造'], isGovernor: true, relationships: [] },
     ],
     factions: [
       { id: 1, name: 'F1', relations: { 2: 50 }, allies: [] },
@@ -123,7 +123,7 @@ describe('AI Subsystems', () => {
                 ...mockState,
                 officers: [
                     ...mockState.officers,
-                    { id: 20, name: 'POW', factionId: -1, cityId: 1, stamina: 100, loyalty: 0, leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50, skills: [], portraitId: 20, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null }
+                    { id: 20, name: 'POW', factionId: -1, cityId: 1, stamina: 100, loyalty: 0, leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50, skills: [], portraitId: 20, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
                 ] as Officer[]
             } as unknown as GameState
         };
@@ -135,16 +135,16 @@ describe('AI Subsystems', () => {
         const noGovernorContext = {
             ...context,
             ownedCities: [{ ...context.ownedCities[0], id: 1 }],
-            factionOfficers: [{ ...context.factionOfficers[0], cityId: 1, isGovernor: false, leadership: 100 }, { ...context.factionOfficers[0], id: 2, cityId: 1, isGovernor: false, leadership: 50 }],
+            factionOfficers: [{ ...context.factionOfficers[0], cityId: 1, isGovernor: false, leadership: 100, relationships: [] }, { ...context.factionOfficers[0], id: 2, cityId: 1, isGovernor: false, leadership: 50, relationships: [] }],
             state: {
                 ...mockState,
                 officers: [
-                    { ...mockState.officers[0], isGovernor: false },
-                    { ...mockState.officers[0], id: 2, isGovernor: false }
+                    { ...mockState.officers[0], isGovernor: false, relationships: [] },
+                    { ...mockState.officers[0], id: 2, isGovernor: false, relationships: [] }
                 ]
             }
         };
-        noGovernorContext.factionOfficers.push({ ...mockState.officers[0], id: 3, cityId: 1, isGovernor: false });
+        noGovernorContext.factionOfficers.push({ ...mockState.officers[0], id: 3, cityId: 1, isGovernor: false, relationships: [] });
         
         const decisions = evaluatePersonnel(noGovernorContext);
         expect(decisions.some(d => d.action === 'appointGovernor')).toBe(true);

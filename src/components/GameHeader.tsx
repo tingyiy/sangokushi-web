@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import SaveLoadMenu from './SaveLoadMenu';
+import { DomesticStatusPanel } from './DomesticStatusPanel';
 
 /**
  * GameHeader Component
  * Displays game status and provides access to save/load functionality.
  * Phase 0.2: Integrated save/load buttons.
+ * Phase 7.7: Added Domestic Status Panel.
  */
 export function GameHeader() {
   const { year, month, playerFaction, cities, officers } = useGameStore();
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [showLoadMenu, setShowLoadMenu] = useState(false);
+  const [showStatusPanel, setShowStatusPanel] = useState(false);
 
   const ownCities = cities.filter(c => c.factionId === playerFaction?.id);
   const totalTroops = ownCities.reduce((s, c) => s + c.troops, 0);
@@ -29,6 +32,20 @@ export function GameHeader() {
         </div>
         
         <div className="header-center" style={{ display: 'flex', gap: '15px' }}>
+          <button
+            onClick={() => setShowStatusPanel(true)}
+            style={{
+              padding: '5px 15px',
+              background: '#2a6a4a',
+              color: '#fff',
+              border: '1px solid #4a8a6a',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+            }}
+          >
+            情報
+          </button>
           <button
             onClick={() => setShowSaveMenu(true)}
             style={{
@@ -68,6 +85,10 @@ export function GameHeader() {
         </div>
       </div>
 
+      <DomesticStatusPanel
+        isOpen={showStatusPanel}
+        onClose={() => setShowStatusPanel(false)}
+      />
       <SaveLoadMenu
         isOpen={showSaveMenu}
         onClose={() => setShowSaveMenu(false)}
