@@ -95,20 +95,20 @@ interface RTKApi {
   selectCity(cityId: number): Result;
 
   // Domestic (內政)
-  developCommerce(cityId: number): Result;
-  developAgriculture(cityId: number): Result;
-  reinforceDefense(cityId: number): Result;
-  developFloodControl(cityId: number): Result;
-  developTechnology(cityId: number): Result;
-  trainTroops(cityId: number): Result;
-  manufacture(cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults'): Result;
-  disasterRelief(cityId: number): Result;
+  developCommerce(cityId: number, officerId?: number): Result;
+  developAgriculture(cityId: number, officerId?: number): Result;
+  reinforceDefense(cityId: number, officerId?: number): Result;
+  developFloodControl(cityId: number, officerId?: number): Result;
+  developTechnology(cityId: number, officerId?: number): Result;
+  trainTroops(cityId: number, officerId?: number): Result;
+  manufacture(cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults', officerId?: number): Result;
+  disasterRelief(cityId: number, officerId?: number): Result;
   setTaxRate(cityId: number, rate: 'low' | 'medium' | 'high'): Result;
 
   // Personnel (人事)
-  recruitOfficer(officerId: number): Result;
-  searchOfficer(cityId: number): Result;
-  recruitPOW(officerId: number): Result;
+  recruitOfficer(officerId: number, recruiterId?: number): Result;
+  searchOfficer(cityId: number, officerId?: number): Result;
+  recruitPOW(officerId: number, recruiterId?: number): Result;
   rewardOfficer(officerId: number, type: 'gold' | 'treasure', amount?: number): Result;
   executeOfficer(officerId: number): Result;
   dismissOfficer(officerId: number): Result;
@@ -117,7 +117,7 @@ interface RTKApi {
   promoteOfficer(officerId: number, rank: OfficerRank): Result;
 
   // Military (軍事)
-  draftTroops(cityId: number, amount: number): Result;
+  draftTroops(cityId: number, amount: number, officerId?: number): Result;
   transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result;
   transferOfficer(officerId: number, targetCityId: number): Result;
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[] } | null): Result;
@@ -149,6 +149,8 @@ interface RTKApi {
   // Events
   /** Dismiss the current pending event (or accept officer visit) */
   popEvent(): Result;
+  /** Robustly dismiss event if present (checks pendingEvents length) */
+  confirmEvent(): Result;
 
   // Turn
   endTurn(): Result;
@@ -520,6 +522,12 @@ rtk.save(1);
 ---
 
 ## Changelog
+
+**v2.1 (2026-02-09):** Added Specialized Officer Assignment & Event Confirmation.
+
+- **Specialized Assignment:** Added optional `officerId` / `recruiterId` to all domestic, personnel, and drafting commands.
+- **Event Handling:** Added `confirmEvent()` for robust popup dismissal.
+- **Documentation:** Updated signatures to reflect standard officer selection optionality.
 
 **v2 (2026-02-09):** Updated to reflect Phases 2-7 implementation.
 
