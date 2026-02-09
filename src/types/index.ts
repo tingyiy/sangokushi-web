@@ -220,6 +220,6 @@ export interface GameSettings {
   gameMode: 'historical' | 'fictional';
   /** 登錄武將出場 - all: 全部, choose: 選擇 */
   customOfficers: 'all' | 'choose';
-  /** 清信靈敏度 (1-5) - 情報敏感度 */
+  /** 滑鼠靈敏度 (1-5) - Mouse Sensitivity */
   intelligenceSensitivity: 1 | 2 | 3 | 4 | 5;
 }

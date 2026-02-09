@@ -32,7 +32,7 @@ function ToggleButton({ options, value, onChange }: ToggleButtonProps) {
  * - 戰爭方式 (Battle Mode)
  * - 遊戲方式 (Game Mode)
  * - 登錄武將出場 (Custom Officers)
- * - 清信靈敏度 (Intelligence Sensitivity)
+ * - 滑鼠靈敏度 (Mouse Sensitivity)
  */
 export function GameSettingsScreen() {
   const {
@@ -103,17 +103,17 @@ export function GameSettingsScreen() {
           <div className="settings-row">
             <span className="settings-label">登錄武將出場</span>
             <ToggleButton
-              options={['全', '選']}
-              value={gameSettings.customOfficers === 'all' ? '全' : '選'}
+              options={['出場', '退場']}
+              value={gameSettings.customOfficers === 'all' ? '出場' : '退場'}
               onChange={(v) =>
-                setGameSettings({ customOfficers: v === '全' ? 'all' : 'choose' })
+                setGameSettings({ customOfficers: v === '出場' ? 'all' : 'choose' })
               }
             />
           </div>
 
           {/* Intelligence Sensitivity */}
           <div className="settings-row">
-            <span className="settings-label">清信靈敏度</span>
+            <span className="settings-label">滑鼠靈敏度</span>
             <div className="sensitivity-slider">
               {[1, 2, 3, 4, 5].map((level) => (
                 <button

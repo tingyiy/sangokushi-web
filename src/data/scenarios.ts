@@ -328,13 +328,13 @@ const scenario194: Scenario = {
 };
 
 // ============================================================
-// 劇本三：200年 官渡之戰
+// 劇本三：201年 官渡之戰
 // ============================================================
 const scenario200: Scenario = {
   id: 3,
   name: '官渡之戰',
   subtitle: '河北爭雄',
-  year: 200,
+  year: 201,
   description: '袁紹消滅公孫瓚，統一河北，意圖南下。曹操挾天子以令諸侯，與袁紹決戰於官渡。',
   factions: [
     { id: 1, name: '曹操', rulerId: 20, advisorId: 30, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
@@ -431,13 +431,13 @@ const scenario208: Scenario = {
 };
 
 // ============================================================
-// 劇本五：219年 三國鼎立
+// 劇本五：221年 三國鼎立
 // ============================================================
-const scenario219: Scenario = {
+const scenario221: Scenario = {
   id: 5,
   name: '三國鼎立',
   subtitle: '漢中王',
-  year: 219,
+  year: 221,
   description: '劉備攻取漢中，進位漢中王。關羽水淹七軍，威震華夏。孫權襲取荊州。',
   factions: [
     { id: 1, name: '曹操', rulerId: 20, advisorId: 32, color: '#2563eb', isPlayer: false, relations: {}, allies: [3], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
@@ -468,13 +468,13 @@ const scenario219: Scenario = {
 };
 
 // ============================================================
-// 劇本六：234年 星落五丈原
+// 劇本六：235年 星落五丈原
 // ============================================================
-const scenario234: Scenario = {
+const scenario235: Scenario = {
   id: 6,
   name: '星落五丈原',
   subtitle: '諸葛歸天',
-  year: 234,
+  year: 235,
   description: '諸葛亮六出祁山，與司馬懿對峙於五丈原。蜀漢丞相積勞成疾，星落秋風五丈原。',
   factions: [
     { id: 1, name: '曹叡', rulerId: 34, advisorId: 32, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
@@ -505,4 +505,4 @@ const scenario234: Scenario = {
   ]
 };
 
-export const scenarios: Scenario[] = [scenario189, scenario194, scenario200, scenario208, scenario219, scenario234];
+export const scenarios: Scenario[] = [scenario189, scenario194, scenario200, scenario208, scenario221, scenario235];

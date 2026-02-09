@@ -47,7 +47,7 @@ export function DomesticStatusPanel({ isOpen, onClose }: Props) {
     <div className="status-panel-overlay">
       <div className="status-panel">
         <div className="panel-header">
-          <h3>全勢力狀況一覽</h3>
+          <h3>內政狀況表</h3>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         <div className="panel-body">
