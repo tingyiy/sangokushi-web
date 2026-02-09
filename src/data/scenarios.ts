@@ -66,16 +66,16 @@ const scenario189: Scenario = {
   year: 189,
   description: '董卓廢少帝，立獻帝，遷都長安。各路諸侯起兵討伐，天下大亂。',
       factions: [
-        { id: 1, name: '曹操',   rulerId: 20, advisorId: null, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 2, name: '劉備',   rulerId: 1,  advisorId: null, color: '#16a34a', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 3, name: '孫堅',   rulerId: 50, advisorId: null, color: '#dc2626', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 4, name: '董卓',   rulerId: 71, advisorId: null, color: '#7c3aed', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 5, name: '袁紹',   rulerId: 72, advisorId: null, color: '#ca8a04', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 6, name: '袁術',   rulerId: 73, advisorId: null, color: '#ea580c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 7, name: '劉表',   rulerId: 74, advisorId: null, color: '#0d9488', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 8, name: '公孫瓚', rulerId: 77, advisorId: null, color: '#be185d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 9, name: '馬騰',   rulerId: 76, advisorId: null, color: '#78716c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
-        { id: 10, name: '陶謙',  rulerId: 78, advisorId: null, color: '#65a30d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [] },
+        { id: 1, name: '曹操',   rulerId: 20, advisorId: null, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 2, name: '劉備',   rulerId: 1,  advisorId: null, color: '#16a34a', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 3, name: '孫堅',   rulerId: 50, advisorId: null, color: '#dc2626', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 4, name: '董卓',   rulerId: 71, advisorId: null, color: '#7c3aed', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 5, name: '袁紹',   rulerId: 72, advisorId: null, color: '#ca8a04', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 6, name: '袁術',   rulerId: 73, advisorId: null, color: '#ea580c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 7, name: '劉表',   rulerId: 74, advisorId: null, color: '#0d9488', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 8, name: '公孫瓚', rulerId: 77, advisorId: null, color: '#be185d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 9, name: '馬騰',   rulerId: 76, advisorId: null, color: '#78716c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+        { id: 10, name: '陶謙',  rulerId: 78, advisorId: null, color: '#65a30d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
       ],  cities: [
     // 董卓 - 長安：高技術、高防禦、低治水（內陸）
     makeCity(11, 4, { 

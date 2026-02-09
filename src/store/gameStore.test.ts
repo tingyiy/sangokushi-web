@@ -1292,7 +1292,8 @@ describe('Battle Consequences - resolveBattle', () => {
         { officerId: 20, troops: 0, factionId: 2, status: 'routed' },
       ];
 
-      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
+      // Pass capturedOfficerIds
+      useGameStore.getState().resolveBattle(1, 2, 1, battleUnits, [20]);
 
       const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 20);
       // Captured officers get factionId -1

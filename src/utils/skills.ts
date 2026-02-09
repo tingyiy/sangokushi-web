@@ -39,6 +39,8 @@ export const SKILL_REQUIREMENTS: Record<string, RTK4Skill | null> = {
   '修復': '修復',
   '罵聲': '罵聲',
   '虛報': '虛報',
+  '鼓舞': '鼓舞',
+  '伏兵': '伏兵',
 };
 
 /** Check if an officer can use a specific command */
@@ -59,7 +61,7 @@ export function hasSkillGroup(officer: Officer, group: 'strategy' | 'military' |
     strategy: ['外交', '情報', '人才', '製造', '做敵', '驅虎', '流言', '燒討'],
     military: ['諜報', '步兵', '騎兵', '弓兵', '海戰'],
     tactics: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷'],
-    special: ['修復', '罵聲', '虛報'],
+    special: ['修復', '罵聲', '虛報', '鼓舞', '伏兵'],
   };
   
   return groups[group].some(skill => hasSkill(officer, skill));
@@ -71,7 +73,7 @@ export function countSkillsInGroup(officer: Officer, group: 'strategy' | 'milita
     strategy: ['外交', '情報', '人才', '製造', '做敵', '驅虎', '流言', '燒討'],
     military: ['諜報', '步兵', '騎兵', '弓兵', '海戰'],
     tactics: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷'],
-    special: ['修復', '罵聲', '虛報'],
+    special: ['修復', '罵聲', '虛報', '鼓舞', '伏兵'],
   };
   
   return officer.skills.filter(skill => groups[group].includes(skill)).length;
