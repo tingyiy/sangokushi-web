@@ -12,7 +12,7 @@ import { treasures } from '../data/treasures';
  * - Weapon inventory (Phase 1.2)
  */
 export function CityPanel() {
-  const { cities, officers, factions, selectedCityId, playerFaction } = useGameStore();
+  const { cities, officers, factions, selectedCityId, playerFaction, isCityRevealed } = useGameStore();
 
   if (selectedCityId === null) {
     return (
@@ -33,6 +33,7 @@ export function CityPanel() {
   const affiliated = cityOfficers.filter(o => o.factionId !== null);
   const unaffiliated = cityOfficers.filter(o => o.factionId === null);
   const isOwnCity = city.factionId === playerFaction?.id;
+  const isRevealed = isCityRevealed(city.id);
 
   return (
     <div className="city-panel">
@@ -49,42 +50,49 @@ export function CityPanel() {
       {/* City stats - Phase 1.2: All 14 attributes */}
       <div className="city-stats">
         <div className="stat-row">
-          <span>人口</span><span>{city.population.toLocaleString()}</span>
+          <span>人口</span><span>{isRevealed ? city.population.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>兵力</span><span>{city.troops.toLocaleString()}</span>
+          <span>兵力</span><span>{isRevealed ? city.troops.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>金</span><span>{city.gold.toLocaleString()}</span>
+          <span>金</span><span>{isRevealed ? city.gold.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>糧</span><span>{city.food.toLocaleString()}</span>
+          <span>糧</span><span>{isRevealed ? city.food.toLocaleString() : '????'}</span>
         </div>
-        <div className="stat-row">
-          <span>商業</span><span>{city.commerce}</span>
-        </div>
-        <div className="stat-row">
-          <span>農業</span><span>{city.agriculture}</span>
-        </div>
-        <div className="stat-row">
-          <span>防禦</span><span>{city.defense}</span>
-        </div>
-        {/* Phase 1.2: New city attributes */}
-        <div className="stat-row">
-          <span>治水</span><span>{city.floodControl}</span>
-        </div>
-        <div className="stat-row">
-          <span>技術</span><span>{city.technology}</span>
-        </div>
-        <div className="stat-row">
-          <span>民忠</span><span>{city.peopleLoyalty}</span>
-        </div>
-        <div className="stat-row">
-          <span>士氣</span><span>{city.morale}</span>
-        </div>
-        <div className="stat-row">
-          <span>訓練</span><span>{city.training}</span>
-        </div>
+        {isRevealed ? (
+          <>
+            <div className="stat-row">
+              <span>商業</span><span>{city.commerce}</span>
+            </div>
+            <div className="stat-row">
+              <span>農業</span><span>{city.agriculture}</span>
+            </div>
+            <div className="stat-row">
+              <span>防禦</span><span>{city.defense}</span>
+            </div>
+            <div className="stat-row">
+              <span>治水</span><span>{city.floodControl}</span>
+            </div>
+            <div className="stat-row">
+              <span>技術</span><span>{city.technology}</span>
+            </div>
+            <div className="stat-row">
+              <span>民忠</span><span>{city.peopleLoyalty}</span>
+            </div>
+            <div className="stat-row">
+              <span>士氣</span><span>{city.morale}</span>
+            </div>
+            <div className="stat-row">
+              <span>訓練</span><span>{city.training}</span>
+            </div>
+          </>
+        ) : (
+          <div className="stat-row unknown-stats">
+            <span style={{ fontStyle: 'italic', color: '#666' }}>其餘情報未知</span>
+          </div>
+        )}
       </div>
 
       {/* Phase 1.2: Weapon inventory - only show for own cities */}
@@ -99,7 +107,7 @@ export function CityPanel() {
       )}
 
       {/* Affiliated officers with portraits, skills, and treasures - Phase 0.5, 1.1, 1.4 */}
-      {affiliated.length > 0 && (
+      {isRevealed && affiliated.length > 0 && (
         <div className="officer-section">
           <h4>武將</h4>
           <div className="officer-list">
