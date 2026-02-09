@@ -1,9 +1,10 @@
 import { useGameStore } from '../store/gameStore';
 import { useBattleStore } from '../store/battleStore';
 import { scenarios } from '../data/scenarios';
-import type { GamePhase, GameSettings, Officer, OfficerRank } from '../types';
-import type { UnitType } from '../types/battle';
-import { getMovementRange, type BattleTactic } from '../utils/unitTypes';
+import type { GamePhase, GameSettings, Officer, OfficerRank, Faction, City, Scenario } from '../types';
+import type { UnitType, BattleState } from '../types/battle';
+import { getMovementRange, getAttackRange, type BattleTactic } from '../utils/unitTypes';
+import { getMoveRange } from '../utils/pathfinding';
 
 interface Result {
   ok: boolean;
@@ -11,9 +12,11 @@ interface Result {
   data?: unknown;
 }
 
+const POW_FACTION_ID = -1 as unknown as number;
+
 /**
  * RTK Automation API implementation
- * v2 (2026-02-09)
+ * v2.1 (2026-02-09) - Addressing Review Feedback
  */
 export const rtkApi = {
   // ─── Lifecycle ───────────────────────────────────────
@@ -26,9 +29,6 @@ export const rtkApi = {
     
     selectScenario(scenario);
     
-    // We need to find the faction in the INITIALIZED factions in store, 
-    // or just pass the ID if selectFaction handles it.
-    // selectFaction(factionId) in store handles find(f => f.id === factionId)
     const storeFactions = useGameStore.getState().factions;
     if (!storeFactions.find(f => f.id === factionId)) {
         return { ok: false, error: `Faction ${factionId} not found in scenario ${scenarioId}` };
@@ -62,7 +62,7 @@ export const rtkApi = {
       return state.officers.filter(o => o.factionId === state.playerFaction?.id);
     },
     unaffiliatedOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === null),
-    powOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === -1 as unknown as number),
+    powOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === POW_FACTION_ID),
     adjacentCities: (cityId: number) => {
       const city = useGameStore.getState().cities.find(c => c.id === cityId);
       if (!city) return [];
@@ -97,6 +97,9 @@ export const rtkApi = {
     battleState: () => useBattleStore.getState(),
     saveSlots: () => useGameStore.getState().getSaveSlots(),
     checkEndCondition: () => useGameStore.getState().checkVictoryCondition(),
+    gameSettings: (): GameSettings => useGameStore.getState().gameSettings,
+    scenario: (): Scenario | null => useGameStore.getState().scenario,
+    battleFormation: () => useGameStore.getState().battleFormation,
   },
 
   // ─── Commands ───────────────────────────────────────
@@ -105,6 +108,11 @@ export const rtkApi = {
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: `City ${cityId} not found` };
     state.selectCity(cityId);
+    return { ok: true };
+  },
+
+  addLog(message: string): Result {
+    useGameStore.getState().addLog(message);
     return { ok: true };
   },
 
@@ -137,6 +145,7 @@ export const rtkApi = {
 
   reinforceDefense(cityId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.defense;
@@ -148,6 +157,7 @@ export const rtkApi = {
 
   developFloodControl(cityId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.floodControl;
@@ -159,6 +169,7 @@ export const rtkApi = {
 
   developTechnology(cityId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.technology;
@@ -170,6 +181,7 @@ export const rtkApi = {
 
   trainTroops(cityId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.training;
@@ -181,6 +193,7 @@ export const rtkApi = {
 
   manufacture(cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults'): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city[weaponType];
@@ -192,6 +205,7 @@ export const rtkApi = {
 
   disasterRelief(cityId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.peopleLoyalty;
@@ -202,13 +216,16 @@ export const rtkApi = {
   },
 
   setTaxRate(cityId: number, rate: 'low' | 'medium' | 'high'): Result {
-    useGameStore.getState().setTaxRate(cityId, rate);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.setTaxRate(cityId, rate);
     return { ok: true };
   },
 
   // Personnel
   recruitOfficer(officerId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const officer = state.officers.find(o => o.id === officerId);
     if (!officer) return { ok: false, error: 'Officer not found' };
     state.recruitOfficer(officerId);
@@ -218,12 +235,18 @@ export const rtkApi = {
   },
 
   searchOfficer(cityId: number): Result {
-    useGameStore.getState().searchOfficer(cityId);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.searchOfficer(cityId);
     return { ok: true };
   },
 
   recruitPOW(officerId: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer) return { ok: false, error: 'Officer not found' };
+    if (officer.factionId !== POW_FACTION_ID) return { ok: false, error: 'Not a POW' };
     state.recruitPOW(officerId);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
     if (after.factionId === state.playerFaction?.id) return { ok: true, data: { success: true } };
@@ -231,59 +254,100 @@ export const rtkApi = {
   },
 
   rewardOfficer(officerId: number, type: 'gold' | 'treasure', amount?: number): Result {
-    useGameStore.getState().rewardOfficer(officerId, type, amount);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer || officer.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your officer' };
+    const loyaltyBefore = officer.loyalty;
+    state.rewardOfficer(officerId, type, amount);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.loyalty > loyaltyBefore) return { ok: true, data: { before: loyaltyBefore, after: after.loyalty } };
+    return { ok: false, error: 'Action failed (check gold/treasure)' };
   },
 
   executeOfficer(officerId: number): Result {
-    useGameStore.getState().executeOfficer(officerId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer) return { ok: false, error: 'Officer not found' };
+    state.executeOfficer(officerId);
+    if (!useGameStore.getState().officers.find(o => o.id === officerId)) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   dismissOfficer(officerId: number): Result {
-    useGameStore.getState().dismissOfficer(officerId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer || officer.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your officer' };
+    state.dismissOfficer(officerId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.factionId === null) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   appointGovernor(cityId: number, officerId: number): Result {
-    useGameStore.getState().appointGovernor(cityId, officerId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.appointGovernor(cityId, officerId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.isGovernor) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   appointAdvisor(officerId: number): Result {
-    useGameStore.getState().appointAdvisor(officerId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.appointAdvisor(officerId);
+    if (useGameStore.getState().playerFaction?.advisorId === officerId) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   promoteOfficer(officerId: number, rank: OfficerRank): Result {
-    useGameStore.getState().promoteOfficer(officerId, rank);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.promoteOfficer(officerId, rank);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.rank === rank) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   // Military
   draftTroops(cityId: number, amount: number): Result {
     const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     const before = city.troops;
     state.draftTroops(cityId, amount);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
-    if (after.troops === before) return { ok: false, error: 'Action failed' };
-    return { ok: true, data: { before, after: after.troops } };
+    if (after.troops > before) return { ok: true, data: { before, after: after.troops } };
+    return { ok: false, error: 'Action failed (check gold/population/stamina)' };
   },
 
   transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result {
-    useGameStore.getState().transport(fromCityId, toCityId, resource, amount);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const fromCity = state.cities.find(c => c.id === fromCityId);
+    if (!fromCity) return { ok: false, error: 'Origin city not found' };
+    if (fromCity[resource] < amount) return { ok: false, error: `Insufficient ${resource}` };
+    state.transport(fromCityId, toCityId, resource, amount);
     return { ok: true };
   },
 
   transferOfficer(officerId: number, targetCityId: number): Result {
-    useGameStore.getState().transferOfficer(officerId, targetCityId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.transferOfficer(officerId, targetCityId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.cityId === targetCityId) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[] } | null): Result {
-    useGameStore.getState().setBattleFormation(formation);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.setBattleFormation(formation);
     return { ok: true };
   },
 
@@ -296,8 +360,11 @@ export const rtkApi = {
   },
 
   retreat(): Result {
-    useGameStore.getState().retreat();
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
+    state.retreat();
+    if (useGameStore.getState().phase === 'playing') return { ok: true };
+    return { ok: false, error: 'Retreat failed' };
   },
 
   // Duel
@@ -310,80 +377,138 @@ export const rtkApi = {
   },
 
   duelAction(action: 'attack' | 'heavy' | 'defend' | 'flee'): Result {
-    useGameStore.getState().duelAction(action);
+    const state = useGameStore.getState();
+    if (state.phase !== 'duel') return { ok: false, error: 'Not in duel phase' };
+    state.duelAction(action);
     return { ok: true };
   },
 
   endDuel(): Result {
-    useGameStore.getState().endDuel();
+    const state = useGameStore.getState();
+    if (state.phase !== 'duel') return { ok: false, error: 'Not in duel phase' };
+    state.endDuel();
     return { ok: true };
   },
 
   // Diplomacy
   improveRelations(targetFactionId: number): Result {
-    useGameStore.getState().improveRelations(targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const player = state.playerFaction;
+    if (!player) return { ok: false, error: 'No player faction' };
+    const hostilityBefore = player.relations[targetFactionId] ?? 60;
+    state.improveRelations(targetFactionId);
+    const hostilityAfter = useGameStore.getState().playerFaction?.relations[targetFactionId] ?? 60;
+    if (hostilityAfter < hostilityBefore) return { ok: true, data: { before: hostilityBefore, after: hostilityAfter } };
+    return { ok: false, error: 'Action failed (check gold/stamina)' };
   },
 
   formAlliance(targetFactionId: number): Result {
-    useGameStore.getState().formAlliance(targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const alliesBefore = state.playerFaction?.allies || [];
+    state.formAlliance(targetFactionId);
+    const after = useGameStore.getState().playerFaction;
+    if (after?.allies.includes(targetFactionId) && !alliesBefore.includes(targetFactionId)) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   requestJointAttack(allyFactionId: number, targetCityId: number): Result {
-    useGameStore.getState().requestJointAttack(allyFactionId, targetCityId);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.requestJointAttack(allyFactionId, targetCityId);
     return { ok: true };
   },
 
   proposeCeasefire(targetFactionId: number): Result {
-    useGameStore.getState().proposeCeasefire(targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const ceasefiresBefore = state.playerFaction?.ceasefires.length || 0;
+    state.proposeCeasefire(targetFactionId);
+    const after = useGameStore.getState().playerFaction;
+    if ((after?.ceasefires.length || 0) > ceasefiresBefore) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   demandSurrender(targetFactionId: number): Result {
-    useGameStore.getState().demandSurrender(targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.demandSurrender(targetFactionId);
+    const after = useGameStore.getState().factions;
+    if (!after.find(f => f.id === targetFactionId)) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   breakAlliance(targetFactionId: number): Result {
-    useGameStore.getState().breakAlliance(targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.breakAlliance(targetFactionId);
+    if (!useGameStore.getState().playerFaction?.allies.includes(targetFactionId)) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   exchangeHostage(officerId: number, targetFactionId: number): Result {
-    useGameStore.getState().exchangeHostage(officerId, targetFactionId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.exchangeHostage(officerId, targetFactionId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
+    if (after.cityId === -2) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   // Strategy
   rumor(targetCityId: number): Result {
-    useGameStore.getState().rumor(targetCityId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!targetCity) return { ok: false, error: 'City not found' };
+    const loyaltyBefore = targetCity.peopleLoyalty;
+    state.rumor(targetCityId);
+    const after = useGameStore.getState().cities.find(c => c.id === targetCityId)!;
+    if (after.peopleLoyalty < loyaltyBefore) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   counterEspionage(targetCityId: number, targetOfficerId: number): Result {
-    useGameStore.getState().counterEspionage(targetCityId, targetOfficerId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    const officer = state.officers.find(o => o.id === targetOfficerId);
+    if (!officer) return { ok: false, error: 'Officer not found' };
+    const loyaltyBefore = officer.loyalty;
+    state.counterEspionage(targetCityId, targetOfficerId);
+    const after = useGameStore.getState().officers.find(o => o.id === targetOfficerId)!;
+    if (after.loyalty < loyaltyBefore) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   inciteRebellion(targetCityId: number): Result {
-    useGameStore.getState().inciteRebellion(targetCityId);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.inciteRebellion(targetCityId);
     return { ok: true };
   },
 
   arson(targetCityId: number): Result {
-    useGameStore.getState().arson(targetCityId);
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.arson(targetCityId);
     return { ok: true };
   },
 
   spy(targetCityId: number): Result {
-    useGameStore.getState().spy(targetCityId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.spy(targetCityId);
+    if (useGameStore.getState().isCityRevealed(targetCityId)) return { ok: true, data: { success: true } };
+    return { ok: true, data: { success: false } };
   },
 
   gatherIntelligence(targetCityId: number): Result {
-    useGameStore.getState().gatherIntelligence(targetCityId);
-    return { ok: true };
+    const state = useGameStore.getState();
+    if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+    state.gatherIntelligence(targetCityId);
+    if (useGameStore.getState().isCityRevealed(targetCityId)) return { ok: true };
+    return { ok: false, error: 'Action failed' };
   },
 
   popEvent(): Result {
@@ -406,58 +531,113 @@ export const rtkApi = {
       const state = useBattleStore.getState();
       return state.units.find(u => u.id === state.activeUnitId) || null;
     },
+    attackerId: () => useBattleStore.getState().attackerId,
+    defenderId: () => useBattleStore.getState().defenderId,
+    turn: () => useBattleStore.getState().turn,
+    isSiege: () => useBattleStore.getState().isSiege,
     moveRange: (unitId: string) => {
+        const state = useGameStore.getState();
+        if (state.phase !== 'battle') return [];
         const battle = useBattleStore.getState();
         const unit = battle.units.find(u => u.id === unitId);
         if (!unit) return [];
         
         const range = getMovementRange(unit.type);
-        const reachable: { q: number; r: number }[] = [];
-        
-        // Simple iteration over potential map bounds (15x15)
-        for (let q = 0; q < 15; q++) {
-            for (let r = 0; r < 15; r++) {
-                const dist = (Math.abs(unit.x - q) + Math.abs(unit.y - r) + Math.abs(-unit.x - unit.y - (-q - r))) / 2;
-                if (dist <= range) {
-                    reachable.push({ q, r });
-                }
-            }
-        }
-        return reachable; 
+        const blocked = new Set<string>();
+        battle.units.forEach(u => {
+            if (u.id !== unitId && u.troops > 0) blocked.add(`${u.x},${u.y}`);
+        });
+        battle.gates.forEach(g => {
+            if (g.hp > 0) blocked.add(`${g.q},${g.r}`);
+        });
+
+        const map = getMoveRange(
+            { q: unit.x, r: unit.y },
+            range,
+            battle.battleMap.width,
+            battle.battleMap.height,
+            battle.battleMap.terrain,
+            blocked
+        );
+
+        return Array.from(map.keys()).map(k => {
+            const [q, r] = k.split(',').map(Number);
+            return { q, r };
+        });
     },
     attackTargets: (unitId: string) => {
+        const state = useGameStore.getState();
+        if (state.phase !== 'battle') return [];
         const battle = useBattleStore.getState();
         const unit = battle.units.find(u => u.id === unitId);
         if (!unit) return [];
-        return battle.units.filter(u => u.factionId !== unit.factionId && u.troops > 0);
+        const range = getAttackRange(unit.type);
+        
+        return battle.units.filter(u => {
+            if (u.factionId === unit.factionId || u.troops <= 0) return false;
+            const dist = (Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y) + Math.abs(unit.z - u.z)) / 2;
+            return dist <= range;
+        });
     },
     gateTargets: (unitId: string) => {
+        const state = useGameStore.getState();
+        if (state.phase !== 'battle') return [];
         const battle = useBattleStore.getState();
         const unit = battle.units.find(u => u.id === unitId);
         if (!unit) return [];
         return battle.gates.filter(g => (Math.abs(g.q - unit.x) + Math.abs(g.r - unit.y) + Math.abs(-g.q - g.r - unit.z)) / 2 <= 1);
     },
     move(unitId: string, q: number, r: number): Result {
-      useBattleStore.getState().moveUnit(unitId, q, r);
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
+      const battle = useBattleStore.getState();
+      const unit = battle.units.find(u => u.id === unitId);
+      if (!unit) return { ok: false, error: 'Unit not found' };
+      const posBefore = { x: unit.x, y: unit.y };
+      battle.moveUnit(unitId, q, r);
+      const after = useBattleStore.getState().units.find(u => u.id === unitId)!;
+      if (after.x === posBefore.x && after.y === posBefore.y) return { ok: false, error: 'Move failed' };
       return { ok: true };
     },
     attack(attackerUnitId: string, targetUnitId: string): Result {
-      useBattleStore.getState().attackUnit(attackerUnitId, targetUnitId);
-      return { ok: true };
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
+      const battle = useBattleStore.getState();
+      const target = battle.units.find(u => u.id === targetUnitId);
+      if (!target) return { ok: false, error: 'Target not found' };
+      const troopsBefore = target.troops;
+      battle.attackUnit(attackerUnitId, targetUnitId);
+      const after = useBattleStore.getState().units.find(u => u.id === targetUnitId)!;
+      if (after.troops < troopsBefore || after.troops === 0) return { ok: true };
+      return { ok: false, error: 'Attack failed' };
     },
     attackGate(attackerUnitId: string, gateQ: number, gateR: number): Result {
-      useBattleStore.getState().attackGate(attackerUnitId, gateQ, gateR);
-      return { ok: true };
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
+      const battle = useBattleStore.getState();
+      const gate = battle.gates.find(g => g.q === gateQ && g.r === gateR);
+      if (!gate) return { ok: false, error: 'Gate not found' };
+      const hpBefore = gate.hp;
+      battle.attackGate(attackerUnitId, gateQ, gateR);
+      const after = useBattleStore.getState().gates.find(g => g.q === gateQ && g.r === gateR);
+      if (!after || after.hp < hpBefore) return { ok: true };
+      return { ok: false, error: 'Attack failed' };
     },
     executeTactic(unitId: string, tactic: BattleTactic, targetId?: string, targetHex?: { q: number; r: number }): Result {
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
       useBattleStore.getState().executeTactic(unitId, tactic, targetId, targetHex);
       return { ok: true };
     },
     initDuel(myOfficer: Officer, enemyOfficer: Officer): Result {
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
       useGameStore.getState().initMidBattleDuel(myOfficer, enemyOfficer);
       return { ok: true };
     },
     wait(unitId: string): Result {
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return { ok: false, error: 'Not in battle phase' };
       useBattleStore.getState().endUnitTurn(unitId);
       return { ok: true };
     },
