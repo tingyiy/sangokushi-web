@@ -2,6 +2,69 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from './gameStore';
 import type { Officer, City, Faction, Scenario, RTK4Skill } from '../types';
 
+const createTestCity = (overrides: Partial<City> = {}): City => ({
+  id: 1,
+  name: '測試城',
+  x: 50,
+  y: 50,
+  factionId: null,
+  population: 100000,
+  gold: 5000,
+  food: 10000,
+  commerce: 500,
+  agriculture: 500,
+  defense: 50,
+  troops: 20000,
+  adjacentCityIds: [],
+  floodControl: 50,
+  technology: 30,
+  peopleLoyalty: 70,
+  morale: 60,
+  training: 40,
+  crossbows: 0,
+  warHorses: 0,
+  batteringRams: 0,
+  catapults: 0,
+  taxRate: 'medium',
+  ...overrides,
+});
+
+const createTestOfficer = (overrides: Partial<Officer> = {}): Officer => ({
+  id: 1,
+  name: '測試將領',
+  leadership: 80,
+  war: 85,
+  intelligence: 70,
+  politics: 60,
+  charisma: 75,
+  skills: ['步兵', '騎兵'],
+  factionId: null,
+  cityId: 1,
+  stamina: 100,
+  loyalty: 80,
+  isGovernor: false,
+  rank: '一般',
+  portraitId: 1,
+  birthYear: 160,
+  deathYear: 220,
+  treasureId: null,
+  ...overrides,
+});
+
+const createTestFaction = (overrides: Partial<Faction> = {}): Faction => ({
+  id: 1,
+  name: '測試勢力',
+  rulerId: 1,
+  color: '#ff0000',
+  isPlayer: true,
+  relations: {},
+  allies: [],
+  ceasefires: [],
+  hostageOfficerIds: [],
+  powOfficerIds: [],
+  ...overrides,
+});
+
 /**
  * Test suite for stamina consumption system (Phase 1.7 of PLAN.md)
  * 
@@ -1132,6 +1195,69 @@ describe('gameStore - Stamina Consumption System', () => {
       const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 1);
       expect(updatedOfficer?.stamina).toBe(20);
     });
+
+    it('applies tax system effects', () => {
+      const city = createTestCity({
+        id: 1,
+        factionId: 1,
+        gold: 1000,
+        commerce: 500,
+        peopleLoyalty: 50,
+        taxRate: 'low',
+        population: 100000
+      });
+
+      useGameStore.setState({
+        cities: [city],
+        officers: [],
+        factions: [createTestFaction({ id: 1 })],
+        month: 1,
+        year: 190
+      });
+
+      useGameStore.getState().endTurn();
+
+      const updatedCity = useGameStore.getState().cities[0];
+      // goldIncome = 500 * 0.5 * (50/100) * 0.5 = 62.5 -> 62
+      // gold = 1000 + 62 = 1062
+      expect(updatedCity.gold).toBe(1062);
+      // loyaltyChange = +2
+      expect(updatedCity.peopleLoyalty).toBe(52);
+      // popChangeRate = 0.01
+      expect(updatedCity.population).toBe(101000);
+    });
+
+    it('processes officer life cycle (aging/death)', () => {
+      const oldOfficer = createTestOfficer({
+        id: 1,
+        birthYear: 100,
+        deathYear: 190,
+        factionId: 1
+      });
+
+      useGameStore.setState({
+        month: 12,
+        year: 190,
+        officers: [oldOfficer],
+        cities: [],
+        factions: [createTestFaction({ id: 1 })]
+      });
+
+      // Mock random to force death
+      const spy = vi.spyOn(Math, 'random').mockReturnValue(0.01);
+      
+      useGameStore.getState().endTurn();
+
+      // Should be year 191, month 1
+      const state = useGameStore.getState();
+      expect(state.year).toBe(191);
+      expect(state.month).toBe(1);
+      
+      // Officer should be dead (filtered out)
+      expect(state.officers.length).toBe(0);
+      
+      spy.mockRestore();
+    });
   });
 });
 
@@ -1192,6 +1318,7 @@ describe('Battle Consequences - resolveBattle', () => {
     warHorses: 0,
     batteringRams: 0,
     catapults: 0,
+    taxRate: 'medium',
     ...overrides,
   });
 
@@ -1209,6 +1336,11 @@ describe('Battle Consequences - resolveBattle', () => {
     stamina: 100,
     loyalty: 80,
     isGovernor: true,
+    rank: '一般',
+    portraitId: 1,
+    birthYear: 160,
+    deathYear: 220,
+    treasureId: null,
     ...overrides,
   });
 
@@ -1373,10 +1505,11 @@ describe('Save/Load System', () => {
   const createTestScenario = (): Scenario => ({
     id: 1,
     name: '測試劇本',
+    subtitle: '子標題',
     year: 190,
     description: '測試用劇本',
     factions: [
-      { id: 1, name: '測試勢力', rulerId: 1, color: '#ff0000', isPlayer: true, relations: {}, allies: [] },
+      { id: 1, name: '測試勢力', rulerId: 1, color: '#ff0000', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     ],
     cities: [
       {
@@ -1398,6 +1531,7 @@ describe('Save/Load System', () => {
         peopleLoyalty: 70,
         morale: 60,
         training: 40,
+        taxRate: 'medium',
         crossbows: 0,
         warHorses: 0,
         batteringRams: 0,
@@ -1419,6 +1553,11 @@ describe('Save/Load System', () => {
         stamina: 100,
         loyalty: 80,
         isGovernor: true,
+        rank: '一般',
+        portraitId: 1,
+        birthYear: 160,
+        deathYear: 220,
+        treasureId: null,
       },
     ],
   });
@@ -1625,6 +1764,7 @@ describe('Victory Condition', () => {
     peopleLoyalty: 70,
     morale: 60,
     training: 40,
+    taxRate: 'medium',
     crossbows: 0,
     warHorses: 0,
     batteringRams: 0,
@@ -1639,6 +1779,9 @@ describe('Victory Condition', () => {
     isPlayer,
     relations: {},
     allies: [],
+    ceasefires: [],
+    hostageOfficerIds: [],
+    powOfficerIds: [],
   });
 
   it('should detect victory when player controls all cities', () => {

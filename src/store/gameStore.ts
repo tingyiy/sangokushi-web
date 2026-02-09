@@ -6,6 +6,9 @@ import { hasSkill } from '../utils/skills';
 import { spyingSystem } from '../game/spy/SpyingSystem';
 import { runAI } from '../ai/aiEngine';
 import type { AIDecision } from '../ai/types';
+import { getAdvisorSuggestions } from '../systems/advisor';
+import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from '../systems/events';
+import { checkHistoricalEvents } from '../data/historicalEvents';
 
 interface DuelState {
   p1: Officer;
@@ -46,6 +49,8 @@ export interface GameState {
   log: string[];
   /** Duel State */
   duelState: DuelState | null;
+  /** Revealed cities info (Fog of War) - Phase 6.3 */
+  revealedCities: Record<number, { untilYear: number; untilMonth: number }>;
   /** Pre-battle formation - Phase 2.2 */
   battleFormation: {
     officerIds: number[];
@@ -178,6 +183,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeCommandCategory: null,
   log: [],
   duelState: null,
+  revealedCities: {},
   battleFormation: null,
 
   setPhase: (phase) => set({ phase }),
@@ -247,28 +253,78 @@ export const useGameStore = create<GameState>((set, get) => ({
       newYear += 1;
     }
 
-    // 1. All faction income
+    // Phase 6.2: Salary definition
+    const rankSalaries: Record<string, number> = {
+      '太守': 100,
+      '將軍': 80,
+      '都督': 80,
+      '軍師': 70,
+      '侍中': 60,
+      '一般': 30,
+    };
+
+    // 1. All faction income & Phase 6.7 Population/Tax
     const updatedCities = state.cities.map(c => {
       if (c.factionId !== null) {
         const loyaltyMultiplier = c.peopleLoyalty / 100;
-        const goldIncome = Math.floor(c.commerce * 0.5 * loyaltyMultiplier);
-        const foodIncome = Math.floor(c.agriculture * 0.8 * loyaltyMultiplier);
+        let taxMultiplier = 1.0;
+        let loyaltyChange = 0;
+        let popChangeRate = 0.005; // Base 0.5% growth
+
+        if (c.taxRate === 'low') {
+          taxMultiplier = 0.5;
+          loyaltyChange = 2;
+          popChangeRate = 0.01;
+        } else if (c.taxRate === 'high') {
+          taxMultiplier = 1.5;
+          loyaltyChange = -2;
+          popChangeRate = -0.005;
+        }
+
+        const goldIncome = Math.floor(c.commerce * 0.5 * loyaltyMultiplier * taxMultiplier);
+        const foodIncome = Math.floor(c.agriculture * 0.8 * loyaltyMultiplier * taxMultiplier);
+        
+        // Salary deduction
+        const cityOfficers = state.officers.filter(o => o.cityId === c.id && o.factionId === c.factionId);
+        const totalSalary = cityOfficers.reduce((sum, o) => sum + (rankSalaries[o.rank] || 30), 0);
+
         return {
           ...c,
-          gold: c.gold + goldIncome,
+          gold: Math.max(0, c.gold + goldIncome - totalSalary),
           food: c.food + foodIncome,
+          peopleLoyalty: Math.min(100, Math.max(0, c.peopleLoyalty + loyaltyChange)),
+          population: Math.floor(c.population * (1 + popChangeRate))
         };
       }
       return c;
     });
 
-    // Restore officer stamina
-    const updatedOfficers = state.officers.map(o => ({
-      ...o,
-      stamina: Math.min(100, o.stamina + 20),
-    }));
+    // 2. Phase 6.6: Officer Lifecycle
+    const updatedOfficers = state.officers.map(o => {
+      const age = newYear - o.birthYear;
+      let newStamina = Math.min(100, o.stamina + 20);
+      
+      // Illness chance increases with age
+      if (age > 50 && Math.random() < (age - 50) * 0.01) {
+        newStamina = Math.max(0, newStamina - 30);
+      }
 
-    // Update state before running AI
+      return {
+        ...o,
+        stamina: newStamina,
+      };
+    }).filter(o => {
+      // Natural death
+      if (newYear >= o.deathYear && newMonth === 1) {
+        if (Math.random() < 0.3) {
+          get().addLog(`【訃告】${o.name} 病逝了。`);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Update state basic info
     set({
       month: newMonth,
       year: newYear,
@@ -279,22 +335,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       log: [...state.log.slice(-49), `── ${newYear}年${newMonth}月 ──`],
     });
 
-    // 2. AI turns
-    const aiState = get(); // Get fresh state after income
-    const decisions = runAI(aiState);
+    const postIncomeState = get();
+
+    // 3. AI turns
+    const decisions = runAI(postIncomeState);
     get().applyAIDecisions(decisions);
 
+    // 4. Phase 6.4 & 6.5: Events
+    const randomEvents = rollRandomEvents(get());
+    const historicalEventsTriggered = checkHistoricalEvents(get());
+    const visitEvents = rollOfficerVisits(get());
+
+    const allEvents = [...randomEvents, ...historicalEventsTriggered, ...visitEvents];
+    
+    let finalCities = get().cities;
+    let finalOfficers = get().officers;
+
+    allEvents.forEach(event => {
+      get().addLog(`【事件】${event.name}：${event.description}`);
+      const result = applyEventEffects(event, finalCities, finalOfficers);
+      finalCities = result.cities;
+      finalOfficers = result.officers;
+    });
+
+    // 5. Phase 6.1: Advisor Suggestions
+    if (state.playerFaction) {
+      const suggestions = getAdvisorSuggestions(get());
+      suggestions.forEach(s => get().addLog(`【軍師】${s}`));
+    }
+
     // Update factions (ceasefires etc)
-    set(state => ({
-      factions: state.factions.map(f => ({
+    set({
+      cities: finalCities,
+      officers: finalOfficers,
+      factions: get().factions.map(f => ({
         ...f,
         ceasefires: f.ceasefires.filter(c => {
-          if (c.expiresYear < state.year) return false;
-          if (c.expiresYear === state.year && c.expiresMonth < state.month) return false;
+          if (c.expiresYear < newYear) return false;
+          if (c.expiresYear === newYear && c.expiresMonth < newMonth) return false;
           return true;
         })
       }))
-    }));
+    });
   },
 
   applyAIDecisions: (decisions) => {

@@ -19,6 +19,12 @@ export const RTK4_SKILLS = [
 /** RTK IV Skill type */
 export type RTK4Skill = typeof RTK4_SKILLS[number];
 
+/** 武將官職 (Officer Rank) - Phase 6.2 */
+export type OfficerRank = '太守' | '將軍' | '都督' | '軍師' | '侍中' | '一般';
+
+/** 稅率 (Tax Rate) - Phase 6.7 */
+export type TaxRate = 'low' | 'medium' | 'high';
+
 /** 寶物類型 */
 export type TreasureType = 'book' | 'sword' | 'weapon' | 'horse' | 'seal';
 
@@ -68,6 +74,8 @@ export interface Officer {
   loyalty: number;
   /** 是否為太守 (governor of current city) */
   isGovernor: boolean;
+  /** 官職 (Rank) - Phase 6.2 */
+  rank: OfficerRank;
   /** 裝備的寶物ID，null = 無裝備 - Phase 1.4 */
   treasureId: number | null;
 }
@@ -119,6 +127,9 @@ export interface City {
   batteringRams: number;
   /** 投石機 (Catapults) - ranged AoE damage in siege */
   catapults: number;
+
+  /** 稅率 (Tax Rate) - Phase 6.7 */
+  taxRate: TaxRate;
 }
 
 /** 勢力（Faction） */
@@ -176,6 +187,18 @@ export type GamePhase =
 
 /** 指令分類 */
 export type CommandCategory = '內政' | '軍事' | '人事' | '外交' | '謀略' | '結束';
+
+/** 遊戲事件 (Game Event) - Phase 6.4 */
+export interface GameEvent {
+  id: string;
+  type: 'flood' | 'locusts' | 'plague' | 'harvest' | 'officerVisit' | 'historical';
+  name: string;
+  description: string;
+  cityId?: number;
+  officerId?: number;
+  year: number;
+  month: number;
+}
 
 export interface TurnCommand {
   category: CommandCategory;
