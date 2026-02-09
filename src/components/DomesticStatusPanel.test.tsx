@@ -19,7 +19,7 @@ describe('DomesticStatusPanel', () => {
     });
 
     render(<DomesticStatusPanel isOpen={true} onClose={() => {}} />);
-    expect(screen.getByText('全勢力狀況一覽')).toBeDefined();
+    expect(screen.getByText('內政狀況表')).toBeDefined();
     expect(screen.getByText('許昌')).toBeDefined();
     expect(screen.getByText('100,000')).toBeDefined();
   });
