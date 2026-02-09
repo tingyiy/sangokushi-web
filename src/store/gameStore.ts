@@ -267,7 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     };
 
     // 1. All faction income & Phase 6.7 Population/Tax
-    const updatedCities = state.cities.map(c => {
+    let updatedCities = state.cities.map(c => {
       if (c.factionId !== null) {
         const loyaltyMultiplier = c.peopleLoyalty / 100;
         let taxMultiplier = 1.0;
@@ -334,7 +334,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             if (candidates.length > 0) {
                 // Heuristic: highest rank, then highest leadership + charisma
                 const successor = candidates.reduce((prev, curr) => {
-                    const rankOrder: Record<string, number> = { '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
+                    const rankOrder: Record<string, number> = { '太守': 6, '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
                     const prevScore = (rankOrder[prev.rank] || 0) * 1000 + prev.leadership + prev.charisma;
                     const currScore = (rankOrder[curr.rank] || 0) * 1000 + curr.leadership + curr.charisma;
                     return currScore > prevScore ? curr : prev;
@@ -343,8 +343,9 @@ export const useGameStore = create<GameState>((set, get) => ({
                 updatedFactions = updatedFactions.map(f => f.id === faction.id ? { ...f, rulerId: successor.id } : f);
                 get().addLog(`【繼承】${deadOfficer.name} 逝世，由 ${successor.name} 繼任為君主。`);
             } else {
-                // Faction collapses? For now, just remove ruler reference
-                updatedFactions = updatedFactions.map(f => f.id === faction.id ? { ...f, rulerId: -1 } : f);
+                // Faction collapses: remove faction and make its cities neutral
+                updatedFactions = updatedFactions.filter(f => f.id !== faction.id);
+                updatedCities = updatedCities.map(c => c.factionId === faction.id ? { ...c, factionId: null } : c);
                 get().addLog(`【滅亡】${deadOfficer.name} 逝世，該勢力因無繼承人而土崩瓦解。`);
             }
         } else {
@@ -361,8 +362,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       factions: updatedFactions,
       selectedCityId: null,
       activeCommandCategory: null,
-      log: [...state.log.slice(-49), `── ${newYear}年${newMonth}月 ──`],
     });
+
+    get().addLog(`── ${newYear}年${newMonth}月 ──`);
 
     const postIncomeState = get();
 
@@ -1722,8 +1724,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             ? { ...c, population: Math.max(0, c.population - popImpact), peopleLoyalty: Math.max(0, c.peopleLoyalty - 5) }
             : c
         ),
-        // Rumor reveals info
-        revealedCities: { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 3 } }
+        // Rumor reveals info (3 months)
+        revealedCities: { 
+            ...state.revealedCities, 
+            [targetCityId]: { 
+                untilYear: state.year + Math.floor((state.month + 2) / 12), 
+                untilMonth: (state.month + 3 - 1) % 12 + 1 
+            } 
+        }
       });
       get().addLog(`${messenger.name} 在 ${targetCity.name} 散佈流言，民心動搖，將領忠誠下降！（體力 -15）`);
     } else {
@@ -1902,7 +1910,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
       officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
       revealedCities: result.success 
-        ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 6 } } 
+        ? { 
+            ...state.revealedCities, 
+            [targetCityId]: { 
+                untilYear: state.year + Math.floor((state.month + 5) / 12), 
+                untilMonth: (state.month + 6 - 1) % 12 + 1 
+            } 
+          } 
         : state.revealedCities
     });
 
@@ -2071,7 +2085,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
         // Update revealedCities if player city is spying
         revealedCities: (city.factionId === state.playerFaction?.id && result.success) 
-            ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 6 } } 
+            ? { 
+                ...state.revealedCities, 
+                [targetCityId]: { 
+                    untilYear: state.year + Math.floor((state.month + 5) / 12), 
+                    untilMonth: (state.month + 6 - 1) % 12 + 1 
+                } 
+              } 
             : state.revealedCities
       });
       
@@ -2100,7 +2120,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
         // Rumor success also reveals city info briefly
         revealedCities: (city.factionId === state.playerFaction?.id && success)
-            ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 3 } }
+            ? { 
+                ...state.revealedCities, 
+                [targetCityId]: { 
+                    untilYear: state.year + Math.floor((state.month + 2) / 12), 
+                    untilMonth: (state.month + 3 - 1) % 12 + 1 
+                } 
+              }
             : state.revealedCities
       });
 
