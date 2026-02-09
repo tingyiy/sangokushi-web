@@ -4,8 +4,8 @@ import { baseCities } from './cities';
 import { baseOfficers } from './officers';
 
 describe('Scenarios Data Integrity', () => {
-  it('should have 5 scenarios', () => {
-    expect(scenarios.length).toBe(5);
+  it('should have 6 scenarios', () => {
+    expect(scenarios.length).toBe(6);
   });
 
   scenarios.forEach(scenario => {
@@ -48,13 +48,22 @@ describe('Scenarios Data Integrity', () => {
 
       it('should assign rulers correctly', () => {
         scenario.factions.forEach(faction => {
-          // Ruler should be an officer in the scenario
-          // Note: In some scenarios, rulers might not be fully defined in the 'officers' list 
-          // if we only defined "key" officers. But they should be in baseOfficers.
-          // Let's check if the ruler is assigned to the correct faction if they exist in the scenario list.
+          // Ruler MUST be an officer in the scenario
           const rulerInScenario = scenario.officers.find(o => o.id === faction.rulerId);
-          if (rulerInScenario) {
-            expect(rulerInScenario.factionId).toBe(faction.id);
+          expect(rulerInScenario).toBeDefined();
+          expect(rulerInScenario?.factionId).toBe(faction.id);
+        });
+      });
+
+      it('should have valid advisors', () => {
+        scenario.factions.forEach(faction => {
+          if (faction.advisorId !== null) {
+            const advisor = baseOfficers.find(o => o.id === faction.advisorId);
+            expect(advisor).toBeDefined();
+            const advisorInScenario = scenario.officers.find(o => o.id === faction.advisorId);
+            if (advisorInScenario) {
+              expect(advisorInScenario.factionId).toBe(faction.id);
+            }
           }
         });
       });

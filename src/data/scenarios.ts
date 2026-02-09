@@ -392,7 +392,6 @@ const scenario208: Scenario = {
     { id: 2, name: '劉備', rulerId: 1,  advisorId: 4,  color: '#16a34a', isPlayer: false, relations: {}, allies: [3], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 3, name: '孫權', rulerId: 52, advisorId: 53, color: '#dc2626', isPlayer: false, relations: {}, allies: [2], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 8, name: '劉璋', rulerId: 75, advisorId: null, color: '#be185d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
-    { id: 9, name: '馬騰', rulerId: 76, advisorId: null, color: '#78716c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 11, name: '張魯', rulerId: 79, advisorId: null, color: '#059669', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
@@ -405,7 +404,7 @@ const scenario208: Scenario = {
     makeCity(24, 2, { troops: 15000, gold: 5000 }), // 江夏 - 劉備
     makeCity(25, 3, { troops: 40000, defense: 90 }), // 柴桑 - 孫權
     makeCity(22, 3, { troops: 35000 }), // 建業
-    makeCity(28, 8, { troops: 40000 }), // 成都
+    makeCity(28, 8, { troops: 40000 }), // 成都 - 劉璋
     makeCity(18, 11, { troops: 25000 }), // 漢中 - 張魯
     ...baseCities.filter(c => ![10,11,42,7,20,23,24,25,22,28,18].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
@@ -421,6 +420,7 @@ const scenario208: Scenario = {
     makeOfficer(53, 3, 25, { isGovernor: true, loyalty: 100 }), // 周瑜在柴桑
     makeOfficer(54, 3, 22, { loyalty: 90 }), // 陸遜
     makeOfficer(79, 11, 18, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(75, 8, 28, { isGovernor: true, loyalty: 100 }), // 劉璋
   ]
 };
 
@@ -461,4 +461,42 @@ const scenario219: Scenario = {
   ]
 };
 
-export const scenarios: Scenario[] = [scenario189, scenario194, scenario200, scenario208, scenario219];
+// ============================================================
+// 劇本六：234年 星落五丈原
+// ============================================================
+const scenario234: Scenario = {
+  id: 6,
+  name: '星落五丈原',
+  subtitle: '諸葛歸天',
+  year: 234,
+  description: '諸葛亮六出祁山，與司馬懿對峙於五丈原。蜀漢丞相積勞成疾，星落秋風五丈原。',
+  factions: [
+    { id: 1, name: '曹叡', rulerId: 34, advisorId: 32, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+    { id: 2, name: '劉禪', rulerId: 11, advisorId: 4,  color: '#16a34a', isPlayer: false, relations: {}, allies: [3], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+    { id: 3, name: '孫權', rulerId: 52, advisorId: 54, color: '#dc2626', isPlayer: false, relations: {}, allies: [2], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+  ],
+  cities: [
+    makeCity(10, 1, { troops: 40000 }), // 洛陽
+    makeCity(11, 1, { troops: 60000 }), // 長安
+    makeCity(42, 1, { troops: 50000 }), // 許昌
+    makeCity(18, 2, { troops: 80000, morale: 90 }), // 漢中 - 蜀軍主力
+    makeCity(28, 2, { troops: 40000 }), // 成都
+    makeCity(22, 3, { troops: 50000 }), // 建業
+    makeCity(20, 1, { troops: 40000 }), // 襄陽
+    makeCity(23, 3, { troops: 40000 }), // 江陵
+    ...baseCities.filter(c => ![10,11,42,18,28,22,20,23].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+  ],
+  officers: [
+    makeOfficer(34, 1, 10, { isGovernor: true, loyalty: 100 }), // 曹叡
+    makeOfficer(32, 1, 11, { loyalty: 100, isGovernor: true }), // 司馬懿鎮守長安
+    makeOfficer(25, 1, 11, { loyalty: 90 }), // 張郃
+    makeOfficer(11, 2, 28, { isGovernor: true, loyalty: 100 }), // 劉禪
+    makeOfficer(4,  2, 18, { loyalty: 100, isGovernor: true }), // 諸葛亮在漢中
+    makeOfficer(8,  2, 18, { loyalty: 80 }), // 魏延
+    makeOfficer(5,  2, 28, { loyalty: 100 }), // 趙雲 (已老)
+    makeOfficer(52, 3, 22, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(54, 3, 23, { isGovernor: true, loyalty: 100 }), // 陸遜守江陵
+  ]
+};
+
+export const scenarios: Scenario[] = [scenario189, scenario194, scenario200, scenario208, scenario219, scenario234];
