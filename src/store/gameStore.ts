@@ -58,6 +58,8 @@ export interface GameState {
     officerIds: number[];
     unitTypes: UnitType[];
   } | null;
+  /** Pending events to show in dialog - Phase 6.4 */
+  pendingEvents: import('../types').GameEvent[];
 
   // Actions
   setPhase: (phase: GamePhase) => void;
@@ -69,6 +71,7 @@ export interface GameState {
   selectCity: (cityId: number | null) => void;
   setActiveCommandCategory: (cat: CommandCategory | null) => void;
   addLog: (message: string) => void;
+  popEvent: () => void;
   endTurn: () => void;
   /** Domestic: develop commerce */
   developCommerce: (cityId: number) => void;
@@ -191,6 +194,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   revealedCities: {},
   pendingGovernorAssignmentCityId: null,
   battleFormation: null,
+  pendingEvents: [],
 
   setPhase: (phase) => set({ phase }),
 
@@ -250,6 +254,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     log: [...state.log.slice(-49), message],
   })),
 
+  popEvent: () => set(state => ({
+    pendingEvents: state.pendingEvents.slice(1)
+  })),
+
   endTurn: () => {
     const state = get();
     let newMonth = state.month + 1;
@@ -305,11 +313,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       return c;
     });
 
-    // 2. Phase 6.6: Officer Lifecycle
+    // 2. Phase 6.6: Officer Lifecycle & Phase 7.3: Relationships
     const deadOfficerIds: number[] = [];
     const updatedOfficersPreDeath = state.officers.map(o => {
       const age = newYear - o.birthYear;
       let newStamina = Math.min(100, o.stamina + 20);
+      let newLoyalty = o.loyalty;
+
+      // Rule: Related officers in same faction get +10 loyalty
+      if (o.factionId !== null && o.relationships && o.relationships.length > 0) {
+          const hasRelativeInFaction = o.relationships.some(r => {
+              const relative = state.officers.find(of => of.id === r.targetId);
+              return relative && relative.factionId === o.factionId;
+          });
+          if (hasRelativeInFaction) {
+              newLoyalty = Math.min(100, newLoyalty + 10);
+          }
+      }
       
       if (age > 50 && Math.random() < (age - 50) * 0.01) {
         newStamina = Math.max(0, newStamina - 30);
@@ -319,7 +339,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         deadOfficerIds.push(o.id);
       }
 
-      return { ...o, stamina: newStamina };
+      return { ...o, stamina: newStamina, loyalty: newLoyalty };
     });
 
     const updatedOfficers = updatedOfficersPreDeath.filter(o => !deadOfficerIds.includes(o.id));
@@ -436,7 +456,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           return true;
         })
       })),
-      pendingGovernorAssignmentCityId: pendingGovCityId
+      pendingGovernorAssignmentCityId: pendingGovCityId,
+      pendingEvents: allEvents
     });
   },
 

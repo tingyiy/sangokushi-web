@@ -7,6 +7,7 @@ import { CommandMenu } from './menu/CommandMenu';
 import { GameLog } from './GameLog';
 import { GovernorAssignmentModal } from './GovernorAssignmentModal';
 import { DomesticStatusPanel } from './DomesticStatusPanel';
+import { EventDialog } from './EventDialog';
 
 export function GameScreen() {
   const [showStatusPanel, setShowStatusPanel] = useState(false);
@@ -30,6 +31,7 @@ export function GameScreen() {
         isOpen={showStatusPanel}
         onClose={() => setShowStatusPanel(false)}
       />
+      <EventDialog />
     </div>
   );
 }

@@ -1,7 +1,12 @@
+import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 
 export function GameMap() {
   const { cities, factions, selectedCityId, selectCity } = useGameStore();
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
   const getFactionColor = (factionId: number | null): string => {
     if (factionId === null) return '#6b7280';
@@ -9,9 +14,47 @@ export function GameMap() {
     return faction?.color ?? '#6b7280';
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(prev => Math.min(5, Math.max(1, prev * delta)));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = (e.clientX - lastMousePos.x) / zoom;
+    const dy = (e.clientY - lastMousePos.y) / zoom;
+    setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <div className="game-map">
-      <svg viewBox="0 0 100 85" className="map-svg">
+    <div 
+      className="game-map" 
+      style={{ overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <svg 
+        viewBox="0 0 100 85" 
+        className="map-svg"
+        style={{
+          transform: `scale(${zoom}) translate(${offset.x}px, ${offset.y}px)`,
+          transformOrigin: 'center',
+          transition: isDragging ? 'none' : 'transform 0.1s'
+        }}
+      >
         {/* Terrain Background - Phase 7.6 */}
         <image href="/terrain-map.svg" x="0" y="0" width="100" height="85" opacity="0.4" />
 

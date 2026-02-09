@@ -1219,6 +1219,7 @@ describe('gameStore - Stamina Consumption System', () => {
         year: 190
       });
 
+      const spy = vi.spyOn(Math, 'random').mockReturnValue(0.99); // No random events
       useGameStore.getState().endTurn();
 
       const updatedCity = useGameStore.getState().cities[0];
@@ -1229,6 +1230,7 @@ describe('gameStore - Stamina Consumption System', () => {
       expect(updatedCity.peopleLoyalty).toBe(52);
       // popChangeRate = 0.01
       expect(updatedCity.population).toBe(101000);
+      spy.mockRestore();
     });
 
     it('processes officer life cycle (aging/death)', () => {
