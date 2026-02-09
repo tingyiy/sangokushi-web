@@ -15,7 +15,12 @@ export function RulerCreation() {
   const [intelligence, setIntelligence] = useState(70);
   const [politics, setPolitics] = useState(70);
   const [charisma, setCharisma] = useState(70);
-  const [startCityId, setStartCityId] = useState(1);
+  
+  // Phase 7.1: Set first empty city as default
+  const [startCityId, setStartCityId] = useState(() => {
+    const firstEmpty = useGameStore.getState().cities.find(c => c.factionId === null);
+    return firstEmpty?.id || 1;
+  });
   const [color, setColor] = useState('#ff0000');
 
   const totalPoints = leadership + war + intelligence + politics + charisma;
@@ -27,9 +32,17 @@ export function RulerCreation() {
       return;
     }
 
-    const newRulerId = 1000 + Math.floor(Math.random() * 9000);
-    const newFactionId = 100 + Math.floor(Math.random() * 900);
+    if (cities.length === 0) {
+      alert('未選擇劇本或劇本資料錯誤！');
+      setPhase('scenario');
+      return;
+    }
 
+    // Fix Bug #2: Use non-colliding IDs
+    const newRulerId = Math.max(...officers.map(o => o.id), 0) + 1;
+    const newFactionId = Math.max(...factions.map(f => f.id), 0) + 1;
+
+    // Fix Bug #3: Ensure relationships exists (handled by makeOfficer refactor but good to be safe)
     const newRuler: Officer = {
       id: newRulerId,
       name,

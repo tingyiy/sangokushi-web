@@ -12,21 +12,23 @@ const tracks = {
 
 class AudioSystem {
   private currentBGM: HTMLAudioElement | null = null;
+  private currentTrackName: string | null = null;
   private isMuted: boolean = false;
 
   playBGM(track: keyof typeof tracks) {
     if (this.isMuted) return;
     
-    const src = tracks[track];
-    if (this.currentBGM && this.currentBGM.src.endsWith(src)) return;
+    if (this.currentTrackName === track) return;
 
     if (this.currentBGM) {
       this.currentBGM.pause();
     }
 
     try {
+      const src = tracks[track];
       this.currentBGM = new Audio(src);
       this.currentBGM.loop = true;
+      this.currentTrackName = track;
       this.currentBGM.play().catch(e => console.warn('Audio playback failed:', e));
     } catch (e) {
       console.warn('Audio system unavailable:', e);
@@ -37,6 +39,7 @@ class AudioSystem {
     if (this.currentBGM) {
       this.currentBGM.pause();
       this.currentBGM = null;
+      this.currentTrackName = null;
     }
   }
 

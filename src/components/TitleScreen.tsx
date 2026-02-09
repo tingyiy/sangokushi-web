@@ -15,9 +15,6 @@ export function TitleScreen() {
           <button className="btn btn-primary" onClick={() => setPhase('scenario')}>
             開始新遊戲
           </button>
-          <button className="btn btn-secondary" onClick={() => setPhase('rulerCreation')}>
-            登錄新君主
-          </button>
         </div>
         <p className="title-footer">繁體中文版 · Open Source</p>
       </div>

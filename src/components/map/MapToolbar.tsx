@@ -4,12 +4,16 @@ import { useGameStore } from '../../store/gameStore';
  * MapToolbar Component - Phase 7.8
  * Floating toolbar over the map area for quick access to views and settings.
  */
-export function MapToolbar() {
+interface Props {
+  onShowStatus: () => void;
+}
+
+export function MapToolbar({ onShowStatus }: Props) {
   const { setPhase } = useGameStore();
 
   return (
     <div className="map-toolbar">
-      <button className="toolbar-btn" title="查看全勢力" onClick={() => {/* Toggle status panel - already handled in header but could be here too */}}>
+      <button className="toolbar-btn" title="查看全勢力" onClick={onShowStatus}>
         📊
       </button>
       <button className="toolbar-btn" title="設定" onClick={() => setPhase('settings')}>

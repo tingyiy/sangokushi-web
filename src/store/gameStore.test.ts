@@ -1268,7 +1268,7 @@ describe('gameStore - Stamina Consumption System', () => {
     it('successfully recruits POW', () => {
       const city = createTestCity({ id: 1, factionId: 1 });
       const recruiter = createTestOfficer({ id: 1, factionId: 1, cityId: 1, charisma: 100 });
-      const pow = createTestOfficer({ id: 2, factionId: -1 as any, cityId: 1, loyalty: 0 });
+      const pow = createTestOfficer({ id: 2, factionId: -1 as unknown as number, cityId: 1, loyalty: 0 });
       
       useGameStore.setState({
         cities: [city],
@@ -1292,7 +1292,7 @@ describe('gameStore - Stamina Consumption System', () => {
       const farCity = createTestCity({ id: 3, factionId: 2, adjacentCityIds: [] });
 
       useGameStore.setState({
-        playerFaction: { id: playerFactionId } as any,
+        playerFaction: { id: playerFactionId } as unknown as Faction,
         cities: [playerCity, enemyCity, farCity],
         revealedCities: { 3: { untilYear: 200, untilMonth: 1 } },
         year: 190,

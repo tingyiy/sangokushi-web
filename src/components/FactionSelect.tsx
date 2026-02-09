@@ -63,6 +63,13 @@ export function FactionSelect() {
           >
             決定
           </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setPhase('rulerCreation')}
+            style={{ background: '#2a4a6a', color: '#fff', border: '1px solid #4a6a8a', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            登錄新君主
+          </button>
           {totalPages > 1 && (
             <button
               className="btn btn-page"

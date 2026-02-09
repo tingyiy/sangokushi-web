@@ -16,12 +16,12 @@ export function GovernorAssignmentModal() {
   const handleAppoint = (officerId: number) => {
     appointGovernor(pendingGovernorAssignmentCityId, officerId);
     
-    // Check for NEXT city without gov
-    const nextCity = cities.find(c => {
+    // Check for NEXT city without gov using fresh state
+    const freshState = useGameStore.getState();
+    const nextCity = freshState.cities.find(c => {
         if (c.factionId !== playerFaction?.id) return false;
-        if (c.id === pendingGovernorAssignmentCityId) return false; // Already handled
-        const hasGov = officers.some(o => o.cityId === c.id && o.factionId === playerFaction?.id && o.isGovernor);
-        const hasAnyOfficer = officers.some(o => o.cityId === c.id && o.factionId === playerFaction?.id);
+        const hasGov = freshState.officers.some(o => o.cityId === c.id && o.factionId === playerFaction?.id && o.isGovernor);
+        const hasAnyOfficer = freshState.officers.some(o => o.cityId === c.id && o.factionId === playerFaction?.id);
         return !hasGov && hasAnyOfficer;
     });
 
