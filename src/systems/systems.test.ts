@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { getAdvisorSuggestions } from './advisor';
 import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from './events';
 import { checkHistoricalEvents } from '../data/historicalEvents';
-import type { GameState, City, GameEvent } from '../types';
+import type { City, GameEvent } from '../types';
+import type { GameState } from '../store/gameStore';
 
 describe('Advisor System', () => {
   const mockState = {
@@ -145,5 +146,41 @@ describe('Historical Events', () => {
     } as unknown as GameState;
     const events = checkHistoricalEvents(fictionalState);
     expect(events.length).toBe(0);
+  });
+
+  it('should apply historical event mutations', () => {
+    const state = {
+      gameSettings: { gameMode: 'historical' },
+      year: 208,
+      month: 11,
+      cities: [
+        { id: 1, factionId: 1, troops: 10000 }
+      ],
+      factions: [],
+      officers: []
+    } as unknown as GameState;
+    
+    const events = checkHistoricalEvents(state);
+    expect(events[0].mutate).toBeDefined();
+    
+    const mutation = events[0].mutate!(state);
+    expect(mutation.cities![0].troops).toBe(6000); // 10000 * 0.6
+  });
+
+  it('should apply caocao_death mutations', () => {
+    const state = {
+      gameSettings: { gameMode: 'historical' },
+      year: 220,
+      month: 1,
+      factions: [{ id: 1, rulerId: 20 }],
+      officers: [{ id: 34, factionId: 2, isGovernor: false }],
+      cities: []
+    } as unknown as GameState;
+    
+    const events = checkHistoricalEvents(state);
+    const mutation = events[0].mutate!(state);
+    
+    expect(mutation.factions![0].rulerId).toBe(34);
+    expect(mutation.officers![0].factionId).toBe(1);
   });
 });

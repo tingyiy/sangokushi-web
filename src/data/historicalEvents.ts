@@ -13,9 +13,14 @@ export const historicalEvents = [
     triggerConditions: (state: GameState) => 
       state.gameSettings.gameMode === 'historical' && state.year === 208 && state.month === 11,
     effects: () => {
-      // Logic to reduce Cao Cao's troops, maybe change Jingzhou city owners
-      // For now, return description for the event system
       return '曹操勢力部隊大損，孫劉聯盟聲勢大振！';
+    },
+    mutate: (state: GameState) => {
+        // Reduce troops for Cao Cao faction (id: 1)
+        const updatedCities = state.cities.map(c => 
+            c.factionId === 1 ? { ...c, troops: Math.floor(c.troops * 0.6) } : c
+        );
+        return { cities: updatedCities };
     }
   },
   {
@@ -25,14 +30,24 @@ export const historicalEvents = [
     triggerConditions: (state: GameState) => 
       state.gameSettings.gameMode === 'historical' && state.year === 220 && state.month === 1,
     effects: () => {
-      // Find Cao Cao faction and change ruler to Cao Pi
       return '曹操逝世，由曹丕繼任其位。';
+    },
+    mutate: (state: GameState) => {
+        // Change ruler of Cao Cao faction (id: 1) to Cao Pi (id: 34)
+        const updatedFactions = state.factions.map(f => 
+            f.id === 1 ? { ...f, rulerId: 34 } : f
+        );
+        // Ensure Cao Pi is in faction 1
+        const updatedOfficers = state.officers.map(o => 
+            o.id === 34 ? { ...o, factionId: 1, isGovernor: true } : o
+        );
+        return { factions: updatedFactions, officers: updatedOfficers };
     }
   }
 ];
 
-export function checkHistoricalEvents(state: GameState): GameEvent[] {
-  const triggered: GameEvent[] = [];
+export function checkHistoricalEvents(state: GameState): (GameEvent & { mutate?: (state: GameState) => Partial<GameState> })[] {
+  const triggered: (GameEvent & { mutate?: (state: GameState) => Partial<GameState> })[] = [];
   
   historicalEvents.forEach(event => {
     if (event.triggerConditions(state)) {
@@ -44,7 +59,8 @@ export function checkHistoricalEvents(state: GameState): GameEvent[] {
 
 效果：${event.effects()}`,
         year: state.year,
-        month: state.month
+        month: state.month,
+        mutate: event.mutate
       });
     }
   });

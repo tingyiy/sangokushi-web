@@ -198,6 +198,8 @@ export interface GameEvent {
   officerId?: number;
   year: number;
   month: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mutate?: (state: any) => Record<string, any>; 
 }
 
 export interface TurnCommand {

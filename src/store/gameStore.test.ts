@@ -55,6 +55,7 @@ const createTestFaction = (overrides: Partial<Faction> = {}): Faction => ({
   id: 1,
   name: '測試勢力',
   rulerId: 1,
+  advisorId: null,
   color: '#ff0000',
   isPlayer: true,
   relations: {},

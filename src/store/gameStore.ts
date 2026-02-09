@@ -144,6 +144,7 @@ export interface GameState {
   rumor: (targetCityId: number) => void;
   /** AI Actions: Context-aware versions for AI use */
   aiRecruitOfficer: (cityId: number, officerId: number) => void;
+  aiRecruitPOW: (cityId: number, officerId: number) => void;
   aiSearchOfficer: (cityId: number) => void;
   aiSpy: (cityId: number, targetCityId: number) => void;
   aiRumor: (cityId: number, targetCityId: number) => void;
@@ -161,6 +162,8 @@ export interface GameState {
   checkVictoryCondition: () => { type: 'victory' | 'defeat' | 'ongoing'; message: string } | null;
   /** AI: Apply decisions made by AI engine */
   applyAIDecisions: (decisions: AIDecision[]) => void;
+  /** Fog of War: check if city is revealed */
+  isCityRevealed: (cityId: number) => boolean;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -300,28 +303,53 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     // 2. Phase 6.6: Officer Lifecycle
-    const updatedOfficers = state.officers.map(o => {
+    const deadOfficerIds: number[] = [];
+    const updatedOfficersPreDeath = state.officers.map(o => {
       const age = newYear - o.birthYear;
       let newStamina = Math.min(100, o.stamina + 20);
       
-      // Illness chance increases with age
       if (age > 50 && Math.random() < (age - 50) * 0.01) {
         newStamina = Math.max(0, newStamina - 30);
       }
 
-      return {
-        ...o,
-        stamina: newStamina,
-      };
-    }).filter(o => {
-      // Natural death
-      if (newYear >= o.deathYear && newMonth === 1) {
-        if (Math.random() < 0.3) {
-          get().addLog(`【訃告】${o.name} 病逝了。`);
-          return false;
-        }
+      if (newYear >= o.deathYear && newMonth === 1 && Math.random() < 0.3) {
+        deadOfficerIds.push(o.id);
       }
-      return true;
+
+      return { ...o, stamina: newStamina };
+    });
+
+    const updatedOfficers = updatedOfficersPreDeath.filter(o => !deadOfficerIds.includes(o.id));
+
+    // Handle ruler succession
+    let updatedFactions = state.factions;
+    deadOfficerIds.forEach(deadId => {
+        const deadOfficer = state.officers.find(o => o.id === deadId);
+        if (!deadOfficer) return;
+
+        const faction = updatedFactions.find(f => f.rulerId === deadId);
+        if (faction) {
+            // Find successor
+            const candidates = updatedOfficers.filter(o => o.factionId === faction.id);
+            if (candidates.length > 0) {
+                // Heuristic: highest rank, then highest leadership + charisma
+                const successor = candidates.reduce((prev, curr) => {
+                    const rankOrder: Record<string, number> = { '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
+                    const prevScore = (rankOrder[prev.rank] || 0) * 1000 + prev.leadership + prev.charisma;
+                    const currScore = (rankOrder[curr.rank] || 0) * 1000 + curr.leadership + curr.charisma;
+                    return currScore > prevScore ? curr : prev;
+                });
+                
+                updatedFactions = updatedFactions.map(f => f.id === faction.id ? { ...f, rulerId: successor.id } : f);
+                get().addLog(`【繼承】${deadOfficer.name} 逝世，由 ${successor.name} 繼任為君主。`);
+            } else {
+                // Faction collapses? For now, just remove ruler reference
+                updatedFactions = updatedFactions.map(f => f.id === faction.id ? { ...f, rulerId: -1 } : f);
+                get().addLog(`【滅亡】${deadOfficer.name} 逝世，該勢力因無繼承人而土崩瓦解。`);
+            }
+        } else {
+            get().addLog(`【訃告】${deadOfficer.name} 病逝了。`);
+        }
     });
 
     // Update state basic info
@@ -330,6 +358,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       year: newYear,
       cities: updatedCities,
       officers: updatedOfficers,
+      factions: updatedFactions,
       selectedCityId: null,
       activeCommandCategory: null,
       log: [...state.log.slice(-49), `── ${newYear}年${newMonth}月 ──`],
@@ -350,12 +379,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     let finalCities = get().cities;
     let finalOfficers = get().officers;
+    let finalFactions = get().factions;
 
     allEvents.forEach(event => {
       get().addLog(`【事件】${event.name}：${event.description}`);
+      
+      // Apply random event effects
       const result = applyEventEffects(event, finalCities, finalOfficers);
       finalCities = result.cities;
       finalOfficers = result.officers;
+
+      // Apply historical event mutations
+      if (event.type === 'historical' && event.mutate) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mutation: any = event.mutate(get());
+          if (mutation.cities) finalCities = mutation.cities;
+          if (mutation.officers) finalOfficers = mutation.officers;
+          if (mutation.factions) finalFactions = mutation.factions;
+      }
     });
 
     // 5. Phase 6.1: Advisor Suggestions
@@ -368,7 +409,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       cities: finalCities,
       officers: finalOfficers,
-      factions: get().factions.map(f => ({
+      factions: finalFactions.map(f => ({
         ...f,
         ceasefires: f.ceasefires.filter(c => {
           if (c.expiresYear < newYear) return false;
@@ -394,6 +435,30 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
     });
+  },
+
+  isCityRevealed: (cityId) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return false;
+      if (!state.playerFaction) return true; // Show all if no player (e.g. spectator)
+
+      // Rule 1: Own cities are always revealed
+      if (city.factionId === state.playerFaction.id) return true;
+
+      // Rule 2: Adjacent cities are revealed
+      const playerCities = state.cities.filter(c => c.factionId === state.playerFaction?.id);
+      const isAdjacent = playerCities.some(pc => pc.adjacentCityIds.includes(cityId));
+      if (isAdjacent) return true;
+
+      // Rule 3: Spied/Revealed cities
+      const revealInfo = state.revealedCities[cityId];
+      if (revealInfo) {
+          if (state.year < revealInfo.untilYear) return true;
+          if (state.year === revealInfo.untilYear && state.month <= revealInfo.untilMonth) return true;
+      }
+
+      return false;
   },
 
   developCommerce: (cityId) => {
@@ -1656,7 +1721,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           c.id === targetCityId
             ? { ...c, population: Math.max(0, c.population - popImpact), peopleLoyalty: Math.max(0, c.peopleLoyalty - 5) }
             : c
-        )
+        ),
+        // Rumor reveals info
+        revealedCities: { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 3 } }
       });
       get().addLog(`${messenger.name} 在 ${targetCity.name} 散佈流言，民心動搖，將領忠誠下降！（體力 -15）`);
     } else {
@@ -1833,7 +1900,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     set({
       cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
-      officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o)
+      officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+      revealedCities: result.success 
+        ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 6 } } 
+        : state.revealedCities
     });
 
     if (result.success) {
@@ -1892,9 +1962,6 @@ export const useGameStore = create<GameState>((set, get) => ({
    * @param battleUnits - Array of battle units with final state
    */
   aiRecruitOfficer: (cityId, officerId) => {
-      // Temporarily set selected city for context, then restore (or just pass context if refactored)
-      // Since refactoring everything is large, let's make a context-aware helper or just duplicate logic slightly modified
-      // Duplicating logic for safety and clarity:
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
       const officer = state.officers.find(o => o.id === officerId);
@@ -1919,6 +1986,33 @@ export const useGameStore = create<GameState>((set, get) => ({
         }),
       });
       if (success) get().addLog(`${state.factions.find(f => f.id === factionId)?.name} 的 ${recruiter.name} 成功招攬了 ${officer.name}。`);
+  },
+
+  aiRecruitPOW: (cityId, officerId) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!city || !officer || officer.factionId !== (-1 as unknown as number)) return;
+      const factionId = city.factionId;
+      if (!factionId) return;
+
+      const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === factionId);
+      if (recruiters.length === 0) return;
+      const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
+      
+      if (recruiter.stamina < 15) return;
+
+      const chance = 40 + recruiter.charisma - officer.loyalty / 2;
+      const success = Math.random() * 100 < chance;
+
+      set({
+        officers: state.officers.map(o => {
+          if (o.id === recruiter.id) return { ...o, stamina: o.stamina - 15 };
+          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 50, cityId: city.id };
+          return o;
+        })
+      });
+      if (success) get().addLog(`${state.factions.find(f => f.id === factionId)?.name} 成功勸降了戰俘 ${officer.name}。`);
   },
 
   aiSearchOfficer: (cityId) => {
@@ -1974,7 +2068,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        // Update revealedCities if player city is spying
+        revealedCities: (city.factionId === state.playerFaction?.id && result.success) 
+            ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 6 } } 
+            : state.revealedCities
       });
       
       if (result.success) get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 對 ${targetCity?.name} 進行了諜報活動。`);
@@ -2000,6 +2098,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
         officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        // Rumor success also reveals city info briefly
+        revealedCities: (city.factionId === state.playerFaction?.id && success)
+            ? { ...state.revealedCities, [targetCityId]: { untilYear: state.year, untilMonth: state.month + 3 } }
+            : state.revealedCities
       });
 
       if (success) {
