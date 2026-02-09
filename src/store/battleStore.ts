@@ -535,7 +535,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         const targetR = source.r + targetDir.r;
         
         if (!newFireHexes.some(f => f.q === targetQ && f.r === targetR)) {
-            newFireHexes.push({ q: targetQ, r: targetR, turnsLeft: 3 });
+            newFireHexes.push({ q: targetQ, r: targetR, turnsLeft: 4 }); // Effectively 3 turns after decrement
         }
     }
 
@@ -545,7 +545,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             // Spread to other chained units
             state.units.filter(u2 => u2.chained && u2.id !== u.id && u2.troops > 0).forEach(u2 => {
                 if (!newFireHexes.some(f => f.q === u2.x && f.r === u2.y)) {
-                    newFireHexes.push({ q: u2.x, r: u2.y, turnsLeft: 2 });
+                    newFireHexes.push({ q: u2.x, r: u2.y, turnsLeft: 3 }); // Effectively 2 turns after decrement
                 }
             });
         }

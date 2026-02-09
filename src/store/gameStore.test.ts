@@ -102,6 +102,7 @@ describe('gameStore - Stamina Consumption System', () => {
       duelState: null,
       revealedCities: {},
       pendingGovernorAssignmentCityId: null,
+      battleResolved: false,
     });
   });
 
@@ -1343,6 +1344,7 @@ describe('Battle Consequences - resolveBattle', () => {
       activeCommandCategory: null,
       log: [],
       duelState: null,
+      battleResolved: false,
     });
     localStorage.clear();
   });
@@ -1796,6 +1798,7 @@ describe('Victory Condition', () => {
       duelState: null,
       revealedCities: {},
       pendingGovernorAssignmentCityId: null,
+      battleResolved: false,
     });
   });
 

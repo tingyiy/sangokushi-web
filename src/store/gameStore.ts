@@ -60,6 +60,8 @@ export interface GameState {
   } | null;
   /** Pending events to show in dialog - Phase 6.4 */
   pendingEvents: import('../types').GameEvent[];
+  /** Guard for double-resolution - Phase 3.9 */
+  battleResolved: boolean;
 
   // Actions
   setPhase: (phase: GamePhase) => void;
@@ -200,6 +202,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   pendingGovernorAssignmentCityId: null,
   battleFormation: null,
   pendingEvents: [],
+  battleResolved: false,
 
   setPhase: (phase) => set({ phase }),
 
@@ -1459,6 +1462,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
       battleFormation: null, // Clear after use
+      battleResolved: false,
     });
 
     // Phase 1.2: Pass city morale and training to battle
@@ -1525,6 +1529,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ? { ...o, stamina: Math.max(0, o.stamina - 30) }
           : o
       ),
+      battleResolved: false,
     });
 
     // AI vs AI: Auto-resolve to avoid state corruption during endTurn (C1)
@@ -1829,10 +1834,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (success && targetFaction) {
       // Transfer everything. 
       get().addLog(`${targetFaction.name} 向我軍投降了！`);
+      const freshCities = get().cities;
+      const freshOfficers = get().officers;
+      const freshFactions = get().factions;
       set({
-          cities: state.cities.map(c => c.factionId === targetFactionId ? { ...c, factionId: state.playerFaction!.id } : c),
-          officers: state.officers.map(o => o.factionId === targetFactionId ? { ...o, factionId: state.playerFaction!.id, loyalty: 50 } : o),
-          factions: state.factions.filter(f => f.id !== targetFactionId)
+          cities: freshCities.map(c => c.factionId === targetFactionId ? { ...c, factionId: state.playerFaction!.id } : c),
+          officers: freshOfficers.map(o => o.factionId === targetFactionId ? { ...o, factionId: state.playerFaction!.id, loyalty: 50 } : o),
+          factions: freshFactions.filter(f => f.id !== targetFactionId)
       });
     } else {
       get().addLog(`${targetFaction?.name} 斬釘截鐵地拒絕了投降的要求。`);
@@ -2381,10 +2389,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   resolveBattle: (winnerFactionId, loserFactionId, cityId, battleUnits, capturedOfficerIds = []) => {
     const state = get();
     // Guard against double-firing (H8)
-    if (state.phase !== 'battle' && state.pendingGovernorAssignmentCityId === null) {
-        // If we are not in battle and not just finishing one, ignore.
-        // But we need to be careful with AI battles.
-    }
+    if (state.battleResolved) return;
     
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return;
@@ -2494,7 +2499,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return f;
     });
 
-    set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions });
+    set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions, battleResolved: true });
     
     const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
     get().addLog(`${city.name} 已被 ${winnerFaction?.name || '敵軍'} 攻陷！剩餘守軍 ${Math.floor(totalSurvivingTroops * 0.8)}。`);
