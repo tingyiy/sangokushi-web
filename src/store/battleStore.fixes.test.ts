@@ -105,20 +105,20 @@ describe('Battle Store Fixes', () => {
 
       const unitId = useBattleStore.getState().units[1].id;
       
-      // Set unit to routed
+      // Set unit to routed at x=13
       useBattleStore.setState(s => ({
-          units: s.units.map(u => u.id === unitId ? { ...u, status: 'routed' } : u)
+          units: s.units.map(u => u.id === unitId ? { ...u, status: 'routed', x: 13 } : u)
       }));
 
       const initialX = useBattleStore.getState().units[1].x;
       nextDay();
 
       const routedUnit = useBattleStore.getState().units.find(u => u.id === unitId);
-      expect(routedUnit!.x).not.toBe(initialX); // Should move
+      expect(routedUnit!.x).toBeGreaterThan(initialX); // Should move right
 
-      // Move to edge
+      // Move to edge (right side)
       useBattleStore.setState(s => ({
-          units: s.units.map(u => u.id === unitId ? { ...u, x: 0 } : u) // At edge
+          units: s.units.map(u => u.id === unitId ? { ...u, x: 14 } : u) // At right edge
       }));
       
       nextDay();

@@ -293,13 +293,19 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       const newGates = [...state.gates];
       newGates[gateIndex] = { ...newGates[gateIndex], hp: Math.max(0, newGates[gateIndex].hp - damage) };
 
+      let newBattleMap = state.battleMap;
+
       if (newGates[gateIndex].hp <= 0) {
           // Destroy gate - change terrain to plain or something walkable
-          state.battleMap.terrain[gateQ][gateR] = 'plain';
+          const newTerrain = state.battleMap.terrain.map((col, q) => 
+              q === gateQ ? col.map((t, r) => r === gateR ? 'plain' : t) : col
+          );
+          newBattleMap = { ...state.battleMap, terrain: newTerrain };
           newGates.splice(gateIndex, 1);
       }
 
       set({ 
+          battleMap: newBattleMap,
           gates: newGates,
           units: state.units.map(u => u.id === attackerUnitId ? { ...u, status: 'done' as const } : u)
       });
@@ -519,8 +525,18 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
              if (u.x <= 0 || u.x >= DEFAULT_MAP_WIDTH - 1 || u.y <= 0 || u.y >= DEFAULT_MAP_HEIGHT - 1) {
                  return { ...u, troops: 0 }; // Remove effectively
              }
-             // Move random direction
-             return { ...u, x: u.x - 1 }; 
+             
+             // Move towards nearest edge
+             let newX = u.x;
+             
+             // Simple heuristic: move towards closest x edge
+             if (u.x < DEFAULT_MAP_WIDTH / 2) {
+                 newX = u.x - 1;
+             } else {
+                 newX = u.x + 1;
+             }
+             
+             return { ...u, x: newX, y: u.y, z: -newX - u.y }; 
         }
         return u;
     });

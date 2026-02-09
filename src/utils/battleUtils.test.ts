@@ -1,6 +1,9 @@
 import { describe, test, expect } from 'vitest';
 import { generateNavalMap, generateSiegeMap, getGatePositions, isSiegeBattle } from './siegeMap';
 import { getUnitTypeLabel, getMovementRange, getAttackRange, getAttackModifier, getDefenseModifier, calculateTacticSuccess } from './unitTypes';
+import type { Officer } from '../types';
+
+const mockOfficer = { skills: [] } as unknown as Officer;
 
 describe('Siege Map Utils', () => {
   test('generateNavalMap creates mostly river terrain', () => {
@@ -43,10 +46,10 @@ describe('Unit Type Utils', () => {
   test('modifiers are retrievable', () => {
     expect(getMovementRange('cavalry')).toBe(7);
     expect(getAttackRange('archer')).toBe(2);
-    expect(getAttackModifier('cavalry', 'plain')).toBe(1.3);
-    expect(getDefenseModifier('infantry', 'mountain')).toBe(1.5);
+    expect(getAttackModifier('cavalry', 'plain', mockOfficer)).toBe(1.3);
+    expect(getDefenseModifier('infantry', 'mountain', mockOfficer)).toBe(1.5);
     // Default
-    expect(getAttackModifier('infantry', 'plain')).toBe(1.0);
+    expect(getAttackModifier('infantry', 'plain', mockOfficer)).toBe(1.0);
   });
 
   test('calculateTacticSuccess returns probability', () => {
