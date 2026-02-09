@@ -34,7 +34,9 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
     }
 
     // 3. Offensive actions
-    const neighbors = city.adjacentCityIds.map((id: number) => context.state.cities.find((c: City) => c.id === id)!);
+    const neighbors = city.adjacentCityIds
+        .map((id: number) => context.state.cities.find((c: City) => c.id === id))
+        .filter((n): n is City => !!n);
     const targetCity = neighbors.find((n: City) => {
       if (n.factionId === city.factionId) return false;
       const troopAdvantage = city.troops > n.troops * 2;

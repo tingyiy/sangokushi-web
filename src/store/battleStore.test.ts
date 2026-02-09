@@ -273,6 +273,8 @@ describe('Battle Store', () => {
           day: 1
       });
 
+      const spy = vi.spyOn(Math, 'random').mockReturnValue(0.99); // No spread
+
       nextDay();
 
       const state = useBattleStore.getState();
@@ -282,6 +284,8 @@ describe('Battle Store', () => {
       nextDay();
       const state2 = useBattleStore.getState();
       expect(state2.fireHexes.length).toBe(0); // Expired
+      
+      spy.mockRestore();
   });
 
   test('battle ends when all units of a faction are routed', () => {

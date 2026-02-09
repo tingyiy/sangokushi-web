@@ -20,7 +20,7 @@ export function DomesticStatusPanel({ isOpen, onClose }: Props) {
 
   const ownCities = useMemo(() => {
     const list = cities.filter(c => c.factionId === playerFaction?.id);
-    return list.sort((a, b) => {
+    return [...list].sort((a, b) => {
       const valA = a[sortKey];
       const valB = b[sortKey];
       if (typeof valA === 'string' && typeof valB === 'string') {

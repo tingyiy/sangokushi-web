@@ -12,7 +12,9 @@ export function evaluateStrategy(context: AIFactionContext): AIDecision[] {
   for (const city of ownedCities) {
     if (city.gold < 1000) continue;
 
-    const neighbors = city.adjacentCityIds.map((id: number) => state.cities.find((c: City) => c.id === id)!);
+    const neighbors = city.adjacentCityIds
+        .map((id: number) => state.cities.find((c: City) => c.id === id))
+        .filter((n): n is City => !!n);
     const enemyNeighbors = neighbors.filter((n: City) => n.factionId !== null && n.factionId !== city.factionId);
 
     if (enemyNeighbors.length > 0) {
