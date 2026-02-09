@@ -14,6 +14,7 @@ interface DuelState {
   turn: 0 | 1;
   logs: string[];
   result: 'win' | 'lose' | 'draw' | 'flee' | null;
+  isBattleDuel?: boolean;
 }
 
 interface GameState {
@@ -102,6 +103,7 @@ interface GameState {
   setBattleFormation: (formation: { officerIds: number[]; unitTypes: UnitType[] } | null) => void;
   /** Military: Duel */
   startDuel: () => void;
+  initMidBattleDuel: (p1: Officer, p2: Officer) => void;
   duelAction: (action: 'attack' | 'heavy' | 'defend' | 'flee') => void;
   endDuel: () => void;
   /** Military: Battle */
@@ -133,7 +135,7 @@ interface GameState {
   /** 謀略: 流言 (Rumor) - Decrease city loyalty and population */
   rumor: (targetCityId: number) => void;
   /** Battle: Resolve battle consequences - transfer city, capture officers, redistribute troops */
-  resolveBattle: (winnerFactionId: number, loserFactionId: number, cityId: number, battleUnits: { officerId: number; troops: number; factionId: number; status: string }[]) => void;
+  resolveBattle: (winnerFactionId: number, loserFactionId: number, cityId: number, battleUnits: { officerId: number; troops: number; factionId: number; status: string }[], capturedOfficerIds?: number[], routedOfficerIds?: number[]) => void;
   /** Save/Load: Save game to localStorage slot */
   saveGame: (slot: number) => boolean;
   /** Save/Load: Load game from localStorage slot */
@@ -925,6 +927,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
+  initMidBattleDuel: (p1, p2) => {
+    set({
+      phase: 'duel',
+      duelState: {
+        p1,
+        p2,
+        p1Hp: 100,
+        p2Hp: 100,
+        round: 1,
+        turn: 0,
+        logs: [`${p1.name} 與 ${p2.name} 展開了生死決鬥！`],
+        result: null,
+        isBattleDuel: true
+      }
+    });
+  },
+
   duelAction: (action) => {
     const state = get();
     const ds = state.duelState;
@@ -1021,7 +1040,18 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   endDuel: () => {
-     set({ phase: 'playing', duelState: null });
+    const state = get();
+    const ds = state.duelState;
+    if (ds && ds.isBattleDuel) {
+        if (ds.result === 'win') {
+            useBattleStore.getState().applyDuelResults(ds.p1.id, ds.p2.id);
+        } else if (ds.result === 'lose') {
+            useBattleStore.getState().applyDuelResults(ds.p2.id, ds.p1.id);
+        }
+        set({ phase: 'battle', duelState: null });
+    } else {
+        set({ phase: 'playing', duelState: null });
+    }
   },
 
   startBattle: (targetCityId: number) => {
@@ -1688,7 +1718,7 @@ export const useGameStore = create<GameState>((set, get) => ({
    * @param cityId - The city being fought over
    * @param battleUnits - Array of battle units with final state
    */
-  resolveBattle: (winnerFactionId, loserFactionId, cityId, battleUnits) => {
+  resolveBattle: (winnerFactionId, loserFactionId, cityId, battleUnits, capturedOfficerIds = []) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return;
@@ -1701,9 +1731,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     // Get participating officer IDs from battle
     const participatingOfficerIds = new Set(battleUnits.map(u => u.officerId));
+    const capturedSet = new Set(capturedOfficerIds);
 
     // Process officer outcomes
     const updatedOfficers = state.officers.map(o => {
+      // If officer was captured in battle store
+      if (capturedSet.has(o.id)) {
+          get().addLog(`${o.name} 兵敗被俘！`);
+          return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
+      }
+
       // If officer was defending and lost
       if (o.cityId === cityId && o.factionId === loserFactionId) {
         // Check if this officer participated in battle
@@ -1712,23 +1749,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (unit) {
             // Officer was defeated (unit destroyed or routed)
             if (unit.troops <= 0 || unit.status === 'routed') {
-              // Base 50% capture chance, modified by war stat difference
-              const captureRoll = Math.random() * 100;
-              const captureThreshold = 50 + (unit.status === 'routed' ? 20 : 0);
+              // Should be handled by capturedSet mainly, but fallback for non-captured routed/dead
+              // If routed, high chance to escape. If dead (but not captured), escape.
               
-              if (captureRoll < captureThreshold) {
-                // Officer captured - becomes POW (represented by special factionId -1)
-                get().addLog(`${o.name} 兵敗被俘！`);
-                return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
-              } else {
-                // Officer escaped - becomes unaffiliated and flees to random adjacent city
-                const adjacentCities = city.adjacentCityIds;
-                const fleeCityId = adjacentCities.length > 0 
-                  ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
-                  : cityId;
-                get().addLog(`${o.name} 逃往 ${state.cities.find(c => c.id === fleeCityId)?.name || '他處'}。`);
-                return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
-              }
+              // Officer escaped - becomes unaffiliated and flees to random adjacent city
+              const adjacentCities = city.adjacentCityIds;
+              const fleeCityId = adjacentCities.length > 0 
+                ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
+                : cityId;
+              get().addLog(`${o.name} 逃往 ${state.cities.find(c => c.id === fleeCityId)?.name || '他處'}。`);
+              return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
             }
           }
         } else {

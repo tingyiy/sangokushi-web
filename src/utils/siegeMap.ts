@@ -1,6 +1,8 @@
 import type { BattleMap, TerrainType } from '../types/battle';
 
 function isWallPosition(q: number, r: number, width: number, height: number): boolean {
+  if (isGatePosition(q, r, width, height)) return false;
+
   const centerX = Math.floor(width / 2);
   const centerY = Math.floor(height / 2);
   const wallRadius = Math.floor(Math.min(width, height) / 4);

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useBattleStore } from '../../store/battleStore';
 import { hexToPixel, getDistance } from '../../utils/hex';
 import { getMoveRange } from '../../utils/pathfinding';
+import { getMovementRange, getUnitTypeLabel } from '../../utils/unitTypes';
 
 const HEX_SIZE = 40;
 
@@ -16,7 +17,7 @@ const BattleMap: React.FC = () => {
       const blocked = new Set(battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id).map(u => `${u.x},${u.y}`));
       return getMoveRange(
         { q: activeUnit.x, r: activeUnit.y },
-        5, // Range
+        getMovementRange(activeUnit.type),
         battle.battleMap.width,
         battle.battleMap.height,
         battle.battleMap.terrain,
@@ -36,6 +37,8 @@ const BattleMap: React.FC = () => {
     
     const isMoveRange = moveRange.has(`${q},${r}`);
     const unit = battle.units.find(u => u.x === q && u.y === r && u.troops > 0);
+    const fire = battle.fireHexes.find(f => f.q === q && f.r === r);
+    const gate = battle.gates.find(g => g.q === q && g.r === r);
 
     let fillColor = '#555';
     if (terrain === 'plain') fillColor = '#7a9e7a';
@@ -43,6 +46,7 @@ const BattleMap: React.FC = () => {
     else if (terrain === 'mountain') fillColor = '#5d4037';
     else if (terrain === 'river') fillColor = '#0277bd';
     else if (terrain === 'city') fillColor = '#fbc02d';
+    else if (terrain === 'gate') fillColor = '#8d6e63';
 
     return (
       <g key={`${q},${r}`} transform={`translate(${x + offsetX}, ${y + offsetY})`} 
@@ -61,11 +65,24 @@ const BattleMap: React.FC = () => {
             pointerEvents="none"
           />
         )}
+        {fire && (
+            <text textAnchor="middle" dy=".3em" fontSize="20" pointerEvents="none">🔥</text>
+        )}
+        {gate && (
+            <g>
+                <text textAnchor="middle" dy=".3em" fill="white" fontSize="10" pointerEvents="none">門</text>
+                <rect x={-15} y={15} width={30} height={3} fill="#000" />
+                <rect x={-15} y={15} width={30 * (gate.hp / gate.maxHp)} height={3} fill="#f00" />
+            </g>
+        )}
         {unit && (
           <g>
             <circle r={HEX_SIZE * 0.7} fill={unit.id.startsWith('attacker') ? 'red' : 'blue'} opacity={unit.status === 'done' ? 0.5 : 1} />
-            <text textAnchor="middle" dy=".3em" fill="white" fontSize="12" pointerEvents="none">
+            <text textAnchor="middle" dy="-.3em" fill="white" fontSize="12" fontWeight="bold" pointerEvents="none">
               {unit.officer.name.substring(0, 2)}
+            </text>
+            <text textAnchor="middle" dy="1.1em" fill="white" fontSize="9" pointerEvents="none">
+              {getUnitTypeLabel(unit.type)}
             </text>
             <rect x={-20} y={20} width={40} height={4} fill="#000" />
             <rect x={-20} y={20} width={40 * (unit.troops / unit.maxTroops)} height={4} fill="#0f0" />

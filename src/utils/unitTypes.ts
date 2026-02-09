@@ -1,4 +1,6 @@
 import type { UnitType, TerrainType } from '../types/battle';
+import type { Officer } from '../types';
+import { hasSkill } from './skills';
 
 export interface UnitModifiers {
   movement: number;
@@ -50,12 +52,20 @@ export function getAttackRange(unitType: UnitType): number {
 
 const TERRAIN_DEFAULT = 1.0;
 
-export function getAttackModifier(unitType: UnitType, terrain: TerrainType): number {
-  return UNIT_TYPE_MODIFIERS[unitType].attackModifier[terrain] ?? TERRAIN_DEFAULT;
+export function getAttackModifier(unitType: UnitType, terrain: TerrainType, officer: Officer): number {
+  let mod = UNIT_TYPE_MODIFIERS[unitType].attackModifier[terrain] ?? TERRAIN_DEFAULT;
+  if (terrain === 'river' && hasSkill(officer, '海戰')) {
+    mod *= 1.2;
+  }
+  return mod;
 }
 
-export function getDefenseModifier(unitType: UnitType, terrain: TerrainType): number {
-  return UNIT_TYPE_MODIFIERS[unitType].defenseModifier[terrain] ?? TERRAIN_DEFAULT;
+export function getDefenseModifier(unitType: UnitType, terrain: TerrainType, officer: Officer): number {
+  let mod = UNIT_TYPE_MODIFIERS[unitType].defenseModifier[terrain] ?? TERRAIN_DEFAULT;
+  if (terrain === 'river' && hasSkill(officer, '海戰')) {
+    mod *= 1.2;
+  }
+  return mod;
 }
 
 export const BATTLE_TACTICS = [
