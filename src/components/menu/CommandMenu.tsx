@@ -17,7 +17,7 @@ export function CommandMenu() {
     draftTroops, transferOfficer,
     improveRelations, formAlliance, requestJointAttack, proposeCeasefire, demandSurrender, breakAlliance, exchangeHostage,
     counterEspionage, inciteRebellion, arson, spy, gatherIntelligence, rumor,
-    endTurn, addLog,
+    endTurn, addLog, setTaxRate, promoteOfficer
   } = useGameStore();
 
   const [dialog, setDialog] = useState<{ type: 'formation' | 'transport', targetCityId: number } | null>(null);
@@ -75,6 +75,15 @@ export function CommandMenu() {
               <button className="btn btn-action" onClick={() => developTechnology(city.id)}>技術開發（800金）</button>
               <button className="btn btn-action" onClick={() => trainTroops(city.id)}>訓練（500糧）</button>
               
+              <div className="sub-menu">
+                <h5>稅率設定</h5>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button className={`btn-tiny ${city.taxRate === 'low' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'low')}>低</button>
+                  <button className={`btn-tiny ${city.taxRate === 'medium' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'medium')}>中</button>
+                  <button className={`btn-tiny ${city.taxRate === 'high' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'high')}>高</button>
+                </div>
+              </div>
+
               <div className="sub-menu">
                 <h5>製造 (1000金)</h5>
                 <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 30} onClick={() => manufacture(city.id, 'crossbows')}>弩</button>
@@ -163,6 +172,13 @@ export function CommandMenu() {
                       <div className="btn-group">
                         {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>太守</button>}
                         <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>軍師</button>
+                        <select className="select-tiny" value={o.rank} onChange={(e) => promoteOfficer(o.id, e.target.value as import('../../types').OfficerRank)}>
+                           <option value="一般">一般</option>
+                           <option value="侍中">侍中</option>
+                           <option value="軍師">軍師</option>
+                           <option value="將軍">將軍</option>
+                           <option value="都督">都督</option>
+                        </select>
                         <select className="select-tiny" onChange={(e) => {
                           if (!e.target.value) return;
                           transferOfficer(o.id, parseInt(e.target.value));
@@ -267,6 +283,7 @@ export function CommandMenu() {
         .btn-small { font-size: 0.8em; padding: 4px 8px; margin: 2px; width: auto; }
         .btn-tiny { font-size: 0.75em; padding: 2px 6px; margin: 1px; background: #444; color: #eee; border: 1px solid #666; cursor: pointer; border-radius: 2px; }
         .btn-tiny:hover { background: #555; }
+        .active-tax { background: #2a6a4a !important; border-color: #4a8a6a !important; }
         .btn-tiny:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-danger { color: #ff6b6b; border-color: #633; }
         .scroll-box { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }

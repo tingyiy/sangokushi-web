@@ -180,6 +180,20 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     if (!unit) return;
     if (unit.status !== 'active') return;
 
+    // Boundary check
+    if (q < 0 || q >= state.battleMap.width || r < 0 || r >= state.battleMap.height) return;
+
+    // Collision check: cannot move onto occupied hex
+    if (state.units.some(u => u.id !== unitId && u.x === q && u.y === r && u.troops > 0)) return;
+
+    // Terrain/Obstacle check
+    const terrain = state.battleMap.terrain[q][r];
+    if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) return; 
+    // In siege, city terrain is the floor inside. In field, it's blocked.
+    
+    // Gate check: cannot move onto gate hexes
+    if (state.gates.some(g => g.q === q && g.r === r && g.hp > 0)) return;
+
     const range = getMovementRange(unit.type);
     const dist = (Math.abs(unit.x - q) + Math.abs(unit.y - r) + Math.abs(unit.z - (-q-r))) / 2;
     
@@ -507,29 +521,53 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     });
 
     // Fire spread logic (simple wind direction based)
-    // Wind: 0=N, 1=NE, 2=SE, 3=S, 4=SW, 5=NW (Hex coords vary)
-    // Simplified: randomly spread to 1 neighbor
-    if (newFireHexes.length > 0 && Math.random() < 0.3) {
-        // const source = newFireHexes[Math.floor(Math.random() * newFireHexes.length)];
-        // Spread logic... just keeping timer decrement for now to save tokens
+    // Wind: 0=N, 1=NE, 2=SE, 3=S, 4=SW, 5=NW
+    if (newFireHexes.length > 0 && Math.random() < 0.2) {
+        const source = newFireHexes[Math.floor(Math.random() * newFireHexes.length)];
+        const neighbors = [
+            { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+            { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+        ];
+        // Bias towards wind direction
+        const dirIndex = state.windDirection % 6;
+        const targetDir = neighbors[dirIndex];
+        const targetQ = source.q + targetDir.q;
+        const targetR = source.r + targetDir.r;
+        
+        if (!newFireHexes.some(f => f.q === targetQ && f.r === targetR)) {
+            newFireHexes.push({ q: targetQ, r: targetR, turnsLeft: 3 });
+        }
     }
+
+    // Chained units spread fire to each other
+    state.units.filter(u => u.chained && u.troops > 0).forEach(u => {
+        if (newFireHexes.some(f => f.q === u.x && f.r === u.y)) {
+            // Spread to other chained units
+            state.units.filter(u2 => u2.chained && u2.id !== u.id && u2.troops > 0).forEach(u2 => {
+                if (!newFireHexes.some(f => f.q === u2.x && f.r === u2.y)) {
+                    newFireHexes.push({ q: u2.x, r: u2.y, turnsLeft: 2 });
+                }
+            });
+        }
+    });
 
     newFireHexes = newFireHexes.map(f => ({ ...f, turnsLeft: f.turnsLeft - 1 })).filter(f => f.turnsLeft > 0);
 
     // Bug #6: Routed units move
     // Move routed units towards edge (0,0 or width,height)
+    const routedCaptures: number[] = [];
     unitsWithFireDamage = unitsWithFireDamage.map(u => {
         if (u.status === 'routed') {
-             // Simple move logic: invalidates position updates
-             // If at edge, remove?
+             // If at edge, remove
              if (u.x <= 0 || u.x >= DEFAULT_MAP_WIDTH - 1 || u.y <= 0 || u.y >= DEFAULT_MAP_HEIGHT - 1) {
-                 return { ...u, troops: 0 }; // Remove effectively
+                 if (Math.random() < 0.2) {
+                     routedCaptures.push(u.officerId);
+                 }
+                 return { ...u, troops: 0 }; 
              }
              
              // Move towards nearest edge
              let newX = u.x;
-             
-             // Simple heuristic: move towards closest x edge
              if (u.x < DEFAULT_MAP_WIDTH / 2) {
                  newX = u.x - 1;
              } else {
@@ -556,6 +594,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       day: newDay,
       units: resetUnits,
       fireHexes: newFireHexes,
+      capturedOfficerIds: [...state.capturedOfficerIds, ...routedCaptures],
       activeUnitId: resetUnits.find(u => u.status === 'active')?.id || null
     });
   },

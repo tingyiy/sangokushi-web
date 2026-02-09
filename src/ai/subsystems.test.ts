@@ -158,7 +158,7 @@ describe('AI Subsystems', () => {
         faction: { ...context.faction, relations: { 2: 90 } }
       };
       const decisions = evaluateDiplomacy(hostileContext);
-      expect(decisions.some(d => d.action === 'improveRelations')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiImproveRelations')).toBe(true);
     });
 
     it('should propose alliance if relations are good', () => {
@@ -167,7 +167,7 @@ describe('AI Subsystems', () => {
             faction: { ...context.faction, relations: { 2: 20 }, allies: [] }
         };
         const decisions = evaluateDiplomacy(friendlyContext);
-        expect(decisions.some(d => d.action === 'formAlliance')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiFormAlliance')).toBe(true);
     });
   });
 

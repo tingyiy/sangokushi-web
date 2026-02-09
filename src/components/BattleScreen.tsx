@@ -10,7 +10,7 @@ import type { BattleTactic } from '../utils/unitTypes';
  * Phase 0.1: Integrated with resolveBattle for proper battle consequences.
  */
 const BattleScreen: React.FC = () => {
-  const { setPhase, addLog, cities, factions, resolveBattle, initMidBattleDuel } = useGameStore();
+  const { setPhase, addLog, cities, factions, resolveBattle, initMidBattleDuel, retreat } = useGameStore();
   const battle = useBattleStore();
   const [showTactics, setShowTactics] = useState(false);
 
@@ -75,7 +75,7 @@ const BattleScreen: React.FC = () => {
           {factions.find(f => f.id === battle.attackerId)?.name} 攻打 {cities.find(c => c.id === battle.defenderCityId)?.name}
         </div>
         <div>
-           <button onClick={() => setPhase('playing')} style={{ background: '#600', color: 'white' }}>撤退</button>
+           <button onClick={() => retreat()} style={{ background: '#600', color: 'white', padding: '5px 15px', border: 'none', cursor: 'pointer' }}>撤退</button>
         </div>
       </div>
 
@@ -112,16 +112,16 @@ const BattleScreen: React.FC = () => {
                    <button onClick={() => setShowTactics(!showTactics)} className="cmd-btn">計略</button>
                    
                    {/* Contextual actions */}
-                   {battle.gates.some(g => Math.abs(g.q - activeUnit.x) + Math.abs(g.r - activeUnit.y) <= 1) && (
+                   {battle.gates.some(g => (Math.abs(g.q - activeUnit.x) + Math.abs(g.r - activeUnit.y) + Math.abs(-g.q - g.r - activeUnit.z)) / 2 <= 1) && (
                        <button onClick={() => {
-                           const gate = battle.gates.find(g => Math.abs(g.q - activeUnit.x) + Math.abs(g.r - activeUnit.y) <= 1);
+                           const gate = battle.gates.find(g => (Math.abs(g.q - activeUnit.x) + Math.abs(g.r - activeUnit.y) + Math.abs(-g.q - g.r - activeUnit.z)) / 2 <= 1);
                            if (gate) battle.attackGate(activeUnit.id, gate.q, gate.r);
                        }} className="cmd-btn" style={{ background: '#a52a2a' }}>攻門</button>
                    )}
 
-                   {battle.units.some(u => u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.troops > 0 && Math.abs(u.x - activeUnit.x) + Math.abs(u.y - activeUnit.y) <= 1) && (
+                   {battle.units.some(u => u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.troops > 0 && (Math.abs(u.x - activeUnit.x) + Math.abs(u.y - activeUnit.y) + Math.abs(u.z - activeUnit.z)) / 2 <= 1) && (
                        <button onClick={() => {
-                           const target = battle.units.find(u => u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.troops > 0 && Math.abs(u.x - activeUnit.x) + Math.abs(u.y - activeUnit.y) <= 1);
+                           const target = battle.units.find(u => u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.troops > 0 && (Math.abs(u.x - activeUnit.x) + Math.abs(u.y - activeUnit.y) + Math.abs(u.z - activeUnit.z)) / 2 <= 1);
                            if (target) initMidBattleDuel(activeUnit.officer, target.officer);
                        }} className="cmd-btn" style={{ background: '#d4af37', color: 'black' }}>單挑</button>
                    )}
