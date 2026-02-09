@@ -1,8 +1,8 @@
 import { useGameStore } from '../store/gameStore';
 import { useBattleStore } from '../store/battleStore';
 import { scenarios } from '../data/scenarios';
-import type { GamePhase, GameSettings, Officer, OfficerRank, Faction, City, Scenario } from '../types';
-import type { UnitType, BattleState } from '../types/battle';
+import type { GamePhase, GameSettings, Officer, OfficerRank, Scenario } from '../types';
+import type { UnitType } from '../types/battle';
 import { getMovementRange, getAttackRange, type BattleTactic } from '../utils/unitTypes';
 import { getMoveRange } from '../utils/pathfinding';
 
@@ -13,6 +13,7 @@ interface Result {
 }
 
 const POW_FACTION_ID = -1 as unknown as number;
+const HOSTAGE_CITY_ID = -2 as unknown as number;
 
 /**
  * RTK Automation API implementation
@@ -452,7 +453,7 @@ export const rtkApi = {
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     state.exchangeHostage(officerId, targetFactionId);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
-    if (after.cityId === -2) return { ok: true };
+    if (after.cityId === HOSTAGE_CITY_ID) return { ok: true };
     return { ok: false, error: 'Action failed' };
   },
 
