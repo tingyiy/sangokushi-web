@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runAI } from './aiEngine';
-import type { GameState } from '../types';
+import type { GameState } from '../store/gameStore';
 
 describe('AI Engine', () => {
   const mockState: GameState = {
     factions: [
-      { id: 1, name: 'Player Faction', isPlayer: true, rulerId: 1, relations: { 2: 50 }, allies: [], color: '#ff0000', ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
-      { id: 2, name: 'AI Faction', isPlayer: false, rulerId: 2, relations: { 1: 50 }, allies: [], color: '#0000ff', ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+      { id: 1, name: 'Player Faction', isPlayer: true, rulerId: 1, advisorId: null, relations: { 2: 50 }, allies: [], color: '#ff0000', ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+      { id: 2, name: 'AI Faction', isPlayer: false, rulerId: 2, advisorId: null, relations: { 1: 50 }, allies: [], color: '#0000ff', ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     ],
     cities: [
       { id: 1, name: 'City 1', factionId: 1, population: 100000, gold: 5000, food: 10000, commerce: 500, agriculture: 500, defense: 100, troops: 10000, adjacentCityIds: [2], floodControl: 50, technology: 30, peopleLoyalty: 70, morale: 60, training: 40, crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, x: 0, y: 0 },
@@ -84,6 +84,11 @@ describe('AI Engine', () => {
     deleteSave: vi.fn(),
     checkVictoryCondition: vi.fn(),
     applyAIDecisions: vi.fn(),
+    aiStartBattle: vi.fn(),
+    aiRecruitOfficer: vi.fn(),
+    aiSearchOfficer: vi.fn(),
+    aiSpy: vi.fn(),
+    aiRumor: vi.fn(),
   };
 
   it('should generate decisions for AI factions', () => {

@@ -1173,20 +1173,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (availableOfficers.length === 0) return;
 
     const attackerOfficers = availableOfficers.slice(0, 5);
-    const attackerUnitTypes = attackerOfficers.map(() => 'infantry' as UnitType);
 
-    // AI stamina check (simplified: proceed if commander has stamina, ignore cost if low to ensure AI acts)
+    // Select unit types based on officer skills and available resources
+    let crossbowsAvailable = city.crossbows;
+    let warHorsesAvailable = city.warHorses;
+    const attackerUnitTypes: UnitType[] = attackerOfficers.map(o => {
+      if (hasSkill(o, '騎兵') && warHorsesAvailable >= 1000) {
+        warHorsesAvailable -= 1000;
+        return 'cavalry';
+      }
+      if (hasSkill(o, '弓兵') && crossbowsAvailable >= 1000) {
+        crossbowsAvailable -= 1000;
+        return 'archer';
+      }
+      return 'infantry';
+    });
+    const crossbowsUsed = city.crossbows - crossbowsAvailable;
+    const warHorsesUsed = city.warHorses - warHorsesAvailable;
+
+    // AI stamina check (simplified: proceed if commander has stamina)
     const commander = attackerOfficers[0];
-    if (commander.stamina < 30) return; // AI constraint
-
-    // Deduct resources if AI has them, else free (cheating slightly for AI simplicity/challenge)
-    // For now, respect resource costs
-    const crossbowsUsed = 0;
-    const warHorsesUsed = 0;
-    
-    if (city.crossbows < crossbowsUsed || city.warHorses < warHorsesUsed) {
-        // Fallback to infantry (already set)
-    }
+    if (commander.stamina < 30) return;
 
     set({
       cities: state.cities.map(c => c.id === city.id ? { ...c, crossbows: c.crossbows - crossbowsUsed, warHorses: c.warHorses - warHorsesUsed } : c),

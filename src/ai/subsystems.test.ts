@@ -5,7 +5,8 @@ import { evaluatePersonnel } from './aiPersonnel';
 import { evaluateDiplomacy } from './aiDiplomacy';
 import { evaluateStrategy } from './aiStrategy';
 import type { AIFactionContext } from './types';
-import type { GameState } from '../types';
+import type { Officer } from '../types';
+import type { GameState } from '../store/gameStore';
 
 describe('AI Subsystems', () => {
   const mockState = {
