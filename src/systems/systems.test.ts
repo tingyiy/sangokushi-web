@@ -12,9 +12,9 @@ describe('Advisor System', () => {
       { id: 1, name: '陳留', factionId: 1, gold: 500, commerce: 100, agriculture: 100, food: 1000, troops: 1000, training: 30 }
     ],
     officers: [
-      { id: 28, name: '荀彧', intelligence: 95, factionId: 1 },
-      { id: 20, name: '曹操', factionId: 1, loyalty: 100 },
-      { id: 21, name: '夏侯惇', factionId: 1, loyalty: 40 }
+      { id: 28, name: '荀彧', intelligence: 95, factionId: 1, relationships: [] },
+      { id: 20, name: '曹操', factionId: 1, loyalty: 100, relationships: [] },
+      { id: 21, name: '夏侯惇', factionId: 1, loyalty: 40, relationships: [] }
     ]
   } as unknown as GameState;
 
@@ -114,8 +114,8 @@ describe('Events System', () => {
     const visitState = {
       ...mockState,
       officers: [
-        { id: 20, name: '曹操', charisma: 100, factionId: 1 },
-        { id: 100, name: '在野', factionId: null, cityId: 1 }
+        { id: 20, name: '曹操', charisma: 100, factionId: 1, relationships: [] },
+        { id: 100, name: '在野', factionId: null, cityId: 1, relationships: [] }
       ]
     } as unknown as GameState;
     const spy = vi.spyOn(Math, 'random').mockReturnValue(0.001);
@@ -173,7 +173,7 @@ describe('Historical Events', () => {
       year: 220,
       month: 1,
       factions: [{ id: 1, rulerId: 20 }],
-      officers: [{ id: 34, factionId: 2, isGovernor: false }],
+      officers: [{ id: 34, factionId: 2, isGovernor: false, relationships: [] }],
       cities: []
     } as unknown as GameState;
     

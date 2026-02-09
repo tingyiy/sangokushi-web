@@ -12,6 +12,9 @@ export function GameMap() {
   return (
     <div className="game-map">
       <svg viewBox="0 0 100 85" className="map-svg">
+        {/* Terrain Background - Phase 7.6 */}
+        <image href="/terrain-map.svg" x="0" y="0" width="100" height="85" opacity="0.4" />
+
         {/* Draw adjacency lines */}
         {cities.map(city =>
           city.adjacentCityIds.map(adjId => {

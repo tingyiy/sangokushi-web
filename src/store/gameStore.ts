@@ -51,6 +51,8 @@ export interface GameState {
   duelState: DuelState | null;
   /** Revealed cities info (Fog of War) - Phase 6.3 */
   revealedCities: Record<number, { untilYear: number; untilMonth: number }>;
+  /** Pending governor assignment (Phase 7.9) */
+  pendingGovernorAssignmentCityId: number | null;
   /** Pre-battle formation - Phase 2.2 */
   battleFormation: {
     officerIds: number[];
@@ -187,6 +189,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   log: [],
   duelState: null,
   revealedCities: {},
+  pendingGovernorAssignmentCityId: null,
   battleFormation: null,
 
   setPhase: (phase) => set({ phase }),
@@ -407,6 +410,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       suggestions.forEach(s => get().addLog(`【軍師】${s}`));
     }
 
+    // Phase 7.9: Check for missing governors in player cities
+    let pendingGovCityId = null;
+    if (state.playerFaction) {
+        const playerCities = finalCities.filter(c => c.factionId === state.playerFaction?.id);
+        const cityWithoutGov = playerCities.find(c => {
+            const hasGov = finalOfficers.some(o => o.cityId === c.id && o.factionId === state.playerFaction?.id && o.isGovernor);
+            const hasAnyOfficer = finalOfficers.some(o => o.cityId === c.id && o.factionId === state.playerFaction?.id);
+            return !hasGov && hasAnyOfficer;
+        });
+        if (cityWithoutGov) {
+            pendingGovCityId = cityWithoutGov.id;
+        }
+    }
+
     // Update factions (ceasefires etc)
     set({
       cities: finalCities,
@@ -418,7 +435,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (c.expiresYear === newYear && c.expiresMonth < newMonth) return false;
           return true;
         })
-      }))
+      })),
+      pendingGovernorAssignmentCityId: pendingGovCityId
     });
   },
 

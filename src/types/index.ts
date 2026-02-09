@@ -76,6 +76,8 @@ export interface Officer {
   isGovernor: boolean;
   /** 官職 (Rank) - Phase 6.2 */
   rank: OfficerRank;
+  /** 關係 (Relationships) - Phase 7.3 */
+  relationships: { type: 'father' | 'spouse' | 'sworn'; targetId: number }[];
   /** 裝備的寶物ID，null = 無裝備 - Phase 1.4 */
   treasureId: number | null;
 }
@@ -179,6 +181,7 @@ export type GamePhase =
   | 'scenario'     // 劇本選擇
   | 'faction'      // 勢力選擇
   | 'settings'     // 遊戲設定 (NEW: Phase 0.5)
+  | 'rulerCreation' // 新君主登錄 (NEW: Phase 7.1)
   | 'playing'      // 遊戲中
   | 'battle'       // 戰鬥
   | 'duel'         // 單挑
