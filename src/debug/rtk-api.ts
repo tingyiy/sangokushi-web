@@ -5,6 +5,7 @@ import type { GamePhase, GameSettings, Officer, OfficerRank, Scenario } from '..
 import type { UnitType } from '../types/battle';
 import { getMovementRange, getAttackRange, type BattleTactic } from '../utils/unitTypes';
 import { getMoveRange } from '../utils/pathfinding';
+import { RTKScenario } from './scenario-constants';
 
 interface Result {
   ok: boolean;
@@ -17,9 +18,12 @@ const HOSTAGE_CITY_ID = -2 as unknown as number;
 
 /**
  * RTK Automation API implementation
- * v2.1 (2026-02-09) - Addressing Review Feedback
+ * v2.2 (2026-02-09) - Enhanced Error Reporting & Tooling
  */
 export const rtkApi = {
+  /** Scenario constants for newGame() */
+  Scenario: RTKScenario,
+
   // ─── Lifecycle ───────────────────────────────────────
   phase: (): GamePhase => useGameStore.getState().phase,
 
@@ -47,21 +51,17 @@ export const rtkApi = {
     phase: (): GamePhase => useGameStore.getState().phase,
     date: () => ({ year: useGameStore.getState().year, month: useGameStore.getState().month }),
     playerFaction: () => useGameStore.getState().playerFaction,
-    factions: () => useGameStore.getState().factions,
-    cities: () => useGameStore.getState().cities,
-    city: (id: number) => useGameStore.getState().cities.find(c => c.id === id) || null,
     myCities: () => {
       const state = useGameStore.getState();
       return state.cities.filter(c => c.factionId === state.playerFaction?.id);
     },
+    city: (id: number) => useGameStore.getState().cities.find(c => c.id === id) || null,
     factionCities: (factionId: number) => useGameStore.getState().cities.filter(c => c.factionId === factionId),
-    officers: () => useGameStore.getState().officers,
-    officer: (id: number) => useGameStore.getState().officers.find(o => o.id === id) || null,
-    cityOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId),
     myOfficers: () => {
       const state = useGameStore.getState();
       return state.officers.filter(o => o.factionId === state.playerFaction?.id);
     },
+    officer: (id: number) => useGameStore.getState().officers.find(o => o.id === id) || null,
     unaffiliatedOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === null),
     powOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === POW_FACTION_ID),
     adjacentCities: (cityId: number) => {
@@ -101,6 +101,138 @@ export const rtkApi = {
     gameSettings: (): GameSettings => useGameStore.getState().gameSettings,
     scenario: (): Scenario | null => useGameStore.getState().scenario,
     battleFormation: () => useGameStore.getState().battleFormation,
+
+    /** Check if city can afford a domestic action (500 gold) */
+    canAffordDomestic(cityId: number): Result {
+      const city = this.city(cityId);
+      if (!city) return { ok: false, error: 'City not found' };
+
+      if (city.gold < 500) {
+        return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` };
+      }
+
+      const hasOfficer = this.availableOfficers(cityId).length > 0;
+      if (!hasOfficer) {
+        return { ok: false, error: 'No officers with stamina in city' };
+      }
+
+      return { ok: true, data: { gold: city.gold, canAfford: true } };
+    },
+
+    /** Check if city can draft troops */
+    canDraftTroops(cityId: number, amount: number): Result {
+      const state = useGameStore.getState();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return { ok: false, error: 'City not found' };
+
+      const goldCost = amount * 2;
+      const foodCost = amount * 3;
+      const maxDraft = Math.floor(city.population * 0.1);
+
+      const checks = {
+        gold: city.gold >= goldCost,
+        food: city.food >= foodCost,
+        population: amount <= maxDraft,
+        hasOfficer: this.availableOfficers(cityId).length > 0,
+      };
+
+      if (!checks.gold) {
+        return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: ${goldCost})`, data: checks };
+      }
+      if (!checks.food) {
+        return { ok: false, error: `Insufficient food (Current: ${city.food}, Required: ${foodCost})`, data: checks };
+      }
+      if (!checks.population) {
+        return { ok: false, error: `Amount exceeds population limit (Requested: ${amount}, Max: ${maxDraft})`, data: checks };
+      }
+      if (!checks.hasOfficer) {
+        return { ok: false, error: 'No officers with stamina', data: checks };
+      }
+
+      return { ok: true, data: checks };
+    },
+
+    /**
+     * Financial summary for a city to aid planning.
+     * Shows current gold and estimated monthly expenses.
+     */
+    financials(cityId: number): Result {
+      const state = useGameStore.getState();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return { ok: false, error: 'City not found' };
+
+      const cityOfficers = state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id);
+      const monthlyWages = cityOfficers.length * 20; // Estimated 20 gold per month per officer
+
+      return {
+        ok: true,
+        data: {
+          gold: city.gold,
+          food: city.food,
+          estimatedMonthlyWages: monthlyWages,
+          nextTaxMonth: [1, 4, 7, 10].find(m => m > state.month) || 1,
+        }
+      };
+    },
+
+    /**
+     * Provides status information about the game or a specific city.
+     * If cityId is provided, returns city-specific details.
+     * Otherwise, returns general game status.
+     */
+    status(cityId?: number): Result {
+      const state = useGameStore.getState();
+      if (cityId) {
+        const city = state.cities.find(c => c.id === cityId);
+        if (!city) return { ok: false, error: 'City not found' };
+        return {
+          ok: true,
+          data: {
+            city: {
+              id: city.id,
+              name: city.name,
+              factionId: city.factionId,
+              gold: city.gold,
+              food: city.food,
+              troops: city.troops,
+              commerce: city.commerce,
+              agriculture: city.agriculture,
+              defense: city.defense,
+              population: city.population,
+              peopleLoyalty: city.peopleLoyalty,
+              governorId: state.officers.find(o => o.cityId === cityId && o.isGovernor)?.id || null,
+              officerCount: state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).length,
+            },
+            playerFaction: state.playerFaction ? {
+              id: state.playerFaction.id,
+              name: state.playerFaction.name,
+              gold: state.playerFaction.gold,
+              food: state.playerFaction.food,
+            } : null,
+          }
+        };
+      } else {
+        return {
+          ok: true,
+          data: {
+            phase: state.phase,
+            year: state.year,
+            month: state.month,
+            playerFaction: state.playerFaction ? {
+              id: state.playerFaction.id,
+              name: state.playerFaction.name,
+              gold: state.playerFaction.gold,
+              food: state.playerFaction.food,
+              officerCount: state.officers.filter(o => o.factionId === state.playerFaction?.id).length,
+              cityCount: state.cities.filter(c => c.factionId === state.playerFaction?.id).length,
+            } : null,
+            selectedCityId: state.selectedCityId,
+            logLength: state.log.length,
+            pendingEventsCount: state.pendingEvents.length,
+          }
+        };
+      }
+    },
   },
 
   // ─── Commands ───────────────────────────────────────
@@ -118,48 +250,51 @@ export const rtkApi = {
   },
 
   // Domestic
-  developCommerce(cityId: number, officerId?: number): Result {
+  developCommerce(cityId: number, officerId?: number | number[]): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     if (city.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your city' };
 
-    // Descriptive Check
-    if (city.gold < 500) return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` };
+    const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
 
-    const executor = officerId
-      ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+    const executor = actualOfficerId
+      ? state.officers.find(o => o.id === actualOfficerId && o.cityId === cityId)
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
-    if (!executor) return { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' };
+    if (!executor) return { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' };
     if (executor.stamina < 20) return { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` };
 
+    if (city.gold < 500) return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` };
+
     const commerceBefore = city.commerce;
-    state.developCommerce(cityId, officerId);
+    state.developCommerce(cityId, actualOfficerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
     if (after.commerce === commerceBefore) return { ok: false, error: 'Action failed in logic' };
     return { ok: true, data: { before: commerceBefore, after: after.commerce, executor: executor.name } };
   },
 
-  developAgriculture(cityId: number, officerId?: number): Result {
+  developAgriculture(cityId: number, officerId?: number | number[]): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
     if (city.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your city' };
 
-    if (city.gold < 500) return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` };
+    const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
 
-    const executor = officerId
-      ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+    const executor = actualOfficerId
+      ? state.officers.find(o => o.id === actualOfficerId && o.cityId === cityId)
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
-    if (!executor) return { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' };
+    if (!executor) return { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' };
     if (executor.stamina < 20) return { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` };
 
+    if (city.gold < 500) return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` };
+
     const agricultureBefore = city.agriculture;
-    state.developAgriculture(cityId, officerId);
+    state.developAgriculture(cityId, actualOfficerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
     if (after.agriculture === agricultureBefore) return { ok: false, error: 'Action failed' };
     return { ok: true, data: { before: agricultureBefore, after: after.agriculture, executor: executor.name } };
@@ -201,16 +336,29 @@ export const rtkApi = {
     return { ok: true, data: { before, after: after.technology } };
   },
 
-  trainTroops(cityId: number, officerId?: number): Result {
+  trainTroops(cityId: number, officerId?: number | number[]): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
+
+    const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
+
+    const executor = actualOfficerId
+      ? state.officers.find(o => o.id === actualOfficerId && o.cityId === cityId)
+      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+
+    if (!executor) return { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' };
+    if (executor.stamina < 20) return { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` };
+
+    if (city.training >= 100) return { ok: false, error: 'Training already at maximum (100)' };
+    if (city.food < 500) return { ok: false, error: `Insufficient food (Current: ${city.food}, Required: 500)` };
+
     const before = city.training;
-    state.trainTroops(cityId, officerId);
+    state.trainTroops(cityId, actualOfficerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
-    if (after.training === before) return { ok: false, error: 'Action failed' };
-    return { ok: true, data: { before, after: after.training } };
+    if (after.training > before) return { ok: true, data: { before, after: after.training, executor: executor.name } };
+    return { ok: false, error: 'Action failed unexpectedly in logic' };
   },
 
   manufacture(cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults', officerId?: number): Result {
@@ -259,8 +407,26 @@ export const rtkApi = {
   searchOfficer(cityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+
+    const city = state.cities.find(c => c.id === cityId);
+    if (!city) return { ok: false, error: 'City not found' };
+
+    const logBefore = state.log.length;
     state.searchOfficer(cityId, officerId);
-    return { ok: true };
+
+    const stateAfter = useGameStore.getState();
+    const newLogs = stateAfter.log.slice(logBefore);
+    const lastLog = newLogs[newLogs.length - 1] || '';
+
+    let result: { type: 'officer' | 'treasure' | 'nothing'; name?: string } = { type: 'nothing' };
+    if (lastLog.includes('找到了')) {
+      const match = lastLog.match(/找到了 (.+?)！/);
+      result = { type: 'officer', name: match?.[1] };
+    } else if (lastLog.includes('發現了寶物')) {
+      result = { type: 'treasure' };
+    }
+
+    return { ok: true, data: result };
   },
 
   recruitPOW(officerId: number, recruiterId?: number): Result {
@@ -340,16 +506,36 @@ export const rtkApi = {
   },
 
   // Military
-  draftTroops(cityId: number, amount: number, officerId?: number): Result {
+  draftTroops(cityId: number, amount: number, officerId?: number | number[]): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
+
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return { ok: false, error: 'City not found' };
+    if (city.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your city' };
+
+    const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
+
+    const executor = actualOfficerId
+      ? state.officers.find(o => o.id === actualOfficerId && o.cityId === cityId)
+      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+
+    if (!executor) return { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' };
+    if (executor.stamina < 10) return { ok: false, error: `${executor.name} has insufficient stamina (Current: ${executor.stamina}, Required: 10)` };
+
+    const goldCost = amount * 2;
+    const foodCost = amount * 3;
+    if (city.gold < goldCost) return { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: ${goldCost} for ${amount} troops)` };
+    if (city.food < foodCost) return { ok: false, error: `Insufficient food (Current: ${city.food}, Required: ${foodCost} for ${amount} troops)` };
+
+    const maxDraft = Math.floor(city.population * 0.1);
+    if (amount > maxDraft) return { ok: false, error: `Draft amount exceeds population limit (Requested: ${amount}, Max: ${maxDraft})` };
+
     const before = city.troops;
-    state.draftTroops(cityId, amount, officerId);
+    state.draftTroops(cityId, amount, actualOfficerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
-    if (after.troops > before) return { ok: true, data: { before, after: after.troops } };
-    return { ok: false, error: 'Action failed (check resources/population/stamina)' };
+    if (after.troops > before) return { ok: true, data: { before, after: after.troops, drafted: after.troops - before, executor: executor.name } };
+    return { ok: false, error: 'Draft failed unexpectedly in logic' };
   },
 
   transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result {
@@ -423,11 +609,16 @@ export const rtkApi = {
     if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
     const player = state.playerFaction;
     if (!player) return { ok: false, error: 'No player faction' };
+
+    const myCities = state.cities.filter(c => c.factionId === player.id);
+    const totalGold = myCities.reduce((s, c) => s + c.gold, 0);
+    if (totalGold < 1000) return { ok: false, error: `Insufficient total gold across cities (Current: ${totalGold}, Required: 1000)` };
+
     const hostilityBefore = player.relations[targetFactionId] ?? 60;
     state.improveRelations(targetFactionId);
     const hostilityAfter = useGameStore.getState().playerFaction?.relations[targetFactionId] ?? 60;
     if (hostilityAfter < hostilityBefore) return { ok: true, data: { before: hostilityBefore, after: hostilityAfter } };
-    return { ok: false, error: 'Action failed (check gold/stamina)' };
+    return { ok: false, error: 'Action failed (check stamina of ruler/advisor)' };
   },
 
   formAlliance(targetFactionId: number): Result {
@@ -547,7 +738,21 @@ export const rtkApi = {
     const { month } = useGameStore.getState();
     useGameStore.getState().endTurn();
     const after = useGameStore.getState();
-    return { ok: true, data: { year: after.year, month: after.month, advanced: after.month !== month } };
+    return {
+      ok: true,
+      data: {
+        year: after.year,
+        month: after.month,
+        advanced: after.month !== month,
+        events: after.pendingEvents.map(e => ({
+          type: e.type,
+          name: e.name,
+          cityId: e.cityId,
+          officerId: e.officerId
+        })),
+        eventCount: after.pendingEvents.length
+      }
+    };
   },
 
   // Battle sub-namespace
@@ -693,19 +898,14 @@ export const rtkApi = {
   },
 
   // Utilities
-  status(): void {
+  status(cityId?: number): Result | void {
     const state = useGameStore.getState();
     const battle = useBattleStore.getState();
 
-    console.log(`═══ RTK Status ═══`);
-    console.log(`Phase: ${state.phase} | ${state.year}年 ${state.month}月`);
-    if (state.playerFaction) {
-      console.log(`Faction: ${state.playerFaction.name} (id=${state.playerFaction.id})`);
-      const myCities = state.cities.filter(c => c.factionId === state.playerFaction?.id);
-      const myOfficers = state.officers.filter(o => o.factionId === state.playerFaction?.id);
-      console.log(`Cities (${myCities.length}): ${myCities.map(c => c.name).join(', ')}`);
-      console.log(`Gold: ${myCities.reduce((s, c) => s + c.gold, 0).toLocaleString()} | Food: ${myCities.reduce((s, c) => s + c.food, 0).toLocaleString()} | Troops: ${myCities.reduce((s, c) => s + c.troops, 0).toLocaleString()}`);
-      console.log(`Officers: ${myOfficers.length}`);
+    if (cityId) {
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city) return { ok: false, error: 'City not found' };
+      return { ok: true, data: city };
     }
 
     if (state.phase === 'battle') {
@@ -714,7 +914,48 @@ export const rtkApi = {
       console.log(`Attacker ID: ${battle.attackerId} | Defender ID: ${battle.defenderId}`);
       const active = battle.units.find(u => u.id === battle.activeUnitId);
       if (active) console.log(`Active Unit: ${active.officer.name} (${active.id})`);
+      console.log(`═══════════════════`);
+      return;
     }
+
+    console.log(`═══ RTK Status ═══`);
+    console.log(`Phase: ${state.phase} | ${state.year}年 ${state.month}月`);
+
+    if (state.playerFaction) {
+      console.log(`Faction: ${state.playerFaction.name} (id=${state.playerFaction.id})`);
+
+      const myCities = state.cities.filter(c => c.factionId === state.playerFaction?.id);
+      const myOfficers = state.officers.filter(o => o.factionId === state.playerFaction?.id);
+      const allCities = state.cities;
+
+      const cityPercent = ((myCities.length / allCities.length) * 100).toFixed(1);
+      console.log(`Cities: ${myCities.length}/${allCities.length} (${cityPercent}% of map)`);
+      console.log(`  ${myCities.map(c => c.name).join(', ')}`);
+
+      const totalGold = myCities.reduce((s, c) => s + c.gold, 0);
+      const totalFood = myCities.reduce((s, c) => s + c.food, 0);
+      const totalTroops = myCities.reduce((s, c) => s + c.troops, 0);
+      console.log(`Gold: ${totalGold.toLocaleString()} | Food: ${totalFood.toLocaleString()} | Troops: ${totalTroops.toLocaleString()}`);
+
+      const officersWithStamina = myOfficers.filter(o => o.stamina >= 15).length;
+      console.log(`Officers: ${myOfficers.length} (${officersWithStamina} with stamina ≥15)`);
+
+      const warnings: string[] = [];
+      if (totalGold < 1000) warnings.push('⚠️ Low gold alert');
+      if (totalFood < 5000) warnings.push('⚠️ Low food alert');
+      myCities.forEach(c => {
+        if (!c.governorId) warnings.push(`⚠️ ${c.name} lacks a governor`);
+      });
+      if (state.pendingEvents.length > 0) {
+        warnings.push(`⚠️ ${state.pendingEvents.length} pending event(s)`);
+      }
+
+      if (warnings.length > 0) {
+        console.log('');
+        warnings.forEach(w => console.log(w));
+      }
+    }
+
     console.log(`═══════════════════`);
   },
 

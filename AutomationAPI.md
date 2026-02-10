@@ -7,13 +7,12 @@ Expose a structured, ergonomic API on `window.rtk` that lets a coding assistant 
 ---
 
 ## Design Principles
-
-1. **Thin wrapper, not a second store.** The API delegates to `useGameStore` and `useBattleStore` directly. No duplicated state.
-2. **Human-like flow.** The API enforces the same sequence a human follows: start game → select scenario → pick faction → configure settings → play (select city, issue commands, end turn). No teleporting past phases.
-3. **Read-friendly query layer.** Raw Zustand state is flat arrays. The API provides query helpers like `rtk.query.myOfficers()`, `rtk.query.adjacentEnemyCities(cityId)`, etc., so the caller doesn't need to manually join/filter.
-4. **Structured returns.** Every action returns a result object `{ ok: boolean, error?: string, data?: ... }` so the caller can programmatically check success/failure.
-5. **No React dependency.** The API talks to Zustand stores directly (they're vanilla JS — `getState()` / `setState()` work outside React).
-6. **Dev-only.** Only mounted when `import.meta.env.DEV` is true.
+- **JSON First**: All rtk commands return a `Result` object: `{ ok: boolean, data?: any, error?: string }`.
+- **Descriptive Errors**: Errors specifically state the reason for failure (e.g., "Insufficient gold", "No governor").
+- **Reactive**: The API reflects the current Zustand store state immediately.
+- **Discoverable**: Helper namespaces like `rtk.query` provide suggested next steps.
+- **No React dependency.** The API talks to Zustand stores directly (they're vanilla JS — `getState()` / `setState()` work outside React).
+- **Dev-only.** Only mounted when `import.meta.env.DEV` is true.
 
 ---
 
@@ -28,7 +27,10 @@ interface RTKApi {
   phase(): GamePhase;
 
   /** Start a new game: select scenario by id, pick faction, configure settings, enter playing phase */
-  newGame(scenarioId: number, factionId: number, settings?: Partial<GameSettings>): Result;
+ - `newGame(scenarioId: number, factionId: number)`: Starts a new game. Supports scenario constants (e.g., `rtk.newGame(rtk.Scenario.AntiDongzhuo, 1)`).
+- `Scenario`: Constant object for scenario IDs (AntiDongzhuo, Guandu, etc.).
+- `ScenarioInfo`: Metadata lookup for scenarios (year, name, etc.).
+s?: Partial<GameSettings>): Result;
 
   // ─── Queries (read-only, no side effects) ───────────
   query: {
@@ -109,9 +111,13 @@ interface RTKApi {
   recruitOfficer(officerId: number, recruiterId?: number): Result;
   searchOfficer(cityId: number, officerId?: number): Result;
   recruitPOW(officerId: number, recruiterId?: number): Result;
-  rewardOfficer(officerId: number, type: 'gold' | 'treasure', amount?: number): Result;
-  executeOfficer(officerId: number): Result;
-  dismissOfficer(officerId: number): Result;
+  rewardOfficer(officerId: number, type: 'gold' | 'treasure', amoun- `city(id: number)`: Returns full city object.
+- `officer(id: number)`: Returns full officer object.
+- `bestOfficerFor(cityId, task)`: Returns recommended officer for 'domestic', 'military', or 'strategy'.
+- `officerRecommendations(cityId)`: Returns a map of recommendations for all task types.
+- `canDraftTroops(cityId, amount)`: Pre-validates a draft action.
+- `canAffordDomestic(cityId)`: Pre-validates a domestic action (500 gold).
+erId: number): Result;
   appointGovernor(cityId: number, officerId: number): Result;
   appointAdvisor(officerId: number): Result;
   promoteOfficer(officerId: number, rank: OfficerRank): Result;
@@ -149,11 +155,9 @@ interface RTKApi {
   // Events
   /** Dismiss the current pending event (or accept officer visit) */
   popEvent(): Result;
-  /** Robustly dismiss event if present (checks pendingEvents length) */
-  confirmEvent(): Result;
-
-  // Turn
-  endTurn(): Result;
+  /** Robustly dismiss event if present (checks- `endTurn()`: Advances to next month. Returns event array: `{ ok: true, data: { month, year, events: [...], eventCount } }`.
+- `confirmEvent()`: Confirms the first pending event.
+(): Result;
 
   // Battle (sub-commands when phase === 'battle')
   battle: {
