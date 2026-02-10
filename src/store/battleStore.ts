@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BattleState, BattleUnit, UnitType, TerrainType } from '../types/battle';
+import type { BattleState, BattleUnit, BattleMode, UnitType, TerrainType } from '../types/battle';
 import type { Officer } from '../types';
 import {
   getMovementRange,
@@ -15,6 +15,7 @@ import {
   isSiegeBattle,
   getGatePositions
 } from '../utils/siegeMap';
+import { getDistance } from '../utils/hex';
 import { hasSkill } from '../utils/skills';
 
 interface BattleActions {
@@ -33,6 +34,7 @@ interface BattleActions {
     defenderTroops?: number[]
   ) => void;
   selectUnit: (unitId: string | null) => void;
+  setMode: (mode: BattleMode) => void;
   moveUnit: (unitId: string, q: number, r: number) => void;
   attackUnit: (attackerUnitId: string, targetUnitId: string) => void;
   attackGate: (attackerUnitId: string, gateQ: number, gateR: number) => void;
@@ -41,6 +43,9 @@ interface BattleActions {
   endUnitTurn: (unitId: string) => void;
   nextDay: () => void;
   checkBattleEnd: () => void;
+  addBattleLog: (msg: string) => void;
+  inspectUnit: (unitId: string | null) => void;
+  runEnemyTurn: () => void;
 }
 
 const DEFAULT_MAP_WIDTH = 15;
@@ -63,9 +68,18 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   isSiege: false,
   gates: [],
   fireHexes: [],
+  mode: 'idle',
   selectedTactic: null,
   capturedOfficerIds: [],
   routedOfficerIds: [],
+  battleLog: [],
+  inspectedUnitId: null,
+
+  addBattleLog: (msg) => set(s => ({ battleLog: [...s.battleLog.slice(-49), msg] })),
+
+  inspectUnit: (unitId) => set({ inspectedUnitId: unitId }),
+
+  setMode: (mode) => set({ mode, selectedTactic: mode === 'tactic' ? get().selectedTactic : null }),
 
   initBattle: (
     attackerId,
@@ -94,10 +108,10 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     // Initialize Gates for Siege
     const gates = isSiege ? getGatePositions(battleMap).map(g => ({ ...g, hp: 1000, maxHp: 1000 })) : [];
 
-    // Attacker units (left/bottom side)
+    // Attacker units (left side)
     attackerOfficers.forEach((off, i) => {
       const unitType = attackerUnitTypes[i] || 'infantry';
-      const troops = attackerTroops[i] || 5000; // Fallback to 5000 if not provided
+      const troops = attackerTroops[i] || 5000;
       units.push({
         id: `attacker-${off.id}`,
         officerId: off.id,
@@ -108,31 +122,27 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         morale: attackerMorale,
         training: attackerTraining,
         x: 1,
-        y: 2 + i * 2,
-        z: -1 - (2 + i * 2),
+        y: Math.min(2 + i * 2, height - 2),
+        z: -1 - Math.min(2 + i * 2, height - 2),
         type: unitType,
         status: 'active',
-        direction: 0
+        direction: 0,
+        hasMoved: false,
       });
     });
 
-    // Defender units (right/top side or inside city)
+    // Defender units (right side or inside city for siege)
     defenderOfficers.forEach((off, i) => {
       const unitType = defenderUnitTypes[i] || 'infantry';
-      const troops = defenderTroops[i] || 5000; // Fallback to 5000 if not provided
+      const troops = defenderTroops[i] || 5000;
 
       let startX = width - 2;
-      let startY = 2 + i * 2;
+      let startY = Math.min(2 + i * 2, height - 2);
 
       if (isSiege) {
-        // Bug #3: Fix defender spawn positions to avoid walls
         startX = Math.floor(width / 2);
-        // Start from center - 1 instead of -2 to be safer inside small walls
         startY = Math.floor(height / 2) - 1 + i;
-
-        // Safety check: if position is wall/gate/occupied, shift?
-        // Simple fix: force into city terrain if possible or hardcode offsets for 15x15
-        if (i === 0) { startX = 7; startY = 7; } // Center
+        if (i === 0) { startX = 7; startY = 7; }
         else if (i === 1) { startX = 7; startY = 6; }
         else if (i === 2) { startX = 7; startY = 8; }
         else if (i === 3) { startX = 6; startY = 7; }
@@ -147,13 +157,14 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         troops,
         maxTroops: troops,
         morale: defenderMorale,
-        training: 60, // Default defender training
+        training: 60,
         x: startX,
         y: startY,
         z: -startX - startY,
         type: unitType,
         status: 'active',
-        direction: isSiege ? 0 : 3
+        direction: isSiege ? 0 : 3,
+        hasMoved: false,
       });
     });
 
@@ -174,7 +185,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       capturedOfficerIds: [],
       routedOfficerIds: [],
       weather: 'sunny',
-      windDirection: Math.floor(Math.random() * 6) // Initial random wind
+      windDirection: Math.floor(Math.random() * 6),
+      mode: 'idle',
+      selectedTactic: null,
+      battleLog: [],
+      inspectedUnitId: null,
     });
   },
 
@@ -185,33 +200,36 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const unit = state.units.find(u => u.id === unitId);
     if (!unit) return;
     if (unit.status !== 'active') return;
+    if (unit.hasMoved) return;
 
     // Boundary check
     if (q < 0 || q >= state.battleMap.width || r < 0 || r >= state.battleMap.height) return;
 
-    // Collision check: cannot move onto occupied hex
+    // Collision check
     if (state.units.some(u => u.id !== unitId && u.x === q && u.y === r && u.troops > 0)) return;
 
-    // Terrain/Obstacle check
+    // Terrain check
     const terrain = state.battleMap.terrain[q][r];
     if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) return;
-    // In siege, city terrain is the floor inside. In field, it's blocked.
 
-    // Gate check: cannot move onto gate hexes
+    // Gate check
     if (state.gates.some(g => g.q === q && g.r === r && g.hp > 0)) return;
 
     const range = getMovementRange(unit.type);
-    const dist = (Math.abs(unit.x - q) + Math.abs(unit.y - r) + Math.abs(unit.z - (-q - r))) / 2;
+    const dist = getDistance({ q: unit.x, r: unit.y }, { q, r });
 
     if (dist > range) return;
 
     set({
       units: state.units.map(u =>
         u.id === unitId
-          ? { ...u, x: q, y: r, z: -q - r }
+          ? { ...u, x: q, y: r, z: -q - r, hasMoved: true }
           : u
-      )
+      ),
+      mode: 'idle',
     });
+
+    get().addBattleLog(`${unit.officer.name} 移動至 (${q},${r})`);
   },
 
   attackUnit: (attackerUnitId, targetUnitId) => {
@@ -220,7 +238,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const target = state.units.find(u => u.id === targetUnitId);
     if (!attacker || !target) return;
 
-    // Bug #1: Bounds check
+    // Range check
+    const dist = getDistance({ q: attacker.x, r: attacker.y }, { q: target.x, r: target.y });
+    const atkRange = getAttackRange(attacker.type);
+    if (dist > atkRange) return;
+
     let terrain: TerrainType = 'plain';
     if (target.x >= 0 && target.x < state.battleMap.width && target.y >= 0 && target.y < state.battleMap.height) {
       terrain = state.battleMap.terrain[target.x][target.y];
@@ -229,63 +251,61 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const attackMod = getAttackModifier(attacker.type, terrain, attacker.officer);
     const defenseMod = getDefenseModifier(target.type, terrain, target.officer);
 
-    // Basic damage formula
     const trainingBonus = 1 + (attacker.training / 200);
     const baseDamage = (attacker.officer.war * attacker.troops) / 1000;
     const targetDefense = (target.officer.leadership * target.troops) / 1000;
-
-    // Apply unit type modifiers
     const modDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus * attackMod / defenseMod;
     const damage = Math.floor(Math.max(50, modDamage));
 
-    // Counter attack (reduced if ranged vs melee)
+    // Counter attack
     const targetRange = getAttackRange(target.type);
-    const dist = (Math.abs(attacker.x - target.x) + Math.abs(attacker.y - target.y) + Math.abs(attacker.z - target.z)) / 2;
-
     let counterDamage = 0;
     if (dist <= targetRange) {
       counterDamage = Math.floor(damage * 0.3);
     }
 
-    // Morale damage
     const moraleDamage = Math.floor(damage / 100) + 2;
 
     const newUnits = state.units.map(u => {
       if (u.id === targetUnitId) {
         const newTroops = Math.max(0, u.troops - damage);
         const newMorale = Math.max(0, u.morale - moraleDamage);
-
         let newStatus = u.status;
         if (newMorale < 20 && newTroops > 0) {
           newStatus = 'routed';
         }
-
         return { ...u, troops: newTroops, morale: newMorale, status: newStatus };
       }
       if (u.id === attackerUnitId) {
         return {
           ...u,
           troops: Math.max(0, u.troops - counterDamage),
-          status: 'done' as const
+          status: 'done' as const,
         };
       }
       return u;
     });
 
-    set({ units: newUnits });
+    set({ units: newUnits, mode: 'idle' });
 
-    // Check for defeated units (POW logic)
+    get().addBattleLog(
+      `${attacker.officer.name} 攻擊 ${target.officer.name}，造成 ${damage} 傷害` +
+      (counterDamage > 0 ? `，受到反擊 ${counterDamage}` : '') + '。'
+    );
+
+    // POW check
     const defeatedTarget = newUnits.find(u => u.id === targetUnitId);
     if (defeatedTarget && defeatedTarget.troops <= 0) {
+      get().addBattleLog(`${target.officer.name} 全軍覆沒！`);
       const captureChance = 30 + (attacker.officer.war - defeatedTarget.officer.war) + (attacker.officer.charisma / 2);
       const rand = Math.random() * 100;
       if (rand < captureChance) {
-        set(state => ({ capturedOfficerIds: [...state.capturedOfficerIds, defeatedTarget.officerId] }));
+        set(s => ({ capturedOfficerIds: [...s.capturedOfficerIds, defeatedTarget.officerId] }));
+        get().addBattleLog(`${target.officer.name} 被俘虜！`);
       }
 
-      // Bug #7: Commander death morale drop
+      // Commander death morale drop
       const isCommander = state.units.filter(u => u.factionId === defeatedTarget.factionId)[0].id === defeatedTarget.id;
-
       if (isCommander) {
         set(s => ({
           units: s.units.map(u =>
@@ -294,7 +314,13 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
               : u
           )
         }));
+        get().addBattleLog(`主將陣亡，${target.officer.name} 方士氣大降！`);
       }
+    }
+
+    if (defeatedTarget && defeatedTarget.status === 'routed') {
+      get().addBattleLog(`${target.officer.name} 潰走！`);
+      set(s => ({ routedOfficerIds: [...s.routedOfficerIds, defeatedTarget.officerId] }));
     }
 
     get().checkBattleEnd();
@@ -308,7 +334,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const gateIndex = state.gates.findIndex(g => g.q === gateQ && g.r === gateR);
     if (gateIndex === -1) return;
 
-    const damage = Math.floor((attacker.officer.war * attacker.troops) / 500); // Basic gate damage
+    const damage = Math.floor((attacker.officer.war * attacker.troops) / 500);
 
     const newGates = [...state.gates];
     newGates[gateIndex] = { ...newGates[gateIndex], hp: Math.max(0, newGates[gateIndex].hp - damage) };
@@ -316,18 +342,21 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     let newBattleMap = state.battleMap;
 
     if (newGates[gateIndex].hp <= 0) {
-      // Destroy gate - change terrain to plain or something walkable
       const newTerrain = state.battleMap.terrain.map((col, q) =>
-        q === gateQ ? col.map((t, r) => r === gateR ? 'plain' : t) : col
+        q === gateQ ? col.map((t, r) => r === gateR ? 'plain' as TerrainType : t) : col
       );
       newBattleMap = { ...state.battleMap, terrain: newTerrain };
       newGates.splice(gateIndex, 1);
+      get().addBattleLog(`城門被攻破！`);
+    } else {
+      get().addBattleLog(`${attacker.officer.name} 攻門，造成 ${damage} 傷害（殘 ${newGates[gateIndex].hp}）。`);
     }
 
     set({
       battleMap: newBattleMap,
       gates: newGates,
-      units: state.units.map(u => u.id === attackerUnitId ? { ...u, status: 'done' as const } : u)
+      units: state.units.map(u => u.id === attackerUnitId ? { ...u, status: 'done' as const } : u),
+      mode: 'idle',
     });
   },
 
@@ -336,11 +365,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const unit = state.units.find(u => u.id === unitId);
     if (!unit) return;
 
-    // Bug #12: Skill check
-    if (!hasSkill(unit.officer, tactic)) {
-      // Technically should notify UI, but for now just return
-      return;
-    }
+    if (!hasSkill(unit.officer, tactic)) return;
 
     let success = false;
     let targetUnit: BattleUnit | undefined;
@@ -357,10 +382,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const roll = Math.random() * 100;
     success = roll < chance;
 
-    // Bug #2: Update logic to avoid overwriting changes
     let nextUnits = [...state.units];
 
     if (success) {
+      get().addBattleLog(`${unit.officer.name} 施展「${tactic}」成功！`);
+
       switch (tactic) {
         case '火計':
           if (targetHex) {
@@ -398,24 +424,24 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '天變': { // Weather change
+        case '天變': {
           const weathers = ['sunny', 'rain', 'cloudy', 'storm'] as const;
           set({ weather: weathers[Math.floor(Math.random() * 4)] });
           break;
         }
-        case '風變': // Wind change
+        case '風變':
           set({ windDirection: Math.floor(Math.random() * 6) });
           break;
-        case '修復': // Repair
+        case '修復':
           set(s => ({ gates: s.gates.map(g => ({ ...g, hp: Math.min(g.maxHp, g.hp + 500) })) }));
           break;
         case '落石':
           if (targetUnit) {
-            let terrain: TerrainType = 'plain';
+            let terr: TerrainType = 'plain';
             if (targetUnit.x >= 0 && targetUnit.x < state.battleMap.width && targetUnit.y >= 0 && targetUnit.y < state.battleMap.height) {
-              terrain = state.battleMap.terrain[targetUnit.x][targetUnit.y];
+              terr = state.battleMap.terrain[targetUnit.x][targetUnit.y];
             }
-            if (terrain === 'mountain' || terrain === 'gate') {
+            if (terr === 'mountain' || terr === 'gate') {
               const dmg = Math.floor(targetUnit.troops * 0.15);
               nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 10 } : u);
             }
@@ -427,26 +453,25 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
           }
           break;
         case '落雷':
-          if (targetHex) {
-            // Heavy damage to whoever is there
-            if (targetUnit) {
-              const dmg = Math.floor(targetUnit.troops * 0.5);
-              nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 30 } : u);
-            }
+          if (targetHex && targetUnit) {
+            const dmg = Math.floor(targetUnit.troops * 0.5);
+            nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 30 } : u);
           }
           break;
         case '虛報':
           if (targetUnit) {
-            // Force retreat or confuse
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, status: 'confused' as const, confusedTurns: 3, morale: u.morale - 20 } : u);
           }
           break;
       }
+    } else {
+      get().addBattleLog(`${unit.officer.name} 施展「${tactic}」失敗。`);
     }
 
-    // Apply done status after all modifications
     set({
-      units: nextUnits.map(u => u.id === unitId ? { ...u, status: 'done' as const } : u)
+      units: nextUnits.map(u => u.id === unitId ? { ...u, status: 'done' as const } : u),
+      mode: 'idle',
+      selectedTactic: null,
     });
 
     get().checkBattleEnd();
@@ -487,7 +512,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
           }
           return u;
         });
-        set({ units: confusedUnitsResolved, activeUnitId: null });
+        set({ units: confusedUnitsResolved, activeUnitId: null, mode: 'idle' });
+
+        get().addBattleLog(`${nextUnit.officer.name} 處於混亂狀態，無法行動。`);
 
         const hasActive = confusedUnitsResolved.some(u => u.status === 'active');
         if (hasActive) {
@@ -498,7 +525,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
           get().nextDay();
         }
       } else {
-        set({ units: newUnits, activeUnitId: nextUnit.id });
+        set({ units: newUnits, activeUnitId: nextUnit.id, mode: 'idle' });
       }
     } else {
       set({ units: newUnits });
@@ -506,52 +533,131 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     }
   },
 
+  /** Simple AI: move toward nearest enemy and attack if adjacent */
+  runEnemyTurn: () => {
+    const state = get();
+    const activeUnit = state.units.find(u => u.id === state.activeUnitId);
+    if (!activeUnit || activeUnit.status !== 'active') {
+      if (activeUnit) get().endUnitTurn(activeUnit.id);
+      return;
+    }
+
+    // Find nearest enemy
+    const enemies = state.units.filter(u => u.factionId !== activeUnit.factionId && u.troops > 0 && u.status !== 'routed');
+    if (enemies.length === 0) {
+      get().endUnitTurn(activeUnit.id);
+      return;
+    }
+
+    const nearest = enemies.reduce((best, e) => {
+      const d = getDistance({ q: e.x, r: e.y }, { q: activeUnit.x, r: activeUnit.y });
+      const bestD = getDistance({ q: best.x, r: best.y }, { q: activeUnit.x, r: activeUnit.y });
+      return d < bestD ? e : best;
+    });
+
+    const distToNearest = getDistance({ q: nearest.x, r: nearest.y }, { q: activeUnit.x, r: activeUnit.y });
+    const atkRange = getAttackRange(activeUnit.type);
+
+    // If in attack range, attack
+    if (distToNearest <= atkRange) {
+      get().attackUnit(activeUnit.id, nearest.id);
+      return;
+    }
+
+    // Try to move closer: pick the neighbor hex closest to the enemy
+    const moveRange = getMovementRange(activeUnit.type);
+    const directions = [
+      { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+      { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+    ];
+
+    let bestHex = { q: activeUnit.x, r: activeUnit.y };
+    let bestDist = distToNearest;
+
+    // Simple greedy: check neighbors up to move range distance in a straight line
+    for (const dir of directions) {
+      for (let step = 1; step <= moveRange; step++) {
+        const candidate = { q: activeUnit.x + dir.q * step, r: activeUnit.y + dir.r * step };
+        if (candidate.q < 0 || candidate.q >= state.battleMap.width || candidate.r < 0 || candidate.r >= state.battleMap.height) break;
+
+        const terrain = state.battleMap.terrain[candidate.q][candidate.r];
+        if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) break;
+        if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0)) break;
+        if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
+
+        const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
+        if (hexDist > moveRange) break;
+
+        const d = getDistance(candidate, { q: nearest.x, r: nearest.y });
+        if (d < bestDist) {
+          bestDist = d;
+          bestHex = candidate;
+        }
+      }
+    }
+
+    if (bestHex.q !== activeUnit.x || bestHex.r !== activeUnit.y) {
+      get().moveUnit(activeUnit.id, bestHex.q, bestHex.r);
+    }
+
+    // After moving, try attack again
+    const updatedUnit = get().units.find(u => u.id === activeUnit.id);
+    if (updatedUnit) {
+      const newDist = getDistance({ q: updatedUnit.x, r: updatedUnit.y }, { q: nearest.x, r: nearest.y });
+      if (newDist <= atkRange) {
+        // Manually allow attack after AI move (bypass hasMoved for AI since attack is separate)
+        get().attackUnit(activeUnit.id, nearest.id);
+        return;
+      }
+    }
+
+    get().endUnitTurn(activeUnit.id);
+  },
+
   nextDay: () => {
     const state = get();
     const newDay = state.day + 1;
     if (newDay > state.maxDays) {
       set({ isFinished: true, winnerFactionId: state.defenderId });
+      get().addBattleLog(`已到第 ${state.maxDays} 日，攻方撤退，守方勝利！`);
       return;
     }
 
-    // Bug #5: Fire damage and spread
+    get().addBattleLog(`── 第 ${newDay} 日 ──`);
+
+    // Fire damage
     let newFireHexes = [...state.fireHexes];
     let unitsWithFireDamage = [...state.units];
 
-    // Damage units on fire
     unitsWithFireDamage = unitsWithFireDamage.map(u => {
       if (newFireHexes.some(f => f.q === u.x && f.r === u.y)) {
-        return { ...u, troops: Math.floor(u.troops * 0.9) }; // 10% damage
+        return { ...u, troops: Math.floor(u.troops * 0.9) };
       }
       return u;
     });
 
-    // Fire spread logic (simple wind direction based)
-    // Wind: 0=N, 1=NE, 2=SE, 3=S, 4=SW, 5=NW
+    // Fire spread
     if (newFireHexes.length > 0 && Math.random() < 0.2) {
       const source = newFireHexes[Math.floor(Math.random() * newFireHexes.length)];
       const neighbors = [
         { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
         { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
       ];
-      // Bias towards wind direction
       const dirIndex = state.windDirection % 6;
       const targetDir = neighbors[dirIndex];
       const targetQ = source.q + targetDir.q;
       const targetR = source.r + targetDir.r;
-
       if (!newFireHexes.some(f => f.q === targetQ && f.r === targetR)) {
-        newFireHexes.push({ q: targetQ, r: targetR, turnsLeft: 4 }); // Effectively 3 turns after decrement
+        newFireHexes.push({ q: targetQ, r: targetR, turnsLeft: 4 });
       }
     }
 
-    // Chained units spread fire to each other
+    // Chained fire spread
     state.units.filter(u => u.chained && u.troops > 0).forEach(u => {
       if (newFireHexes.some(f => f.q === u.x && f.r === u.y)) {
-        // Spread to other chained units
         state.units.filter(u2 => u2.chained && u2.id !== u.id && u2.troops > 0).forEach(u2 => {
           if (!newFireHexes.some(f => f.q === u2.x && f.r === u2.y)) {
-            newFireHexes.push({ q: u2.x, r: u2.y, turnsLeft: 3 }); // Effectively 2 turns after decrement
+            newFireHexes.push({ q: u2.x, r: u2.y, turnsLeft: 3 });
           }
         });
       }
@@ -559,27 +665,22 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
     newFireHexes = newFireHexes.map(f => ({ ...f, turnsLeft: f.turnsLeft - 1 })).filter(f => f.turnsLeft > 0);
 
-    // Bug #6: Routed units move
-    // Move routed units towards edge (0,0 or width,height)
+    // Routed units
     const routedCaptures: number[] = [];
     unitsWithFireDamage = unitsWithFireDamage.map(u => {
       if (u.status === 'routed') {
-        // If at edge, remove
         if (u.x <= 0 || u.x >= DEFAULT_MAP_WIDTH - 1 || u.y <= 0 || u.y >= DEFAULT_MAP_HEIGHT - 1) {
           if (Math.random() < 0.2) {
             routedCaptures.push(u.officerId);
           }
           return { ...u, troops: 0 };
         }
-
-        // Move towards nearest edge
         let newX = u.x;
         if (u.x < DEFAULT_MAP_WIDTH / 2) {
           newX = u.x - 1;
         } else {
           newX = u.x + 1;
         }
-
         return { ...u, x: newX, y: u.y, z: -newX - u.y };
       }
       return u;
@@ -589,10 +690,10 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       if (u.status === 'routed' && u.troops <= 0) return { ...u, status: 'done' as const };
       if (u.status === 'routed') return u;
       if (u.troops <= 0) return { ...u, status: 'done' as const };
-
       return {
         ...u,
-        status: (u.confusedTurns && u.confusedTurns > 0) ? 'confused' as const : 'active' as const
+        status: (u.confusedTurns && u.confusedTurns > 0) ? 'confused' as const : 'active' as const,
+        hasMoved: false,
       };
     });
 
@@ -601,7 +702,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       units: resetUnits,
       fireHexes: newFireHexes,
       capturedOfficerIds: [...state.capturedOfficerIds, ...routedCaptures],
-      activeUnitId: resetUnits.find(u => u.status === 'active')?.id || null
+      activeUnitId: resetUnits.find(u => u.status === 'active')?.id || null,
+      mode: 'idle',
     });
   },
 

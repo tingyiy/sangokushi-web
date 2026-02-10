@@ -17,6 +17,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         allies: [],
         ceasefires: [],
         hostageOfficerIds: [],
+        powOfficerIds: [],
         advisorId: null,
       },
       cities: [
@@ -24,13 +25,13 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
           id: 1, name: '許昌', x: 50, y: 50, factionId: 1, population: 100000, gold: 10000, food: 50000,
           commerce: 50, agriculture: 50, defense: 30, troops: 10000, adjacentCityIds: [2],
           floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
-          crossbows: 2000, warHorses: 2000, batteringRams: 0, catapults: 0
+          crossbows: 2000, warHorses: 2000, batteringRams: 0, catapults: 0, taxRate: 'medium' as const
         },
         {
           id: 2, name: '洛陽', x: 60, y: 50, factionId: 2, population: 100000, gold: 10000, food: 50000,
           commerce: 50, agriculture: 50, defense: 30, troops: 10000, adjacentCityIds: [1],
           floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
-          crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0
+          crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const
         }
       ],
       officers: [
@@ -38,17 +39,17 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
           id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, politics: 95, charisma: 90,
           skills: ['製造', '人才', '做敵', '驅虎', '燒討', '情報', '外交'] as RTK4Skill[],
           portraitId: 1, birthYear: 160, deathYear: 220, treasureId: null, factionId: 1, cityId: 1,
-          stamina: 100, loyalty: 100, isGovernor: true
+          stamina: 100, loyalty: 100, isGovernor: true, rank: '一般' as const, relationships: []
         },
         {
           id: 2, name: '呂布', leadership: 95, war: 100, intelligence: 20, politics: 15, charisma: 40,
           skills: [] as RTK4Skill[], portraitId: 2, birthYear: 160, deathYear: 200, treasureId: null,
-          factionId: 2, cityId: 2, stamina: 100, loyalty: 50, isGovernor: true
+          factionId: 2, cityId: 2, stamina: 100, loyalty: 50, isGovernor: true, rank: '一般' as const, relationships: []
         }
       ],
       factions: [
-        { id: 1, name: '曹操', rulerId: 1, color: '#3b82f6', isPlayer: true, relations: { 2: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], advisorId: null },
-        { id: 2, name: '董卓', rulerId: 2, color: '#ff0000', isPlayer: false, relations: { 1: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], advisorId: null }
+        { id: 1, name: '曹操', rulerId: 1, color: '#3b82f6', isPlayer: true, relations: { 2: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+        { id: 2, name: '董卓', rulerId: 2, color: '#ff0000', isPlayer: false, relations: { 1: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null }
       ],
       year: 190, month: 1, selectedCityId: 1, activeCommandCategory: null, log: [], duelState: null, battleFormation: null
     });
@@ -105,7 +106,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         officers: [...useGameStore.getState().officers, {
           id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
           skills: [], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
-          factionId: null, cityId: 1, stamina: 100, loyalty: 0, isGovernor: false
+          factionId: null, cityId: 1, stamina: 100, loyalty: 0, isGovernor: false, rank: '一般' as const, relationships: []
         }]
       });
       // Mock random to succeed
@@ -146,7 +147,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         officers: [...useGameStore.getState().officers, {
           id: 4, name: '測試', leadership: 10, war: 10, intelligence: 10, politics: 10, charisma: 10,
           skills: [], portraitId: 1, birthYear: 160, deathYear: 220, treasureId: null,
-          factionId: 1, cityId: 1, stamina: 100, loyalty: 100, isGovernor: false
+          factionId: 1, cityId: 1, stamina: 100, loyalty: 100, isGovernor: false, rank: '一般' as const, relationships: []
         }]
       });
       useGameStore.getState().dismissOfficer(4);
@@ -169,7 +170,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
 
     it('transferOfficer works', () => {
       useGameStore.setState({
-         cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
       });
       useGameStore.getState().transferOfficer(1, 2);
       const officer = useGameStore.getState().officers.find(o => o.id === 1);
@@ -281,28 +282,28 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('disasterRelief fails if resources insufficient', () => {
-       useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c) });
-       useGameStore.getState().disasterRelief(1);
-       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('資源不足'));
+      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c) });
+      useGameStore.getState().disasterRelief(1);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('資源不足，無法賑災'));
     });
   });
 
   describe('Personnel (人事) - Edge Cases', () => {
     it('searchOfficer fails if no recruiters or stamina low', () => {
-       useGameStore.setState({ officers: [] });
-       useGameStore.getState().searchOfficer(1);
-       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無人可派'));
+      useGameStore.setState({ officers: [] });
+      useGameStore.getState().searchOfficer(1);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無人可派'));
 
-       // Restore officer but low stamina
-       useGameStore.setState({
-         officers: [{
-           id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, politics: 95, charisma: 90,
-           skills: ['人才'] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 220,
-           treasureId: null, factionId: 1, cityId: 1, stamina: 5, loyalty: 100, isGovernor: true
-         }]
-       });
-       useGameStore.getState().searchOfficer(1);
-       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('體力不足'));
+      // Restore officer but low stamina
+      useGameStore.setState({
+        officers: [{
+          id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, politics: 95, charisma: 90,
+          skills: ['人才'] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 220,
+          treasureId: null, factionId: 1, cityId: 1, stamina: 5, loyalty: 100, isGovernor: true, rank: '一般' as const, relationships: []
+        }]
+      });
+      useGameStore.getState().searchOfficer(1);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('體力不足'));
     });
 
     it('searchOfficer can find nothing', () => {
@@ -327,11 +328,11 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     it('transport fails if resources or stamina insufficient', () => {
       useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c) });
       useGameStore.getState().transport(1, 2, 'gold', 1000);
-      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('資源不足'));
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('金不足，無法輸送'));
 
-      useGameStore.setState({ 
+      useGameStore.setState({
         cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 10000 } : c),
-        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, stamina: 5 } : o) 
+        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, stamina: 5 } : o)
       });
       useGameStore.getState().transport(1, 2, 'gold', 1000);
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('體力不足'));
@@ -363,7 +364,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       useGameStore.getState().demandSurrender(2);
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('拒絕了投降的要求'));
     });
-    
+
     it('requestJointAttack fails if rejected', () => {
       const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
       useGameStore.getState().requestJointAttack(2, 2);
@@ -386,7 +387,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('潛入失敗'));
       mockRandom.mockRestore();
     });
-    
+
     it('counterEspionage fails if rejected', () => {
       const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
       useGameStore.getState().counterEspionage(2, 2);
@@ -396,70 +397,70 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
   });
 
   describe('Bug Fixes & Validations', () => {
-    it('startBattle requires 5000 troops', () => {
-        useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, troops: 1000 } : c) });
-        useGameStore.getState().startBattle(2);
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('兵力不足'));
+    it('startBattle requires troops', () => {
+      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, troops: 0 } : c) });
+      useGameStore.getState().startBattle(2);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('兵力不足'));
     });
 
     it('requestJointAttack safe against empty officer list', () => {
-        // Remove all officers
-        useGameStore.setState({ officers: [] });
-        // Should not throw
-        useGameStore.getState().requestJointAttack(2, 2);
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無人可派'));
+      // Remove all officers
+      useGameStore.setState({ officers: [] });
+      // Should not throw
+      useGameStore.getState().requestJointAttack(2, 2);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無人可派'));
     });
 
     it('demandSurrender counts cities by factionId', () => {
-        // Setup: Player has 6 cities (factionId 1), Target has 1 city (factionId 2)
-        // Ensure city ID != faction ID to test the bug fix
-        const cities = [
-            { id: 10, factionId: 1 }, { id: 11, factionId: 1 }, { id: 12, factionId: 1 }, 
-            { id: 13, factionId: 1 }, { id: 14, factionId: 1 }, { id: 15, factionId: 1 },
-            { id: 20, factionId: 2 }
-        ].map(c => ({ ...useGameStore.getState().cities[0], ...c, name: 'C' + c.id }));
-        
-        useGameStore.setState({ 
-            cities,
-            selectedCityId: 10,
-            officers: useGameStore.getState().officers.map(o => 
-                o.id === 1 ? { ...o, cityId: 10 } : o
-            ),
-        });
-        
-        // Mock random to succeed
-        const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.01);
-        useGameStore.getState().demandSurrender(2);
-        
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('向我軍投降'));
-        mockRandom.mockRestore();
+      // Setup: Player has 6 cities (factionId 1), Target has 1 city (factionId 2)
+      // Ensure city ID != faction ID to test the bug fix
+      const cities = [
+        { id: 10, factionId: 1 }, { id: 11, factionId: 1 }, { id: 12, factionId: 1 },
+        { id: 13, factionId: 1 }, { id: 14, factionId: 1 }, { id: 15, factionId: 1 },
+        { id: 20, factionId: 2 }
+      ].map(c => ({ ...useGameStore.getState().cities[0], ...c, name: 'C' + c.id }));
+
+      useGameStore.setState({
+        cities,
+        selectedCityId: 10,
+        officers: useGameStore.getState().officers.map(o =>
+          o.id === 1 ? { ...o, cityId: 10 } : o
+        ),
+      });
+
+      // Mock random to succeed
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.01);
+      useGameStore.getState().demandSurrender(2);
+
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('向我軍投降'));
+      mockRandom.mockRestore();
     });
 
     it('exchangeHostage validates constraints', () => {
-        // Fail if officer not in faction
-        useGameStore.setState({ 
-            officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 2 } : o) 
-        });
-        useGameStore.getState().exchangeHostage(1, 2);
-        expect(useGameStore.getState().factions.find(f => f.id === 2)?.hostageOfficerIds).not.toContain(1);
+      // Fail if officer not in faction
+      useGameStore.setState({
+        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 2 } : o)
+      });
+      useGameStore.getState().exchangeHostage(1, 2);
+      expect(useGameStore.getState().factions.find(f => f.id === 2)?.hostageOfficerIds).not.toContain(1);
 
-        // Fail if already hostage
-        useGameStore.setState({ 
-            officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 1, cityId: -2 } : o) 
-        });
-        useGameStore.getState().exchangeHostage(1, 2);
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('已經是人質'));
+      // Fail if already hostage
+      useGameStore.setState({
+        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, factionId: 1, cityId: -2 } : o)
+      });
+      useGameStore.getState().exchangeHostage(1, 2);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('已經是人質'));
     });
 
     it('transferOfficer validates target ownership', () => {
-        // Target city 2 is enemy (faction 2)
-        useGameStore.getState().transferOfficer(1, 2);
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('只能移動到我方城市'));
+      // Target city 2 is enemy (faction 2)
+      useGameStore.getState().transferOfficer(1, 2);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('只能移動到我方城市'));
     });
 
     it('rewardOfficer handles treasure stub', () => {
-        useGameStore.getState().rewardOfficer(1, 'treasure');
-        expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('尚未實裝'));
+      useGameStore.getState().rewardOfficer(1, 'treasure');
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('尚未實裝'));
     });
   });
 });

@@ -623,7 +623,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      get().addLog('金不足，無法開發商業。');
+      if (city) get().addLog(`金不足，無法開發商業。需要 500（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -658,7 +658,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      get().addLog('金不足，無法開發農業。');
+      if (city) get().addLog(`金不足，無法開發農業。需要 500（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -693,7 +693,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 300) {
-      get().addLog('金不足，無法強化城防。');
+      if (city) get().addLog(`金不足，無法強化城防。需要 300（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -727,7 +727,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      get().addLog('金不足，無法開發治水。');
+      if (city) get().addLog(`金不足，無法開發治水。需要 500（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -762,7 +762,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 800) {
-      get().addLog('金不足，無法開發技術。');
+      if (city) get().addLog(`金不足，無法開發技術。需要 800（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -797,7 +797,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.food < 500) {
-      get().addLog('糧不足，無法訓練。');
+      if (city) get().addLog(`糧不足，無法訓練。需要 500（現有 ${city.food}）。`);
       return;
     }
     if (city.troops <= 0) {
@@ -841,7 +841,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 1000) {
-      get().addLog('金不足，無法製造。');
+      if (city) get().addLog(`金不足，無法製造。需要 1000（現有 ${city.gold}）。`);
       return;
     }
     const executor = officerId
@@ -895,7 +895,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500 || city.food < 1000) {
-      get().addLog('資源不足，無法賑災。');
+      if (city) {
+        const shortages: string[] = [];
+        if (city.gold < 500) shortages.push(`金 需 500（現有 ${city.gold}）`);
+        if (city.food < 1000) shortages.push(`糧 需 1000（現有 ${city.food}）`);
+        get().addLog(`資源不足，無法賑災。${shortages.join('、')}。`);
+      }
       return;
     }
     const executor = officerId
@@ -1101,7 +1106,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     if (!city || city.gold < amount) {
-      get().addLog('金不足。');
+      if (city) get().addLog(`金不足，無法賞賜。需要 ${amount}（現有 ${city.gold}）。`);
       return;
     }
 
@@ -1193,7 +1198,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const goldCost = amount * 2;
     const foodCost = amount * 3;
     if (city.gold < goldCost || city.food < foodCost) {
-      get().addLog('資源不足，無法徵兵。');
+      const shortages: string[] = [];
+      if (city.gold < goldCost) shortages.push(`金 ${goldCost}（現有 ${city.gold}）`);
+      if (city.food < foodCost) shortages.push(`糧 ${foodCost}（現有 ${city.food}）`);
+      get().addLog(`資源不足，無法徵兵。需要：${shortages.join('、')}。`);
       return;
     }
     const maxDraft = Math.floor(city.population * 0.1);
@@ -1232,7 +1240,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     if (fromCity[resource] < amount) {
-      get().addLog('資源不足。');
+      const label = resource === 'gold' ? '金' : resource === 'food' ? '糧' : '兵';
+      get().addLog(`${label}不足，無法輸送。需要 ${amount}（現有 ${fromCity[resource]}）。`);
       return;
     }
 
@@ -1476,7 +1485,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
     if (totalTroopsToDeploy <= 0) {
-      get().addLog('兵力不足，無法出征。');
+      get().addLog(`兵力不足，無法出征。城內駐兵 ${city.troops}。`);
       return;
     }
 
@@ -1496,7 +1505,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (city.crossbows < crossbowsUsed || city.warHorses < warHorsesUsed) {
-      get().addLog('城內武器不足，無法依此編制出征。');
+      const shortages: string[] = [];
+      if (city.crossbows < crossbowsUsed) shortages.push(`弩 需 ${crossbowsUsed}（現有 ${city.crossbows}）`);
+      if (city.warHorses < warHorsesUsed) shortages.push(`軍馬 需 ${warHorsesUsed}（現有 ${city.warHorses}）`);
+      get().addLog(`城內武器不足，無法依此編制出征。${shortages.join('、')}。`);
       return;
     }
 
@@ -1704,7 +1716,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      get().addLog('金不足（需1000），無法進行贈呈。');
+      if (city) get().addLog(`金不足，無法進行贈呈。需要 1000（現有 ${city.gold}）。`);
       return;
     }
 
@@ -1760,7 +1772,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 2000) {
-      get().addLog('金不足（需2000），無法結盟。');
+      if (city) get().addLog(`金不足，無法結盟。需要 2000（現有 ${city.gold}）。`);
       return;
     }
 
@@ -1874,7 +1886,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法提議停戰。需要 1000（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -2023,7 +2035,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      get().addLog('金不足（需500），無法執行流言。');
+      if (city) get().addLog(`金不足，無法執行流言。需要 500（現有 ${city.gold}）。`);
       return;
     }
 
@@ -2096,7 +2108,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 800) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法反間。需要 800（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -2141,7 +2153,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法煽動叛亂。需要 1000（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -2185,7 +2197,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法放火。需要 500（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -2232,7 +2244,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法間諜。需要 500（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -2291,7 +2303,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 300) {
-      get().addLog('資源不足。');
+      if (city) get().addLog(`金不足，無法探查。需要 300（現有 ${city.gold}）。`);
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
