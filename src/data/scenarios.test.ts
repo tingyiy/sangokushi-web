@@ -67,6 +67,70 @@ describe('Scenarios Data Integrity', () => {
           }
         });
       });
+
+      it('every faction-owned city has at least one officer', () => {
+        const factionCities = scenario.cities.filter(c => c.factionId !== null);
+        factionCities.forEach(city => {
+          const officers = scenario.officers.filter(
+            o => o.factionId === city.factionId && o.cityId === city.id
+          );
+          expect(
+            officers.length,
+            `City "${city.name}" (id=${city.id}, faction=${city.factionId}) has no officers`
+          ).toBeGreaterThanOrEqual(1);
+        });
+      });
+
+      it('every faction-owned city has exactly one governor', () => {
+        const factionCities = scenario.cities.filter(c => c.factionId !== null);
+        factionCities.forEach(city => {
+          const governors = scenario.officers.filter(
+            o => o.factionId === city.factionId && o.cityId === city.id && o.isGovernor
+          );
+          expect(
+            governors.length,
+            `City "${city.name}" (id=${city.id}, faction=${city.factionId}) has ${governors.length} governors`
+          ).toBe(1);
+        });
+      });
+
+      it('no duplicate city IDs', () => {
+        const ids = scenario.cities.map(c => c.id);
+        const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+        expect(dupes, `Duplicate city IDs: ${dupes.join(', ')}`).toEqual([]);
+      });
+
+      it('no duplicate officer IDs', () => {
+        const ids = scenario.officers.map(o => o.id);
+        const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+        expect(dupes, `Duplicate officer IDs: ${dupes.join(', ')}`).toEqual([]);
+      });
+
+      it('unoccupied cities have no faction officers or governors', () => {
+        const neutralCities = scenario.cities.filter(c => c.factionId === null);
+        neutralCities.forEach(city => {
+          const factionOfficers = scenario.officers.filter(
+            o => o.cityId === city.id && o.factionId !== null
+          );
+          expect(
+            factionOfficers.length,
+            `Neutral city "${city.name}" (id=${city.id}) has ${factionOfficers.length} faction officer(s): ${factionOfficers.map(o => o.name).join(', ')}`
+          ).toBe(0);
+        });
+      });
+
+      it('faction officers are only in cities owned by their faction or neutral', () => {
+        scenario.officers.forEach(officer => {
+          if (officer.factionId === null) return; // unaffiliated officers can be anywhere
+          const city = scenario.cities.find(c => c.id === officer.cityId);
+          if (!city) return; // covered by other test
+          if (city.factionId === null) return; // neutral city is OK for unaffiliated
+          expect(
+            city.factionId,
+            `Officer "${officer.name}" (faction=${officer.factionId}) is in city "${city.name}" (faction=${city.factionId})`
+          ).toBe(officer.factionId);
+        });
+      });
     });
   });
 });
