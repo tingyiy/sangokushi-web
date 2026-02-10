@@ -212,14 +212,34 @@ Phase determines which screen renders:
 All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀略' | '結束'`
 
 ### Key Files
-- `src/store/gameStore.ts` - Core game state and logic (~2800 lines)
-- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~720 lines)
+- `src/store/gameStore.ts` - Core game state and logic (~2900 lines, 67 actions)
+- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~840 lines, 16 actions)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
 - `src/components/GameScreen.tsx` - Main gameplay UI
 - `src/components/BattleScreen.tsx` - Tactical battle UI with battle log and mode indicators
 - `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
 - `src/data/scenarios.ts` - Scenario definitions
+- `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
+
+### Headless / CLI
+
+The Zustand stores work natively in Node.js — no browser or React required. `useGameStore.getState()` and `useBattleStore.getState()` are plain JS calls.
+
+```bash
+# Auto-play a battle from the terminal
+npm run cli -- --scenario 0 --faction 袁紹 --attack 平原
+```
+
+The CLI (`src/cli/play.ts`):
+- Loads scenario, selects faction, starts game
+- Sets up battle formation and initiates attack
+- Auto-plays both sides using AI (same logic as `runEnemyTurn`)
+- Handles siege maps (gate attacks, breach, then combat)
+- Calls `resolveBattle` after battle ends (capture, flee, city transfer, ruler succession)
+- Prints full battle log and post-battle state
+
+**Only browser dependency:** `localStorage` in save/load (4 functions). See `REFACTOR.md` for abstraction plan.
 
 ---
 
@@ -274,7 +294,7 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 260+ tests across 26 test files
+- Current test suite: 314 tests across 27 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 
