@@ -30,8 +30,8 @@ Core RTK IV mechanics and the visual overhaul are complete. The game is playable
   **400 餘名武將**，擁有 4 大類共 22 種特殊技能
 - **25 commands** across 5 categories: 內政, 軍事, 人事, 外交, 謀略
   **25 項指令**，涵蓋內政、軍事、人事、外交、謀略五大類
-- **Hex-based tactical battles** with unit type differentiation (infantry/cavalry/archer), siege warfare, 13 battle tactics, morale/routing, and POW capture
-  **六角格戰術戰鬥**，含兵種分化（步兵/騎兵/弓兵）、攻城戰、13 種戰術、士氣潰敗、俘虜系統
+- **Hex-based tactical battles** with unit type differentiation (infantry/cavalry/archer), siege warfare, 13 battle tactics, morale/routing, POW capture, mode-based turn system (move → attack/tactic → wait), enemy AI, battle log, and range visualization
+  **六角格戰術戰鬥**，含兵種分化（步兵/騎兵/弓兵）、攻城戰、13 種戰術、士氣潰敗、俘虜系統、模式制回合系統（移動→攻擊/戰術→待機）、敵方 AI、戰鬥紀錄、範圍顯示
 - **AI system** with subsystems for development, military, personnel, diplomacy, and strategy
   **AI 系統**，包含開發、軍事、人事、外交、謀略五大子系統
 - **24 treasures**, duel system, save/load (3 slots), victory/defeat detection
@@ -64,7 +64,7 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (200+ tests)
+- **Vitest** -- unit and component tests (260+ tests across 26 test files)
 
 ## Getting Started
 
@@ -99,9 +99,9 @@ src/
 
 ## Documentation
 
-- [GAP.md](./GAP.md) -- Feature gap analysis vs RTK IV / 與原作差異分析
-- [FEATURES.md](./FEATURES.md) -- Feature snapshot / 功能摘要
 - [AGENTS.md](./AGENTS.md) -- Guidelines for AI coding assistants / AI 程式助手指引
+- [GEMINI.md](./GEMINI.md) -- Project overview for Gemini / 專案概述（Gemini 用）
+- [AutomationAPI.md](./AutomationAPI.md) -- Client-side game automation API / 客戶端遊戲自動化 API
 
 ## License / 授權聲明
 

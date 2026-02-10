@@ -134,9 +134,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 ```
 
 **Key Principles:**
-- Single store in `src/store/gameStore.ts` (~577 lines)
+- Main store in `src/store/gameStore.ts` (~2800 lines) for strategic layer
+- Battle store in `src/store/battleStore.ts` (~720 lines) for tactical combat
 - All game logic lives as store actions
-- Components consume via `useGameStore()` hook
+- Components consume via `useGameStore()` / `useBattleStore()` hooks
 - Scenario data is deeply copied at game start, then mutated in-place
 
 ### Component Structure
@@ -211,9 +212,13 @@ Phase determines which screen renders:
 All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀略' | '結束'`
 
 ### Key Files
-- `src/store/gameStore.ts` - Core game state and logic
+- `src/store/gameStore.ts` - Core game state and logic (~2800 lines)
+- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~720 lines)
 - `src/types/index.ts` - All type definitions
+- `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
 - `src/components/GameScreen.tsx` - Main gameplay UI
+- `src/components/BattleScreen.tsx` - Tactical battle UI with battle log and mode indicators
+- `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
 - `src/data/scenarios.ts` - Scenario definitions
 
 ---
@@ -237,6 +242,9 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
+- Current test suite: 260+ tests across 26 test files
+- Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
+- Game store command tests: `src/store/gameStore.commands.test.ts`
 
 ---
 

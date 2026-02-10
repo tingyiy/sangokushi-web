@@ -84,7 +84,7 @@ s?: Partial<GameSettings>): Result;
     pendingEvents(): GameEvent[];
     /** Duel state (if in duel phase) */
     duelState(): DuelState | null;
-    /** Battle state (if in battle phase) */
+    /** Battle state (if in battle phase) — includes mode, battleLog, hasMoved, inspectedUnitId */
     battleState(): BattleState & BattleActions | null;
     /** All save slots */
     saveSlots(): { slot: number; date: string; version?: string }[];
@@ -126,7 +126,7 @@ erId: number): Result;
   draftTroops(cityId: number, amount: number, officerId?: number): Result;
   transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result;
   transferOfficer(officerId: number, targetCityId: number): Result;
-  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[] } | null): Result;
+  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result;
   startBattle(targetCityId: number): Result;
   retreat(): Result;
 
@@ -165,26 +165,32 @@ erId: number): Result;
     units(): BattleUnit[];
     /** Get units for a faction */
     factionUnits(factionId: number): BattleUnit[];
-    /** Get the active unit (whose turn it is) */
+    /** Get the active (selected) unit */
     activeUnit(): BattleUnit | null;
+    /** Get current turn phase: 'player' (free unit selection) or 'enemy' (AI acting) */
+    turnPhase(): TurnPhase;
+    /** Select a friendly active unit to control (player phase only) */
+    selectUnit(unitId: string): Result;
     /** Get move range for a unit (valid hexes within movement range) */
     moveRange(unitId: string): { q: number; r: number }[];
     /** Get attackable targets for a unit (enemy units in attack range) */
     attackTargets(unitId: string): BattleUnit[];
     /** Get gate targets adjacent to a unit */
     gateTargets(unitId: string): { q: number; r: number; hp: number }[];
-    /** Move active unit */
+    /** Move a unit (does NOT end the unit's turn — can still attack after moving) */
     move(unitId: string, q: number, r: number): Result;
-    /** Attack a target */
+    /** Attack a target (marks unit as done) */
     attack(attackerUnitId: string, targetUnitId: string): Result;
-    /** Attack a gate */
+    /** Attack a gate (marks unit as done) */
     attackGate(attackerUnitId: string, gateQ: number, gateR: number): Result;
-    /** Execute a tactic */
+    /** Execute a tactic (marks unit as done) */
     executeTactic(unitId: string, tactic: BattleTactic, targetId?: string, targetHex?: { q: number; r: number }): Result;
     /** Challenge enemy officer to a duel */
     initDuel(myOfficer: Officer, enemyOfficer: Officer): Result;
-    /** End a unit's turn (wait) */
+    /** End a single unit's turn (marks as done, deselects — does NOT advance to enemy phase) */
     wait(unitId: string): Result;
+    /** End entire player phase: marks all remaining player units as done, triggers enemy AI, then advances to next day */
+    endPlayerPhase(): Result;
     /** Get map terrain */
     terrain(): BattleMap;
     /** Get gate states */
@@ -201,6 +207,12 @@ erId: number): Result;
     isFinished(): boolean;
     /** Who won? */
     winner(): number | null;
+    /** Current battle mode: 'idle' | 'move' | 'attack' | 'tactic' */
+    mode(): BattleMode;
+    /** Battle log messages (combat feedback) */
+    battleLog(): string[];
+    /** Currently inspected unit id (null if none) */
+    inspectedUnit(): string | null;
   };
 
   // Save/Load
@@ -372,10 +384,11 @@ When in battle:
 
 ```
 ═══ RTK Battle ═══
-Day 3 | Weather: sunny | Wind: NE
-Attacker: 曹操 (3 units, 12000 troops)
+Day 3 / 30 | Weather: sunny | Wind: NE
+Phase: player | Mode: idle | Log: 3 entries
+Attacker: 曹操 (3 units, 12000 troops) — 1/3 done
 Defender: 袁紹 (2 units, 8000 troops)
-Active: att-0 (曹仁, cavalry, 5000 troops)
+Active: att-0 (曹仁, cavalry, 5000 troops, hasMoved: false)
 Gates: 2 (hp: 80, 100) | Fire hexes: 1
 ═══════════════════
 ```
@@ -451,39 +464,60 @@ rtk.formAlliance(3);       // Propose alliance with 孫堅
 rtk.spy(7);                // Spy on 濮陽
 rtk.rumor(7);              // Spread rumors in 濮陽
 
-// Set up battle formation and attack
-rtk.setBattleFormation({ officerIds: [20, 42, 21], unitTypes: ['cavalry', 'infantry', 'archer'] });
+// Set up battle formation and attack (with custom troop allocation)
+rtk.setBattleFormation({
+  officerIds: [20, 42, 21],
+  unitTypes: ['cavalry', 'infantry', 'archer'],
+  troops: [8000, 5000, 3000],  // optional — omit for auto-allocation
+});
 rtk.startBattle(7);
 
-// In battle phase, control units
+// In battle phase — player freely selects and controls units
+rtk.battle.turnPhase();   // → 'player'
+
+// Select a unit to control
+rtk.battle.selectUnit('att-0');
 rtk.battle.activeUnit();
 // → { id: 'att-0', officer: { name: '曹操', ... }, type: 'cavalry', troops: 5000, morale: 80, ... }
 
+// Move it
 rtk.battle.moveRange('att-0');
 // → [{ q: 5, r: 3 }, { q: 6, r: 2 }, ...]
-
 rtk.battle.move('att-0', 5, 3);
 // → { ok: true, data: { from: { x: 7, y: 7 }, to: { x: 5, y: 3 } } }
 
+// Attack with the same unit (can attack after moving)
 rtk.battle.attackTargets('att-0');
 // → [{ id: 'def-1', officer: { name: '呂布', ... }, troops: 4000, ... }]
-
 rtk.battle.attack('att-0', 'def-1');
 // → { ok: true, data: { damage: 800, counterDamage: 300, targetMorale: 62 } }
+// Unit is now marked as 'done' — select another unit
 
-// Use a tactic
+// Switch to another unit without ending a turn
+rtk.battle.selectUnit('att-1');
 rtk.battle.executeTactic('att-1', '火計', undefined, { q: 5, r: 4 });
 // → { ok: true, data: { tactic: '火計', changes: [...] } }
 
-// Attack a siege gate
+// Control a third unit — attack a siege gate
+rtk.battle.selectUnit('att-2');
 rtk.battle.gateTargets('att-2');
 // → [{ q: 7, r: 4, hp: 100 }]
 rtk.battle.attackGate('att-2', 7, 4);
 // → { ok: true, data: { hpBefore: 100, hpAfter: 60, destroyed: false } }
 
+// Or skip a unit (mark as done without acting)
+rtk.battle.wait('att-2');
+
+// When done with all units, end player phase — triggers enemy AI then next day
+rtk.battle.endPlayerPhase();
+// → enemy units act automatically, then a new day begins
+rtk.battle.turnPhase();   // → 'player' (new day)
+
 // Check battle status
 rtk.battle.weather();     // → 'sunny'
 rtk.battle.day();         // → 3
+rtk.battle.mode();        // → 'idle'
+rtk.battle.battleLog();   // → ['曹仁 attacks 呂布: 800 damage', ...]
 rtk.battle.fireHexes();   // → [{ q: 5, r: 4, turnsLeft: 2 }]
 rtk.battle.isFinished();  // → false
 
@@ -526,6 +560,36 @@ rtk.save(1);
 ---
 
 ## Changelog
+
+**v2.4 (2026-02-10):** Phase-Based Battle Turn System (RTK IV style).
+
+- **Phase-based turns:** Battle now uses `turnPhase: 'player' | 'enemy'` instead of per-unit sequential turns. During player phase, freely select and control any friendly unit. When done, end the entire player phase to trigger enemy AI.
+- **New `selectUnit(unitId)`:** Click any friendly active unit to make it the active unit during player phase.
+- **New `endPlayerPhase()`:** Marks all remaining player units as done, runs enemy AI for all enemy units, then advances to next day.
+- **New `turnPhase()`:** Query current phase (`'player'` or `'enemy'`).
+- **Changed `wait(unitId)`:** Now only marks the single unit as done and deselects — does NOT auto-advance to the next unit or trigger enemy phase.
+- **Changed `move()`:** After moving, the unit stays selected (can still attack). No auto-advance.
+- **Changed `attack()` / `attackGate()` / `executeTactic()`:** Mark unit as done but do NOT auto-advance — player picks next unit.
+- **Removed old per-unit turn advancement:** No more `_advanceUnit` or auto-cycling through units.
+- **Updated status printer:** Now shows `turnPhase` and units-done count.
+
+**v2.3 (2026-02-10):** Troop Allocation in Battle Formation.
+
+- **Manual troop allocation:** `setBattleFormation` now accepts optional `troops` number array for per-officer troop counts.
+- **FormationDialog UI:** Added troop input fields per selected officer showing current allocation and max (leadership * 100).
+- **Garrison tracking:** Formation dialog now displays total troops deployed, remaining garrison, and prevents over-allocation.
+- **Validation:** `startBattle` validates total troops don't exceed city garrison.
+
+**v2.2 (2026-02-10):** Battle Screen UX Overhaul — new state fields and AI.
+
+- **Battle mode system:** Added `mode` field to `BattleState` (`'idle' | 'move' | 'attack' | 'tactic'`) tracking current player interaction mode.
+- **Battle log:** Added `battleLog` string array to `BattleState` for combat feedback messages.
+- **Unit inspection:** Added `inspectedUnitId` to `BattleState` for inspecting non-active units.
+- **Move tracking:** Added `hasMoved` boolean to `BattleUnit` — units can move then attack in the same turn.
+- **Enemy AI:** Battle store now includes full enemy AI that executes moves/attacks/tactics automatically.
+- **Range validation:** Attacks and tactics now validated against actual unit range (archers get range 2).
+- **New battle sub-commands:** `mode()`, `battleLog()`, `inspectedUnit()`.
+- **Updated status printer:** Now shows day limit, mode, log count, and `hasMoved` per unit.
 
 **v2.1 (2026-02-09):** Added Specialized Officer Assignment & Event Confirmation.
 
