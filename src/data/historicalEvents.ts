@@ -33,13 +33,13 @@ export const historicalEvents = [
       return '曹操逝世，由曹丕繼任其位。';
     },
     mutate: (state: GameState) => {
-        // Change ruler of Cao Cao faction (id: 1) to Cao Pi (id: 34)
+        // Change ruler of Cao Cao faction (id: 1) to Cao Pi (id: 17)
         const updatedFactions = state.factions.map(f => 
-            f.id === 1 ? { ...f, rulerId: 34 } : f
+            f.id === 1 ? { ...f, rulerId: 17 } : f
         );
         // Ensure Cao Pi is in faction 1
         const updatedOfficers = state.officers.map(o => 
-            o.id === 34 ? { ...o, factionId: 1, isGovernor: true } : o
+            o.id === 17 ? { ...o, factionId: 1, isGovernor: true } : o
         );
         return { factions: updatedFactions, officers: updatedOfficers };
     }
