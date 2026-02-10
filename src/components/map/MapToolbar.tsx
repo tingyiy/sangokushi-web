@@ -34,7 +34,7 @@ export function MapToolbar({ onShowStatus, onShowSave, onShowLoad }: Props) {
       <style>{`
         .map-toolbar {
           position: absolute;
-          top: 20px;
+          top: 90px;
           left: 20px;
           display: flex;
           flex-direction: column;
