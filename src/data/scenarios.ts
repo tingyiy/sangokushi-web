@@ -108,8 +108,8 @@ const scenario189: Scenario = {
     makeCity(15, 1, { 
       troops: 15000, defense: 60, peopleLoyalty: 65, morale: 70, training: 55 
     }),
-    // 劉備 - 小沛：資源匱乏
-    makeCity(43, 2, { 
+    // 劉備 - 下邳：資源匱乏
+    makeCity(18, 2, { 
       troops: 5000, gold: 2000, food: 5000, defense: 45,
       peopleLoyalty: 60, morale: 50, training: 35 
     }),
@@ -148,7 +148,7 @@ const scenario189: Scenario = {
     }),
     // Neutral cities
     ...baseCities
-      .filter(c => ![11, 12, 5, 8, 15, 43, 35, 20, 32, 33, 2, 9, 18].includes(c.id))
+      .filter(c => ![11, 12, 5, 8, 15, 35, 20, 32, 33, 2, 9, 18].includes(c.id))
       .map(c => makeCity(c.id, null, { troops: 0, gold: 2000, food: 5000, defense: 30 })),
   ],
   officers: [
@@ -163,9 +163,9 @@ const scenario189: Scenario = {
     makeOfficer(18, 1, 15, { loyalty: 88 }),
 
     // 劉備軍
-    makeOfficer(169, 2, 43, { loyalty: 100, isGovernor: true }),
-    makeOfficer(100, 2, 43, { loyalty: 100 }),
-    makeOfficer(390, 2, 43, { loyalty: 100 }),
+    makeOfficer(169, 2, 18, { loyalty: 100, isGovernor: true }),
+    makeOfficer(100, 2, 18, { loyalty: 100 }),
+    makeOfficer(390, 2, 18, { loyalty: 100 }),
 
     // 孫堅軍
     makeOfficer(264, 3, 35, { loyalty: 100, isGovernor: true }),
@@ -252,7 +252,7 @@ const scenario194: Scenario = {
   name: '群雄爭中原',
   subtitle: '曹操擴張',
   year: 194,
-  description: '曹操在兗州站穩腳跟，呂布佔據徐州，劉備駐紮小沛，孫策在江東崛起。',
+  description: '曹操在兗州站穩腳跟，呂布佔據徐州，劉備駐紮下邳，孫策在江東崛起。',
   factions: [
     { id: 1, name: '曹操', rulerId: 11, advisorId: 350, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 2, name: '劉備', rulerId: 169,  advisorId: null, color: '#16a34a', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
@@ -271,7 +271,7 @@ const scenario194: Scenario = {
     makeCity(15, 1, { troops: 30000, defense: 75, gold: 8000 }), // 陳留 - 曹操
     makeCity(16,  1, { troops: 20000 }), // 濮陽 - 曹操
     makeCity(18, 4, { troops: 25000, defense: 70 }), // 下邳 - 呂布
-    makeCity(43, 2, { troops: 8000, gold: 3000 }), // 小沛 - 劉備
+    makeCity(18, 2, { troops: 8000, gold: 3000 }), // 下邳 - 劉備
     makeCity(35, 3, { troops: 15000, technology: 45 }), // 柴桑 - 孫策
     makeCity(8,  5, { troops: 40000, technology: 60 }), // 鄴 - 袁紹
     makeCity(5,  5, { troops: 30000 }), // 南皮 - 袁紹
@@ -279,7 +279,7 @@ const scenario194: Scenario = {
     makeCity(32, 7, { troops: 35000, defense: 80 }), // 襄陽 - 劉表
     makeCity(25, 8, { troops: 30000, food: 40000 }), // 成都 - 劉璋
     makeCity(9, 9, { troops: 20000, warHorses: 800 }), // 西涼 - 馬騰
-    ...baseCities.filter(c => ![12, 11, 15, 16, 18, 43, 35, 8, 5, 20, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    ...baseCities.filter(c => ![12, 11, 15, 16, 18, 35, 8, 5, 20, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操
@@ -292,10 +292,10 @@ const scenario194: Scenario = {
     makeOfficer(55, 1, 15, { loyalty: 95 }),
     
     // 劉備
-    makeOfficer(169, 2, 43, { isGovernor: true, loyalty: 100 }),
-    makeOfficer(100, 2, 43, { loyalty: 100 }),
-    makeOfficer(390, 2, 43, { loyalty: 100 }),
-    makeOfficer(421, 2, 43, { loyalty: 95 }), // 趙雲加入
+    makeOfficer(169, 2, 18, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(100, 2, 18, { loyalty: 100 }),
+    makeOfficer(390, 2, 18, { loyalty: 100 }),
+    makeOfficer(421, 2, 18, { loyalty: 95 }), // 趙雲加入
 
     // 孫策
     makeOfficer(258, 3, 35, { isGovernor: true, loyalty: 100 }),
@@ -349,13 +349,13 @@ const scenario200: Scenario = {
     makeCity(12, 1, { troops: 30000, defense: 85 }), // 洛陽 - 曹操
     makeCity(15, 1, { troops: 40000, gold: 15000 }), // 陳留 - 曹操
     makeCity(14, 1, { troops: 35000, defense: 90 }), // 許昌 - 曹操 (首都)
-    makeCity(43, 2, { troops: 10000 }), // 小沛 - 劉備 (暫居)
+    makeCity(18, 2, { troops: 10000 }), // 下邳 - 劉備 (暫居)
     makeCity(38, 3, { troops: 30000, technology: 65 }), // 建業 - 孫權
     makeCity(8,  5, { troops: 60000, food: 80000, morale: 80 }), // 鄴 - 袁紹
     makeCity(32, 7, { troops: 40000 }), // 襄陽 - 劉表
     makeCity(25, 8, { troops: 35000 }), // 成都 - 劉璋
     makeCity(9, 9, { troops: 25000 }), // 西涼 - 馬騰
-    ...baseCities.filter(c => ![12, 15, 14, 43, 38, 8, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    ...baseCities.filter(c => ![12, 15, 14, 38, 8, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操
@@ -365,8 +365,8 @@ const scenario200: Scenario = {
     makeOfficer(103, 1, 14, { loyalty: 98 }),
     
     // 劉備
-    makeOfficer(169, 2, 43, { isGovernor: true, loyalty: 100 }),
-    makeOfficer(390, 2, 43, { loyalty: 100 }),
+    makeOfficer(169, 2, 18, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(390, 2, 18, { loyalty: 100 }),
     
     // 孫權
     makeOfficer(273, 3, 38, { isGovernor: true, loyalty: 100 }),
@@ -477,8 +477,8 @@ const scenario235: Scenario = {
   year: 235,
   description: '諸葛亮六出祁山，與司馬懿對峙於五丈原。蜀漢丞相積勞成疾，星落秋風五丈原。',
   factions: [
-    { id: 1, name: '曹叡', rulerId: 17, advisorId: 253, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
-    { id: 2, name: '劉禪', rulerId: 143, advisorId: 443,  color: '#16a34a', isPlayer: false, relations: {}, allies: [3], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+    { id: 1, name: '曹叡', rulerId: 19, advisorId: 253, color: '#2563eb', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+    { id: 2, name: '劉禪', rulerId: 171, advisorId: 443,  color: '#16a34a', isPlayer: false, relations: {}, allies: [3], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 3, name: '孫權', rulerId: 273, advisorId: 199, color: '#dc2626', isPlayer: false, relations: {}, allies: [2], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
@@ -493,10 +493,10 @@ const scenario235: Scenario = {
     ...baseCities.filter(c => ![12, 11, 14, 22, 25, 38, 32, 33].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
-    makeOfficer(17, 1, 12, { isGovernor: true, loyalty: 100 }), // 曹叡
+    makeOfficer(19, 1, 12, { isGovernor: true, loyalty: 100 }), // 曹叡
     makeOfficer(253, 1, 11, { loyalty: 100, isGovernor: true }), // 司馬懿鎮守長安
     makeOfficer(391, 1, 11, { loyalty: 90 }), // 張郃
-    makeOfficer(143, 2, 25, { isGovernor: true, loyalty: 100 }), // 劉禪
+    makeOfficer(171, 2, 25, { isGovernor: true, loyalty: 100 }), // 劉禪
     makeOfficer(443, 2, 22, { loyalty: 100, isGovernor: true }), // 諸葛亮在漢中
     makeOfficer(308, 2, 22, { loyalty: 80 }), // 魏延
     makeOfficer(421, 2, 25, { loyalty: 100 }), // 趙雲 (已老)
