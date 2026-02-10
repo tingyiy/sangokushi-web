@@ -82,6 +82,8 @@ export interface Officer {
   treasureId: number | null;
 }
 
+export type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'stamina' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank' | 'relationships'>;
+
 /** 城市（City / Province） */
 export interface City {
   id: number;

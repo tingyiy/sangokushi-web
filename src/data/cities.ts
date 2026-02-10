@@ -1,73 +1,131 @@
 import type { City } from '../types';
 
 /**
- * 三國志IV 主要城市資料 (43城)
+ * 三國志IV 城市資料 (43城) - RTK4 Canonical IDs
  * x, y 為地圖上的相對座標 (0-100 百分比)
- * adjacentCityIds 表示鄰接可移動的城市
+ * adjacentCityIds 表示鄰接可移動的城市 (bidirectional connections)
+ * 
+ * Source: data/cities.json - canonical RTK4 city data
+ * IDs 1-43, all used. Gap at 324 is for officers, not cities.
  */
 export const baseCities: Omit<City, 'factionId' | 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults' | 'taxRate'>[] = [
-  // ===== 北方 =====
+  // ===== 東北 =====
   { id: 1,  name: '襄平', x: 85, y: 8,  adjacentCityIds: [2] },
   { id: 2,  name: '北平', x: 75, y: 12, adjacentCityIds: [1, 3, 5] },
   { id: 3,  name: '薊',   x: 68, y: 10, adjacentCityIds: [2, 4, 5] },
-  { id: 4,  name: '南皮', x: 68, y: 18, adjacentCityIds: [3, 5, 7, 8] },
-  { id: 5,  name: '晉陽', x: 58, y: 15, adjacentCityIds: [2, 3, 4, 6] },
-  { id: 6,  name: '上黨', x: 58, y: 22, adjacentCityIds: [5, 7, 10, 11] },
-
-  // ===== 中原 =====
-  { id: 7,  name: '鄴',   x: 65, y: 24, adjacentCityIds: [4, 6, 8, 9] },
-  { id: 8,  name: '平原', x: 72, y: 24, adjacentCityIds: [4, 7, 9, 14] },
-  { id: 9,  name: '濮陽', x: 68, y: 30, adjacentCityIds: [7, 8, 10, 13, 14] },
-  { id: 10, name: '洛陽', x: 56, y: 30, adjacentCityIds: [6, 9, 11, 12, 13] },
-  { id: 11, name: '長安', x: 45, y: 28, adjacentCityIds: [6, 10, 17, 18] },
-  { id: 12, name: '宛',   x: 56, y: 38, adjacentCityIds: [10, 13, 19, 20] },
-  { id: 13, name: '陳留', x: 64, y: 34, adjacentCityIds: [9, 10, 12, 14, 15] },
-  { id: 14, name: '北海', x: 78, y: 28, adjacentCityIds: [8, 9, 13, 15] },
-
-  // ===== 東方 =====
-  { id: 15, name: '下邳', x: 76, y: 36, adjacentCityIds: [13, 14, 16, 21] },
-  { id: 16, name: '壽春', x: 74, y: 42, adjacentCityIds: [15, 21, 22] },
-
+  
   // ===== 西北 =====
-  { id: 17, name: '天水', x: 35, y: 25, adjacentCityIds: [11, 18, 27] },
-  { id: 18, name: '漢中', x: 40, y: 35, adjacentCityIds: [11, 17, 19, 27, 28] },
-
+  { id: 4,  name: '晉陽', x: 58, y: 15, adjacentCityIds: [3, 8, 12] },
+  { id: 9,  name: '西涼', x: 25, y: 15, adjacentCityIds: [10, 11, 21] },
+  { id: 10, name: '天水', x: 35, y: 25, adjacentCityIds: [9, 11, 21, 22] },
+  
+  // ===== 北方 =====
+  { id: 5,  name: '南皮', x: 68, y: 18, adjacentCityIds: [2, 3, 6, 15] },
+  { id: 6,  name: '平原', x: 72, y: 24, adjacentCityIds: [5, 7, 8, 16] },
+  { id: 7,  name: '北海', x: 78, y: 28, adjacentCityIds: [6, 16, 18] },
+  { id: 8,  name: '鄴',   x: 65, y: 24, adjacentCityIds: [4, 6, 12, 14] },
+  
+  // ===== 中原核心 =====
+  { id: 11, name: '長安', x: 45, y: 28, adjacentCityIds: [9, 10, 13, 22, 30] },
+  { id: 12, name: '洛陽', x: 56, y: 30, adjacentCityIds: [4, 8, 13, 14, 30] },
+  { id: 13, name: '弘農', x: 50, y: 29, adjacentCityIds: [11, 12] },
+  { id: 14, name: '許昌', x: 62, y: 36, adjacentCityIds: [8, 12, 15, 17, 30, 31] },
+  { id: 15, name: '陳留', x: 64, y: 34, adjacentCityIds: [5, 14, 16, 17] },
+  { id: 16, name: '濮陽', x: 68, y: 30, adjacentCityIds: [6, 7, 15] },
+  { id: 17, name: '譙',   x: 70, y: 38, adjacentCityIds: [14, 15, 18, 19, 31] },
+  { id: 18, name: '下邳', x: 76, y: 36, adjacentCityIds: [7, 17, 19] },
+  { id: 19, name: '徐州', x: 76, y: 40, adjacentCityIds: [17, 18, 20, 38] },
+  
+  // ===== 東方 =====
+  { id: 20, name: '壽春', x: 74, y: 42, adjacentCityIds: [19, 31, 34, 38, 39] },
+  
+  // ===== 益州 =====
+  { id: 21, name: '涼州', x: 30, y: 18, adjacentCityIds: [9, 10, 23] },
+  { id: 22, name: '漢中', x: 40, y: 35, adjacentCityIds: [10, 11, 23, 24] },
+  { id: 23, name: '下卞', x: 35, y: 38, adjacentCityIds: [21, 22, 24] },
+  { id: 24, name: '梓潼', x: 32, y: 40, adjacentCityIds: [22, 23, 25] },
+  { id: 25, name: '成都', x: 30, y: 48, adjacentCityIds: [24, 26, 28] },
+  { id: 26, name: '江州', x: 38, y: 52, adjacentCityIds: [25, 27, 28, 33] },
+  { id: 27, name: '永安', x: 42, y: 52, adjacentCityIds: [26, 33] },
+  { id: 28, name: '建寧', x: 25, y: 62, adjacentCityIds: [25, 26, 29] },
+  { id: 29, name: '雲南', x: 22, y: 72, adjacentCityIds: [28] },
+  
   // ===== 荊州 =====
-  { id: 19, name: '新野', x: 55, y: 42, adjacentCityIds: [12, 18, 20, 23] },
-  { id: 20, name: '襄陽', x: 55, y: 47, adjacentCityIds: [12, 19, 23, 24] },
-  { id: 21, name: '廬江', x: 74, y: 48, adjacentCityIds: [15, 16, 22, 25] },
-  { id: 22, name: '建業', x: 80, y: 48, adjacentCityIds: [16, 21, 25, 26] },
-
-  // ===== 長江中游 =====
-  { id: 23, name: '江陵', x: 52, y: 52, adjacentCityIds: [19, 20, 24, 29, 30] },
-  { id: 24, name: '江夏', x: 60, y: 50, adjacentCityIds: [20, 23, 25, 30] },
-  { id: 25, name: '柴桑', x: 70, y: 52, adjacentCityIds: [21, 22, 24, 26, 31] },
-  { id: 26, name: '會稽', x: 85, y: 55, adjacentCityIds: [22, 25] },
-
-  // ===== 西川 =====
-  { id: 27, name: '梓潼', x: 32, y: 40, adjacentCityIds: [17, 18, 28, 33] },
-  { id: 28, name: '成都', x: 30, y: 48, adjacentCityIds: [18, 27, 29, 33, 34] },
-  { id: 29, name: '永安', x: 42, y: 52, adjacentCityIds: [23, 28, 30] },
-
+  { id: 30, name: '宛',   x: 56, y: 38, adjacentCityIds: [11, 12, 14, 31, 32] },
+  { id: 31, name: '新野', x: 55, y: 42, adjacentCityIds: [14, 17, 20, 30, 32] },
+  { id: 32, name: '襄陽', x: 55, y: 47, adjacentCityIds: [30, 31, 33, 34] },
+  { id: 33, name: '江陵', x: 52, y: 52, adjacentCityIds: [26, 27, 32, 35, 36] },
+  { id: 34, name: '江夏', x: 60, y: 50, adjacentCityIds: [20, 32, 35, 39] },
+  
+  // ===== 長江下游 =====
+  { id: 35, name: '柴桑', x: 70, y: 52, adjacentCityIds: [33, 34, 36, 41] },
+  { id: 36, name: '武陵', x: 50, y: 60, adjacentCityIds: [33, 35, 37] },
+  { id: 37, name: '長沙', x: 60, y: 58, adjacentCityIds: [36, 42, 43] },
+  { id: 38, name: '建業', x: 80, y: 48, adjacentCityIds: [19, 20, 39, 40] },
+  { id: 39, name: '廬江', x: 74, y: 48, adjacentCityIds: [20, 34, 38, 41] },
+  { id: 40, name: '吳',   x: 82, y: 52, adjacentCityIds: [38, 41] },
+  { id: 41, name: '會稽', x: 85, y: 55, adjacentCityIds: [35, 39, 40] },
+  
   // ===== 荊南 =====
-  { id: 30, name: '長沙', x: 60, y: 58, adjacentCityIds: [23, 24, 29, 31, 32] },
-  { id: 31, name: '廬陵', x: 72, y: 60, adjacentCityIds: [25, 30, 32, 37] },
-  { id: 32, name: '武陵', x: 50, y: 60, adjacentCityIds: [30, 31, 35] },
-
-  // ===== 西南 =====
-  { id: 33, name: '漢嘉', x: 25, y: 52, adjacentCityIds: [27, 28, 34] },
-  { id: 34, name: '建寧', x: 25, y: 62, adjacentCityIds: [28, 33, 35, 36] },
-  { id: 35, name: '零陵', x: 52, y: 66, adjacentCityIds: [32, 34, 36] },
-  { id: 36, name: '雲南', x: 22, y: 72, adjacentCityIds: [34, 35] },
-
-  // ===== 嶺南 =====
-  { id: 37, name: '南海', x: 72, y: 72, adjacentCityIds: [31, 38, 39] },
-  { id: 38, name: '桂陽', x: 60, y: 72, adjacentCityIds: [37, 39] },
-  { id: 39, name: '交趾', x: 40, y: 78, adjacentCityIds: [37, 38] },
-
-  // ===== 補充要城 =====
-  { id: 40, name: '西涼', x: 25, y: 15, adjacentCityIds: [17] },
-  { id: 41, name: '安定', x: 38, y: 20, adjacentCityIds: [11, 17, 40] },
-  { id: 42, name: '許昌', x: 62, y: 36, adjacentCityIds: [12, 13, 15, 19] },
-  { id: 43, name: '小沛', x: 72, y: 34, adjacentCityIds: [14, 15, 42] },
+  { id: 42, name: '零陵', x: 52, y: 66, adjacentCityIds: [37, 43] },
+  { id: 43, name: '桂陽', x: 60, y: 72, adjacentCityIds: [37, 42] },
 ];
+
+/**
+ * City ID mapping from old custom IDs to new RTK4 IDs
+ * Used for migration reference
+ */
+export const cityIdMapping: Record<number, number> = {
+  // Unchanged
+  1: 1,   // 襄平
+  2: 2,   // 北平
+  3: 3,   // 薊
+  11: 11, // 長安
+  // Changed
+  4: 5,   // 南皮
+  5: 4,   // 晉陽
+  7: 8,   // 鄴
+  8: 6,   // 平原
+  9: 16,  // 濮陽
+  10: 12, // 洛陽
+  12: 30, // 宛
+  13: 15, // 陳留
+  14: 7,  // 北海
+  15: 18, // 下邳
+  16: 20, // 壽春
+  17: 10, // 天水
+  18: 22, // 漢中
+  19: 31, // 新野
+  20: 32, // 襄陽
+  21: 39, // 廬江
+  22: 38, // 建業
+  23: 33, // 江陵
+  24: 34, // 江夏
+  25: 35, // 柴桑
+  26: 41, // 會稽
+  27: 24, // 梓潼
+  28: 25, // 成都
+  29: 27, // 永安
+  30: 37, // 長沙
+  32: 36, // 武陵
+  34: 28, // 建寧
+  35: 42, // 零陵
+  36: 29, // 雲南
+  38: 43, // 桂陽
+  40: 9,  // 西涼
+  42: 14, // 許昌
+  // Removed cities (no mapping)
+  // 6: 上黨, 31: 廬陵, 33: 漢嘉, 37: 南海, 39: 交趾, 41: 安定, 43: 小沛
+};
+
+/**
+ * Reverse mapping from new RTK4 IDs to old IDs
+ */
+export const reverseCityIdMapping: Record<number, number | undefined> = {
+  1: 1, 2: 2, 3: 3, 4: 5, 5: 4, 6: 8, 7: 14, 8: 7, 9: 40, 10: 17,
+  11: 11, 12: 10, 13: undefined, 14: 42, 15: 13, 16: 9, 17: undefined,
+  18: 15, 19: undefined, 20: 16, 21: undefined, 22: 18, 23: undefined,
+  24: 27, 25: 28, 26: undefined, 27: 29, 28: 34, 29: 36, 30: 12,
+  31: 19, 32: 20, 33: 23, 34: 24, 35: 25, 36: 32, 37: 30, 38: 22,
+  39: 21, 40: undefined, 41: 26, 42: 35, 43: 38,
+};
