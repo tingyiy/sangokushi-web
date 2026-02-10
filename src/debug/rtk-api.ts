@@ -55,13 +55,26 @@ export const rtkApi = {
       const state = useGameStore.getState();
       return state.cities.filter(c => c.factionId === state.playerFaction?.id);
     },
+    /** Alias for playerFaction() */
+    myFaction: () => useGameStore.getState().playerFaction,
+    /** All factions still in the game */
+    factions: () => useGameStore.getState().factions,
+    /** All cities */
+    cities: () => useGameStore.getState().cities,
+    /** Single city by id */
     city: (id: number) => useGameStore.getState().cities.find(c => c.id === id) || null,
+    /** Alias for city() — used by some automation scripts */
+    cityDetails: (id: number) => useGameStore.getState().cities.find(c => c.id === id) || null,
     factionCities: (factionId: number) => useGameStore.getState().cities.filter(c => c.factionId === factionId),
     myOfficers: () => {
       const state = useGameStore.getState();
       return state.officers.filter(o => o.factionId === state.playerFaction?.id);
     },
+    /** All officers in the game */
+    officers: () => useGameStore.getState().officers,
     officer: (id: number) => useGameStore.getState().officers.find(o => o.id === id) || null,
+    /** Officers in a specific city (any faction) */
+    cityOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId),
     unaffiliatedOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === null),
     powOfficers: (cityId: number) => useGameStore.getState().officers.filter(o => o.cityId === cityId && o.factionId === POW_FACTION_ID),
     adjacentCities: (cityId: number) => {
