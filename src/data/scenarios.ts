@@ -108,8 +108,8 @@ const scenario189: Scenario = {
     makeCity(15, 1, { 
       troops: 15000, defense: 60, peopleLoyalty: 65, morale: 70, training: 55 
     }),
-    // 劉備 - 下邳：資源匱乏
-    makeCity(18, 2, { 
+    // 劉備 - 平原：資源匱乏
+    makeCity(6, 2, { 
       troops: 5000, gold: 2000, food: 5000, defense: 45,
       peopleLoyalty: 60, morale: 50, training: 35 
     }),
@@ -142,13 +142,13 @@ const scenario189: Scenario = {
       technology: 30, peopleLoyalty: 65, morale: 70, training: 65,
       warHorses: 500 
     }),
-    // 陶謙 - 下邳
-    makeCity(18, 10, { 
+    // 陶謙 - 徐州
+    makeCity(19, 10, { 
       troops: 12000, peopleLoyalty: 70, morale: 55, training: 40 
     }),
     // Neutral cities
     ...baseCities
-      .filter(c => ![11, 12, 5, 8, 15, 35, 20, 32, 33, 2, 9, 18].includes(c.id))
+      .filter(c => ![11, 12, 5, 8, 15, 35, 20, 32, 33, 2, 9, 6, 19].includes(c.id))
       .map(c => makeCity(c.id, null, { troops: 0, gold: 2000, food: 5000, defense: 30 })),
   ],
   officers: [
@@ -163,9 +163,9 @@ const scenario189: Scenario = {
     makeOfficer(18, 1, 15, { loyalty: 88 }),
 
     // 劉備軍
-    makeOfficer(169, 2, 18, { loyalty: 100, isGovernor: true }),
-    makeOfficer(100, 2, 18, { loyalty: 100 }),
-    makeOfficer(390, 2, 18, { loyalty: 100 }),
+    makeOfficer(169, 2, 6, { loyalty: 100, isGovernor: true }),
+    makeOfficer(100, 2, 6, { loyalty: 100 }),
+    makeOfficer(390, 2, 6, { loyalty: 100 }),
 
     // 孫堅軍
     makeOfficer(264, 3, 35, { loyalty: 100, isGovernor: true }),
@@ -222,10 +222,10 @@ const scenario189: Scenario = {
     makeOfficer(205, 9, 9, { loyalty: 85 }),
 
     // 陶謙軍
-    makeOfficer(285, 10, 18, { loyalty: 100, isGovernor: true }),
-    makeOfficer(223, 10, 18, { loyalty: 85 }),
-    makeOfficer(222, 10, 18, { loyalty: 82 }),
-    makeOfficer(32, 10, 18, { loyalty: 80 }),
+    makeOfficer(285, 10, 19, { loyalty: 100, isGovernor: true }),
+    makeOfficer(223, 10, 19, { loyalty: 85 }),
+    makeOfficer(222, 10, 19, { loyalty: 82 }),
+    makeOfficer(32, 10, 19, { loyalty: 80 }),
 
     // 在野武將
     makeOfficer(4,  null, 20, {}),  // 諸葛亮 — 荊州隱居
@@ -271,7 +271,7 @@ const scenario194: Scenario = {
     makeCity(15, 1, { troops: 30000, defense: 75, gold: 8000 }), // 陳留 - 曹操
     makeCity(16,  1, { troops: 20000 }), // 濮陽 - 曹操
     makeCity(18, 4, { troops: 25000, defense: 70 }), // 下邳 - 呂布
-    makeCity(18, 2, { troops: 8000, gold: 3000 }), // 下邳 - 劉備
+    makeCity(19, 2, { troops: 8000, gold: 3000 }), // 徐州 - 劉備
     makeCity(35, 3, { troops: 15000, technology: 45 }), // 柴桑 - 孫策
     makeCity(8,  5, { troops: 40000, technology: 60 }), // 鄴 - 袁紹
     makeCity(5,  5, { troops: 30000 }), // 南皮 - 袁紹
@@ -279,7 +279,7 @@ const scenario194: Scenario = {
     makeCity(32, 7, { troops: 35000, defense: 80 }), // 襄陽 - 劉表
     makeCity(25, 8, { troops: 30000, food: 40000 }), // 成都 - 劉璋
     makeCity(9, 9, { troops: 20000, warHorses: 800 }), // 西涼 - 馬騰
-    ...baseCities.filter(c => ![12, 11, 15, 16, 18, 35, 8, 5, 20, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    ...baseCities.filter(c => ![12, 11, 15, 16, 18, 19, 35, 8, 5, 20, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操
@@ -292,10 +292,10 @@ const scenario194: Scenario = {
     makeOfficer(55, 1, 15, { loyalty: 95 }),
     
     // 劉備
-    makeOfficer(169, 2, 18, { isGovernor: true, loyalty: 100 }),
-    makeOfficer(100, 2, 18, { loyalty: 100 }),
-    makeOfficer(390, 2, 18, { loyalty: 100 }),
-    makeOfficer(421, 2, 18, { loyalty: 95 }), // 趙雲加入
+    makeOfficer(169, 2, 19, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(100, 2, 19, { loyalty: 100 }),
+    makeOfficer(390, 2, 19, { loyalty: 100 }),
+    makeOfficer(421, 2, 19, { loyalty: 95 }), // 趙雲加入
 
     // 孫策
     makeOfficer(258, 3, 35, { isGovernor: true, loyalty: 100 }),
