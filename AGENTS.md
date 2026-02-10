@@ -233,6 +233,38 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 - **Factions:** Relations use hostility scale (0-100); alliances tracked separately
 - **Turn-Based:** Player commands execute immediately; AI factions act on turn end
 
+### Battle Mechanics (RTK IV Rules)
+
+**Battle End Conditions:**
+1. All units of one side eliminated/routed → that side loses
+2. **Commander (主將) defeated → that side loses immediately** (commander = first unit in faction's array). Remaining units get -30 morale but battle ends right away.
+3. Day limit exceeded (default 30) → attacker loses (defender wins)
+4. Player retreat → player's side loses
+
+**全軍覆沒 (Unit Wiped Out):**
+- When a unit's troops reach 0, the officer's army is destroyed. The officer themselves is NOT dead — they can be captured or escape.
+- Capture chance is rolled: `30 + (attacker.war - target.war) + (attacker.charisma / 2)`. Success → officer added to `capturedOfficerIds`.
+
+**Post-Battle Officer Fate (resolveBattle):**
+1. Officers captured during battle (`capturedOfficerIds`) → imprisoned (`factionId: -1, cityId: -1`)
+2. Non-captured officers whose unit was destroyed or routed → **flee** (see below)
+3. Officers in city but didn't fight → 30% escape (flee), 70% captured
+
+**Flee Destination Priority (all fleeing officers go to the SAME city):**
+1. Adjacent friendly city (same faction, not the battle city)
+2. Any friendly city
+3. Adjacent unoccupied city → **city is claimed by the losing faction** (`factionId` set to loser)
+4. Any unoccupied city → **city is claimed**
+5. No available city → **100% captured** (nowhere to flee)
+
+**Key rule:** When fleeing officers claim an unoccupied city, the losing faction survives and that city becomes theirs. Officers keep their faction affiliation. The faction is only destroyed when it has zero cities AND all officers are captured.
+
+**Post-Battle Capture Processing (NOT YET IMPLEMENTED):**
+- Player is presented captured officers and can choose: 登用 (recruit), 幽閉 (imprison), or 釋放 (release)
+- Rulers cannot be executed, only imprisoned or released
+- Officers may refuse recruitment based on loyalty and charisma comparison
+- Released officers return to their original ruler if their faction still exists, otherwise become 在野 (unaffiliated) in the city where they were released
+
 ---
 
 ## Testing Guidelines

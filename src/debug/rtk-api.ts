@@ -1023,6 +1023,34 @@ export const rtkApi = {
       logCmd('🏰', `wait(${unit?.officer.name ?? unitId})`, { ok: true });
       return { ok: true };
     },
+    selectUnit(unitId: string): Result {
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return logCmd('🏰', `selectUnit(${unitId})`, { ok: false, error: 'Not in battle phase' });
+      const battle = useBattleStore.getState();
+      if (battle.turnPhase !== 'player') return logCmd('🏰', `selectUnit(${unitId})`, { ok: false, error: 'Not player phase' });
+      const unit = battle.units.find(u => u.id === unitId);
+      if (!unit) return logCmd('🏰', `selectUnit(${unitId})`, { ok: false, error: 'Unit not found' });
+      if (unit.factionId !== battle.playerFactionId) return logCmd('🏰', `selectUnit(${unitId})`, { ok: false, error: 'Not your unit' });
+      if (unit.status !== 'active') return logCmd('🏰', `selectUnit(${unitId})`, { ok: false, error: `Unit status is '${unit.status}', must be 'active'` });
+      battle.selectUnit(unitId);
+      return logCmd('🏰', `selectUnit(${unit.officer.name})`, { ok: true });
+    },
+    endPlayerPhase(): Result {
+      const state = useGameStore.getState();
+      if (state.phase !== 'battle') return logCmd('🏰', 'endPlayerPhase', { ok: false, error: 'Not in battle phase' });
+      const battle = useBattleStore.getState();
+      if (battle.turnPhase !== 'player') return logCmd('🏰', 'endPlayerPhase', { ok: false, error: 'Not player phase' });
+      battle.endPlayerPhase();
+      // Step through all enemy units synchronously (API consumer expects synchronous completion)
+      while (useBattleStore.getState().stepEnemyPhase()) { /* process each enemy */ }
+      const after = useBattleStore.getState();
+      return logCmd('🏰', 'endPlayerPhase', { ok: true, data: { day: after.day, turnPhase: after.turnPhase, isFinished: after.isFinished } });
+    },
+    turnPhase: () => useBattleStore.getState().turnPhase,
+    playerFactionId: () => useBattleStore.getState().playerFactionId,
+    mode: () => useBattleStore.getState().mode,
+    battleLog: () => useBattleStore.getState().battleLog,
+    inspectedUnit: () => useBattleStore.getState().inspectedUnitId,
     terrain: () => useBattleStore.getState().battleMap,
     gates: () => useBattleStore.getState().gates,
     fireHexes: () => useBattleStore.getState().fireHexes,

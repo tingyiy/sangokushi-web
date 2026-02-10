@@ -10,6 +10,17 @@ import { getAdvisorSuggestions } from '../systems/advisor';
 import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from '../systems/events';
 import { checkHistoricalEvents } from '../data/historicalEvents';
 
+/** Compute which map edge the attacker approaches from based on city coordinates */
+function getAttackDirection(fromCity: City, toCity: City): 'north' | 'south' | 'east' | 'west' {
+  const dx = fromCity.x - toCity.x; // positive = attacker is east of target
+  const dy = fromCity.y - toCity.y; // positive = attacker is south of target (y increases downward)
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx > 0 ? 'east' : 'west';
+  } else {
+    return dy > 0 ? 'south' : 'north';
+  }
+}
+
 interface DuelState {
   p1: Officer;
   p2: Officer;
@@ -57,6 +68,7 @@ export interface GameState {
   battleFormation: {
     officerIds: number[];
     unitTypes: UnitType[];
+    troops?: number[];
   } | null;
   /** Pending events to show in dialog - Phase 6.4 */
   pendingEvents: import('../types').GameEvent[];
@@ -118,8 +130,8 @@ export interface GameState {
   transport: (fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number) => void;
   /** Military/Personnel: transfer officer */
   transferOfficer: (officerId: number, targetCityId: number) => void;
-  /** Military: set battle formation */
-  setBattleFormation: (formation: { officerIds: number[]; unitTypes: UnitType[] } | null) => void;
+  /** Military: set battle formation (troops[] is optional — auto-allocated if omitted) */
+  setBattleFormation: (formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null) => void;
   /** Military: Duel */
   startDuel: () => void;
   initMidBattleDuel: (p1: Officer, p2: Officer) => void;
@@ -191,6 +203,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     gameMode: 'historical',
     customOfficers: 'all',
     intelligenceSensitivity: 3,
+    musicEnabled: true,
   },
   year: 190,
   month: 1,
@@ -272,10 +285,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (state.phase !== 'battle') return;
 
     const battle = useBattleStore.getState();
-    const winnerFactionId = (battle.winnerFactionId !== null) ? battle.winnerFactionId :
-      (battle.activeUnitId?.startsWith('attacker') ? battle.defenderId : battle.attackerId);
-
-    const loserFactionId = (winnerFactionId === battle.attackerId) ? battle.defenderId : battle.attackerId;
+    // The player is retreating, so the OTHER faction wins
+    const loserFactionId = battle.playerFactionId;
+    const winnerFactionId = loserFactionId === battle.attackerId ? battle.defenderId : battle.attackerId;
 
     get().addLog('我軍撤退了！');
 
@@ -1478,14 +1490,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // Calculate actual troop allocation per officer (based on city garrison, capped by leadership)
-    const troopsPerOfficer = attackerOfficers.map(off => {
+    // If the player specified troops in the formation, use those (still capped by leadership)
+    const playerTroops = state.battleFormation?.troops;
+    const troopsPerOfficer = attackerOfficers.map((off, i) => {
       const maxForOfficer = off.leadership * 100; // RTK IV: leadership determines max troops
+      if (playerTroops && playerTroops[i] !== undefined) {
+        return Math.min(playerTroops[i], maxForOfficer, city.troops);
+      }
       const equalShare = Math.floor(city.troops / attackerOfficers.length);
       return Math.min(equalShare, maxForOfficer);
     });
     const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
     if (totalTroopsToDeploy <= 0) {
       get().addLog(`兵力不足，無法出征。城內駐兵 ${city.troops}。`);
+      return;
+    }
+    if (totalTroopsToDeploy > city.troops) {
+      get().addLog(`兵力不足，無法出征。需要 ${totalTroopsToDeploy}（城內駐兵 ${city.troops}）。`);
       return;
     }
 
@@ -1596,7 +1617,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       attackerUnitTypes,
       undefined, // defenderUnitTypes (auto-picked)
       troopsPerOfficer,
-      defenderTroopsPerOfficer
+      defenderTroopsPerOfficer,
+      undefined, // playerFactionId (defaults to attackerId)
+      getAttackDirection(city, targetCity)
     );
 
     set({ phase: 'battle' });
@@ -1705,7 +1728,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       attackerUnitTypes,
       undefined, // defenderUnitTypes
       troopsPerOfficer,
-      defenderTroopsPerOfficer
+      defenderTroopsPerOfficer,
+      state.playerFaction?.id ?? targetCity.factionId ?? 0,
+      getAttackDirection(city, targetCity)
     );
 
     set({ phase: 'battle' });
@@ -2530,13 +2555,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return;
 
-    // Check if battle result was already processed for this city recently (very simple guard)
-    if (state.log[0]?.includes(city.name) && state.log[0]?.includes('已被攻陷')) {
-      // This is a bit too simple, but let's try a better one:
-      // If the city already belongs to the winner and has troops set, maybe it's done.
-      // Actually, let's just use a timestamp or a unique battle ID if we had one.
-    }
-
     // Get surviving units for winner
     const winnerUnits = battleUnits.filter(u => u.factionId === winnerFactionId && u.troops > 0 && u.status !== 'routed');
 
@@ -2547,52 +2565,94 @@ export const useGameStore = create<GameState>((set, get) => ({
     const participatingOfficerIds = new Set(battleUnits.map(u => u.officerId));
     const capturedSet = new Set(capturedOfficerIds);
 
+    // ── RTK IV Flee Logic ──
+    // Determine the flee destination for the losing faction ONCE (all officers go to the same city).
+    // Priority: adjacent friendly > any friendly > adjacent unoccupied > any unoccupied > nowhere (captured)
+    const friendlyCities = state.cities.filter(c => c.factionId === loserFactionId && c.id !== cityId);
+    const unoccupiedCities = state.cities.filter(c => c.factionId === null);
+    const adjacentFriendly = friendlyCities.filter(c => city.adjacentCityIds.includes(c.id));
+    const adjacentUnoccupied = unoccupiedCities.filter(c => city.adjacentCityIds.includes(c.id));
+
+    let fleeCity: typeof city | null = null;
+    let claimingUnoccupied = false;
+
+    if (adjacentFriendly.length > 0) {
+      fleeCity = adjacentFriendly[Math.floor(Math.random() * adjacentFriendly.length)];
+    } else if (friendlyCities.length > 0) {
+      fleeCity = friendlyCities[Math.floor(Math.random() * friendlyCities.length)];
+    } else if (adjacentUnoccupied.length > 0) {
+      fleeCity = adjacentUnoccupied[Math.floor(Math.random() * adjacentUnoccupied.length)];
+      claimingUnoccupied = true;
+    } else if (unoccupiedCities.length > 0) {
+      fleeCity = unoccupiedCities[Math.floor(Math.random() * unoccupiedCities.length)];
+      claimingUnoccupied = true;
+    }
+    // If fleeCity is still null, nowhere to flee → all non-captured officers are captured
+
     // Process officer outcomes
+    const winnerOfficerIds = new Set(
+      battleUnits.filter(u => u.factionId === winnerFactionId).map(u => u.officerId)
+    );
+
     const updatedOfficers = state.officers.map(o => {
-      // If officer was captured in battle store
+      // If officer was captured during battle (in battleStore)
       if (capturedSet.has(o.id)) {
         get().addLog(`${o.name} 兵敗被俘！`);
-        return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
+        // Hold as POW at the battle city (will be processed by winner)
+        return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
       }
 
-      // If officer was defending and lost
+      // If officer belongs to the losing faction and was in the battle city
       if (o.cityId === cityId && o.factionId === loserFactionId) {
-        // Check if this officer participated in battle
         if (participatingOfficerIds.has(o.id)) {
           const unit = battleUnits.find(u => u.officerId === o.id);
-          if (unit) {
-            // Officer was defeated (unit destroyed or routed)
-            if (unit.troops <= 0 || unit.status === 'routed') {
-              // Should be handled by capturedSet mainly, but fallback for non-captured routed/dead
-              // If routed, high chance to escape. If dead (but not captured), escape.
-
-              // Officer escaped - becomes unaffiliated and flees to random adjacent city
-              const adjacentCities = city.adjacentCityIds;
-              const fleeCityId = adjacentCities.length > 0
-                ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
-                : cityId;
-              get().addLog(`${o.name} 逃往 ${state.cities.find(c => c.id === fleeCityId)?.name || '他處'}。`);
-              return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
+          if (unit && (unit.troops <= 0 || unit.status === 'routed')) {
+            // Officer's unit was destroyed or routed — try to flee
+            if (fleeCity) {
+              get().addLog(`${o.name} 逃往 ${fleeCity.name}。`);
+              return { ...o, cityId: fleeCity.id, isGovernor: false };
+            } else {
+              // Nowhere to flee — captured
+              get().addLog(`${o.name} 無處可逃，被俘！`);
+              return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
             }
           }
         } else {
-          // Officer was in city but didn't fight - 30% chance to escape
+          // Officer was in city but didn't participate in battle
           if (Math.random() < 0.3) {
-            const adjacentCities = city.adjacentCityIds;
-            const fleeCityId = adjacentCities.length > 0
-              ? adjacentCities[Math.floor(Math.random() * adjacentCities.length)]
-              : cityId;
-            get().addLog(`${o.name} 棄城而逃。`);
-            return { ...o, factionId: null, cityId: fleeCityId, isGovernor: false };
+            // 30% chance to escape
+            if (fleeCity) {
+              get().addLog(`${o.name} 棄城逃往 ${fleeCity.name}。`);
+              return { ...o, cityId: fleeCity.id, isGovernor: false };
+            } else {
+              get().addLog(`${o.name} 無處可逃，被俘。`);
+              return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
+            }
           } else {
-            // Surrendered/captured
             get().addLog(`${o.name} 被俘。`);
-            return { ...o, factionId: -1 as unknown as number, cityId: -1, isGovernor: false };
+            return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
           }
         }
       }
+
+      // Winning attacker officers: relocate to the conquered city
+      if (winnerOfficerIds.has(o.id) && city.factionId !== winnerFactionId) {
+        return { ...o, cityId: cityId, isGovernor: false };
+      }
+
       return o;
     });
+
+    // Make the first winning officer the governor of the conquered city
+    if (city.factionId !== winnerFactionId) {
+      const firstWinnerOfficerId = battleUnits.find(u => u.factionId === winnerFactionId)?.officerId;
+      if (firstWinnerOfficerId) {
+        const idx = updatedOfficers.findIndex(o => o.id === firstWinnerOfficerId);
+        if (idx >= 0) {
+          updatedOfficers[idx] = { ...updatedOfficers[idx], isGovernor: true };
+        }
+      }
+    }
 
     // Transfer city ownership or update garrison
     const updatedCities = state.cities.map(c => {
@@ -2602,22 +2662,26 @@ export const useGameStore = create<GameState>((set, get) => ({
           const defenderSurviving = battleUnits.filter(u => u.factionId === winnerFactionId && u.troops > 0).reduce((s, u) => s + u.troops, 0);
           return {
             ...c,
-            troops: c.troops + Math.floor(defenderSurviving * 0.9), // Less attrition for home defense
+            troops: c.troops + Math.floor(defenderSurviving * 0.9),
           };
         } else {
           // Attacker won - replace garrison with winning surviving troops
           return {
             ...c,
             factionId: winnerFactionId,
-            troops: Math.floor(totalSurvivingTroops * 0.8), // 20% attrition after battle
+            troops: Math.floor(totalSurvivingTroops * 0.8),
           };
         }
+      }
+      // Claim unoccupied city for the fleeing faction
+      if (claimingUnoccupied && fleeCity && c.id === fleeCity.id) {
+        return { ...c, factionId: loserFactionId };
       }
       return c;
     });
 
     // Update faction relations - increase hostility significantly
-    const updatedFactions = state.factions.map(f => {
+    let updatedFactions = state.factions.map(f => {
       if (f.id === winnerFactionId) {
         const currentHostility = f.relations[loserFactionId] ?? 60;
         return {
@@ -2634,6 +2698,34 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
       return f;
     });
+
+    // ── Ruler Succession ──
+    // If the losing faction's ruler was captured, the faction needs a new ruler.
+    // If no officers remain in the faction, the faction is destroyed.
+    const loserFaction = updatedFactions.find(f => f.id === loserFactionId);
+    if (loserFaction) {
+      const rulerCaptured = updatedOfficers.find(o => o.id === loserFaction.rulerId && o.factionId === -1);
+      if (rulerCaptured) {
+        const remainingOfficers = updatedOfficers.filter(o => o.factionId === loserFactionId);
+        if (remainingOfficers.length > 0) {
+          // Pick successor: highest rank, then highest leadership + charisma
+          const rankOrder: Record<string, number> = { '太守': 6, '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
+          const successor = remainingOfficers.reduce((prev, curr) => {
+            const prevScore = (rankOrder[prev.rank] || 0) * 1000 + prev.leadership + prev.charisma;
+            const currScore = (rankOrder[curr.rank] || 0) * 1000 + curr.leadership + curr.charisma;
+            return currScore > prevScore ? curr : prev;
+          });
+          updatedFactions = updatedFactions.map(f =>
+            f.id === loserFactionId ? { ...f, rulerId: successor.id } : f
+          );
+          get().addLog(`${rulerCaptured.name} 被俘，${successor.name} 繼任為君主。`);
+        } else {
+          // No officers left — faction is destroyed
+          updatedFactions = updatedFactions.filter(f => f.id !== loserFactionId);
+          get().addLog(`${loserFaction.name} 勢力已被消滅！`);
+        }
+      }
+    }
 
     set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions, battleResolved: true });
 

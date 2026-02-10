@@ -22,7 +22,12 @@ import './App.css';
  * Phase 7.4: Integrated Audio System.
  */
 function App() {
-  const { phase, checkVictoryCondition, setPhase, addLog } = useGameStore();
+  const { phase, checkVictoryCondition, setPhase, addLog, gameSettings } = useGameStore();
+
+  // Sync audio mute state with game settings
+  useEffect(() => {
+    audioSystem.setMute(!gameSettings.musicEnabled);
+  }, [gameSettings.musicEnabled]);
 
   // Phase 7.4: Update BGM based on phase
   useEffect(() => {

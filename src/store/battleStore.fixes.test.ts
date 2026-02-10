@@ -21,6 +21,8 @@ const mockOfficer: Officer = {
   loyalty: 100,
   isGovernor: true,
   treasureId: null,
+  rank: '一般',
+  relationships: [],
 };
 
 const mockEnemy: Officer = {
@@ -41,6 +43,8 @@ const mockEnemy: Officer = {
   loyalty: 100,
   isGovernor: true,
   treasureId: null,
+  rank: '一般',
+  relationships: [],
 };
 
 describe('Battle Store Fixes', () => {
@@ -128,7 +132,7 @@ describe('Battle Store Fixes', () => {
       expect(removedUnit!.status).toBe('done');
   });
 
-  test('Bug #7: Commander death causes morale drop', () => {
+  test('Bug #7: Commander death causes morale drop and ends battle (RTK IV)', () => {
       const { initBattle, attackUnit } = useBattleStore.getState();
       const ally = { ...mockOfficer, id: 3 };
       initBattle(1, 2, 2, [mockOfficer, ally], [mockEnemy]);
@@ -137,12 +141,14 @@ describe('Battle Store Fixes', () => {
       const subordinate = useBattleStore.getState().units[1]; // ally
       const enemy = useBattleStore.getState().units[2]; // mockEnemy
 
-      // Setup: Commander has 1 troop
+      // Place enemy adjacent to commander, and set commander to 1 troop
       useBattleStore.setState(s => ({
-          units: s.units.map(u => u.id === commander.id ? { ...u, troops: 1 } : u)
+          units: s.units.map(u =>
+            u.id === commander.id ? { ...u, troops: 1, x: 5, y: 5, z: -10 } :
+            u.id === enemy.id ? { ...u, x: 6, y: 5, z: -11 } : u
+          )
       }));
 
-      // Mock random for capture (avoid capture for this test to be simple, or ensure it doesn't matter)
       vi.spyOn(Math, 'random').mockReturnValue(0.99); // No capture
 
       attackUnit(enemy.id, commander.id);
@@ -154,6 +160,10 @@ describe('Battle Store Fixes', () => {
       const affectedSubordinate = state.units.find(u => u.id === subordinate.id);
       // Initial morale 60. Drop 30 -> 30.
       expect(affectedSubordinate!.morale).toBe(30);
+
+      // RTK IV: Commander defeat ends battle immediately
+      expect(state.isFinished).toBe(true);
+      expect(state.winnerFactionId).toBe(2); // Enemy wins
   });
 
   test('Bug #8: attackGate reduces gate HP', () => {

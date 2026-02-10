@@ -224,4 +224,6 @@ export interface GameSettings {
   customOfficers: 'all' | 'choose';
   /** 滑鼠靈敏度 (1-5) - Mouse Sensitivity */
   intelligenceSensitivity: 1 | 2 | 3 | 4 | 5;
+  /** 音樂 - on: 開啟, off: 關閉 */
+  musicEnabled: boolean;
 }

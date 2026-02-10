@@ -119,6 +119,14 @@ describe('Battle Store', () => {
     
     const attacker = useBattleStore.getState().units[0];
     const defender = useBattleStore.getState().units[1];
+
+    // Place units adjacent so attack range check passes
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id ? { ...u, x: 5, y: 5, z: -10 } :
+        u.id === defender.id ? { ...u, x: 6, y: 5, z: -11 } : u
+      )
+    }));
     
     attackUnit(attacker.id, defender.id);
     
@@ -137,16 +145,17 @@ describe('Battle Store', () => {
     // Mock random for capture
     vi.spyOn(Math, 'random').mockReturnValue(0.01);
 
-    // Reduce troops to 0
+    // Place adjacent and reduce troops to 50
     useBattleStore.setState(s => ({
-        units: s.units.map(u => u.id === defender.id ? { ...u, troops: 50 } : u)
+        units: s.units.map(u =>
+          u.id === attacker.id ? { ...u, x: 5, y: 5, z: -10 } :
+          u.id === defender.id ? { ...u, x: 6, y: 5, z: -11, troops: 50 } : u
+        )
     }));
 
     attackUnit(attacker.id, defender.id);
 
     const state = useBattleStore.getState();
-    // Assuming attack kills the remaining 50 troops
-    // If damage is > 50. Base damage usually > 100.
     const deadDefender = state.units.find(u => u.id === defender.id);
     expect(deadDefender!.troops).toBe(0);
     expect(state.capturedOfficerIds).toContain(defender.officerId);
@@ -216,7 +225,7 @@ describe('Battle Store', () => {
     expect(betrayedAlly!.troops).toBeLessThan(5000);
   });
 
-  test('endUnitTurn switches to next unit or next day', () => {
+  test('endUnitTurn marks unit done and deselects', () => {
     const { initBattle, endUnitTurn } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
     
@@ -224,42 +233,44 @@ describe('Battle Store', () => {
     endUnitTurn(firstUnitId);
     
     const state = useBattleStore.getState();
-    expect(state.activeUnitId).not.toBe(firstUnitId);
-    
-    const secondUnitId = state.activeUnitId!;
-    endUnitTurn(secondUnitId);
-    
-    const finalState = useBattleStore.getState();
-    expect(finalState.day).toBe(2);
-    expect(finalState.units[0].status).toBe('active');
+    expect(state.activeUnitId).toBeNull();
+    const unit = state.units.find(u => u.id === firstUnitId);
+    expect(unit!.status).toBe('done');
   });
 
-  test('endUnitTurn handles confused units', () => {
-    const { initBattle, endUnitTurn } = useBattleStore.getState();
+  test('endPlayerPhase runs enemy AI and advances to next day', () => {
+    const { initBattle, endPlayerPhase } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
     
-    const attackerId = useBattleStore.getState().units[0].id;
+    endPlayerPhase();
+    // endPlayerPhase only sets turnPhase to 'enemy'; step through enemy units
+    while (useBattleStore.getState().stepEnemyPhase()) { /* process each enemy */ }
+    
+    const state = useBattleStore.getState();
+    expect(state.day).toBe(2);
+    expect(state.turnPhase).toBe('player');
+    expect(state.units[0].status).toBe('active');
+  });
+
+  test('endPlayerPhase handles confused enemy units', () => {
+    const { initBattle, endPlayerPhase } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+    
     const defenderId = useBattleStore.getState().units[1].id;
 
     // Set defender to confused
     useBattleStore.setState(s => ({
-        units: s.units.map(u => u.id === defenderId ? { ...u, status: 'confused', confusedTurns: 2 } : u)
+        units: s.units.map(u => u.id === defenderId ? { ...u, status: 'confused' as const, confusedTurns: 2 } : u)
     }));
 
-    // End attacker turn
-    endUnitTurn(attackerId);
+    endPlayerPhase();
+    while (useBattleStore.getState().stepEnemyPhase()) { /* process each enemy */ }
 
-    // Should skip defender and go to next day (since only 2 units)
     const state = useBattleStore.getState();
     expect(state.day).toBe(2);
     
     // Defender confused turns should decrease
     const defender = state.units.find(u => u.id === defenderId);
-    // nextDay might reset status if turns > 0
-    // Actually nextDay logic: if confusedTurns > 0, status stays confused.
-    // endUnitTurn logic: decrements confusedTurns if skipping.
-    // If it skipped, it decremented.
-    // Then nextDay happened.
     expect(defender!.confusedTurns).toBe(1); 
     expect(defender!.status).toBe('confused');
   });

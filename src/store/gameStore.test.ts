@@ -1510,10 +1510,10 @@ describe('Battle Consequences - resolveBattle', () => {
       useGameStore.getState().resolveBattle(1, 2, 1, battleUnits);
 
       const updatedOfficer = useGameStore.getState().officers.find(o => o.id === 20);
-      // Fled officers become unaffiliated (factionId: null)
-      expect(updatedOfficer?.factionId).toBeNull();
-      // Should have moved to an adjacent city
-      expect([2, 3]).toContain(updatedOfficer?.cityId);
+      // RTK IV: Fled officers keep faction affiliation when friendly cities exist
+      expect(updatedOfficer?.factionId).toBe(2);
+      // Should have moved to adjacent friendly city (city 2)
+      expect(updatedOfficer?.cityId).toBe(2);
 
       mockRandom.mockRestore();
     });
@@ -1529,6 +1529,7 @@ describe('Battle Consequences - resolveBattle', () => {
       });
       const faction2 = createTestFaction({
         id: 2,
+        rulerId: 999, // ruler not involved in battle
         relations: { 1: 50 },
       });
 

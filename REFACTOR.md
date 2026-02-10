@@ -342,9 +342,3 @@ These must be in AGENTS.md and README.md after the refactor:
 - Mod support / custom scenarios
 - Performance optimization (current perf is fine for the game's scope)
 - i18n (game is Traditional Chinese by design, matching RTK IV)
-
-## Future Enhancements (noted for later)
-- **Multi-city attack:** RTK IV allows attacking from multiple cities simultaneously. Attackers from different cities spawn on different edges of the battle map based on their approach direction.
-- **Allied reinforcements:** Both attacker and defender can have allied factions join the battle. Allied units spawn separately and are AI-controlled even during the player phase.
-- **Spawn point selection:** RTK IV lets both sides pick spawn positions from ~10 predefined locations before battle starts. Fewer options than total officers — adds a tactical layer.
-- **Per-city battle maps:** Each of the 46 cities should have a unique battle map reflecting its geography and historical significance (e.g., 赤壁 has rivers, 街亭 has mountains, 漢中 has valleys).

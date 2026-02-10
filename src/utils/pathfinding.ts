@@ -5,10 +5,10 @@ import type { TerrainType } from '../types/battle';
 export const TERRAIN_COSTS: Record<TerrainType, number> = {
   plain: 1,
   forest: 2,
-  mountain: 3,
+  mountain: Infinity,
   river: 4,
-  city: 1,
-  gate: 1,
+  city: Infinity,
+  gate: Infinity,
   bridge: 1
 };
 
@@ -62,28 +62,13 @@ export function findPath(
 
     const neighbors = getNeighbors(current.hex);
     for (const neighbor of neighbors) {
-      // Check bounds
-      // Assuming r is row and q is axial column
-      // We need a way to map q,r to 2D array indices safely
-      // For simplicity, let's assume terrain is indexed by q,r with some offset
-      // or we just use a simplified check
-      if (Math.abs(neighbor.q) > width || Math.abs(neighbor.r) > height) continue;
+      // Bounds check: 0-indexed grid coordinates
+      if (neighbor.q < 0 || neighbor.q >= width || neighbor.r < 0 || neighbor.r >= height) continue;
 
       const neighborKey = `${neighbor.q},${neighbor.r}`;
       if (closedSet.has(neighborKey) || blockedHexes.has(neighborKey)) continue;
 
-      // Get terrain cost (default to 1 if outside)
-      // This part needs careful mapping from q,r to terrain array
-      // Let's assume a simple offset mapping for now:
-      const qIdx = neighbor.q + Math.floor(width / 2);
-      const rIdx = neighbor.r + Math.floor(height / 2);
-      
-      let moveCost = 1;
-      if (terrain[qIdx] && terrain[qIdx][rIdx]) {
-        moveCost = TERRAIN_COSTS[terrain[qIdx][rIdx]];
-      } else {
-        continue; // Outside map
-      }
+      const moveCost = TERRAIN_COSTS[terrain[neighbor.q][neighbor.r]];
 
       const gScore = current.g + moveCost;
       let neighborNode = openSet.find(n => n.hex.q === neighbor.q && n.hex.r === neighbor.r);
@@ -125,15 +110,13 @@ export function getMoveRange(
 
     const neighbors = getNeighbors(hex);
     for (const neighbor of neighbors) {
-      const qIdx = neighbor.q + Math.floor(width / 2);
-      const rIdx = neighbor.r + Math.floor(height / 2);
-      
-      if (!terrain[qIdx] || !terrain[qIdx][rIdx]) continue;
+      // Bounds check: 0-indexed grid coordinates
+      if (neighbor.q < 0 || neighbor.q >= width || neighbor.r < 0 || neighbor.r >= height) continue;
       
       const neighborKey = `${neighbor.q},${neighbor.r}`;
       if (blockedHexes.has(neighborKey)) continue;
 
-      const moveCost = TERRAIN_COSTS[terrain[qIdx][rIdx]];
+      const moveCost = TERRAIN_COSTS[terrain[neighbor.q][neighbor.r]];
       const totalCost = cost + moveCost;
 
       if (totalCost <= range) {

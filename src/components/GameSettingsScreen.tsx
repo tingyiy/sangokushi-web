@@ -132,6 +132,18 @@ export function GameSettingsScreen() {
               ))}
             </div>
           </div>
+
+          {/* Music Toggle */}
+          <div className="settings-row">
+            <span className="settings-label">音樂</span>
+            <ToggleButton
+              options={['開', '關']}
+              value={gameSettings.musicEnabled ? '開' : '關'}
+              onChange={(v) =>
+                setGameSettings({ musicEnabled: v === '開' })
+              }
+            />
+          </div>
         </div>
 
       </div>

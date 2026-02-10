@@ -23,11 +23,14 @@ describe('Siege Map Utils', () => {
   test('generateSiegeMap creates gates and walls', () => {
     const map = generateSiegeMap(15, 15);
     const gates = getGatePositions(map);
-    expect(gates.length).toBeGreaterThan(0);
+    expect(gates.length).toBe(4); // 4 cardinal gates
     
-    // Check center is city
-    const center = map.terrain[7][7];
-    expect(['city', 'mountain']).toContain(center); // Or whatever logic
+    // Center should be plain (inside the walls)
+    expect(map.terrain[7][7]).toBe('plain');
+    
+    // Walls should exist as 'city' terrain
+    const hasCityTerrain = map.terrain.some(col => col.some(t => t === 'city'));
+    expect(hasCityTerrain).toBe(true);
   });
 
   test('isSiegeBattle returns correct boolean', () => {
