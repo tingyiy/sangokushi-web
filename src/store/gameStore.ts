@@ -267,7 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
 
 
-retreat: () => {
+  retreat: () => {
     const state = get();
     if (state.phase !== 'battle') return;
 
@@ -1456,7 +1456,7 @@ retreat: () => {
 
     if (state.battleFormation) {
       attackerOfficers = state.battleFormation.officerIds.map(id => state.officers.find(o => o.id === id)!).filter(Boolean);
-      attackerUnitTypes = state.battleFormation.unitTypes;
+      attackerUnitTypes = state.battleFormation.unitTypes || attackerOfficers.map(() => 'infantry' as UnitType);
     } else {
       // Default fallback if no formation set (infantry)
       attackerOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id).slice(0, 5);
@@ -1468,9 +1468,15 @@ retreat: () => {
       return;
     }
 
-    const totalTroopsToDeploy = attackerOfficers.length * 5000;
-    if (city.troops < totalTroopsToDeploy) {
-      get().addLog(`兵力不足（需 ${totalTroopsToDeploy}），無法出征。`);
+    // Calculate actual troop allocation per officer (based on city garrison, capped by leadership)
+    const troopsPerOfficer = attackerOfficers.map(off => {
+      const maxForOfficer = off.leadership * 100; // RTK IV: leadership determines max troops
+      const equalShare = Math.floor(city.troops / attackerOfficers.length);
+      return Math.min(equalShare, maxForOfficer);
+    });
+    const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
+    if (totalTroopsToDeploy <= 0) {
+      get().addLog('兵力不足，無法出征。');
       return;
     }
 
@@ -1495,7 +1501,55 @@ retreat: () => {
     }
 
     const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
-    const defenderTroopsDeployed = defenderOfficers.length * 5000;
+
+    // ── Auto-capture undefended city ──
+    // If the target city has NO defending officers, skip the battle and capture it directly.
+    if (defenderOfficers.length === 0) {
+      set({
+        cities: state.cities.map(c => {
+          if (c.id === city.id) return {
+            ...c,
+            troops: c.troops - totalTroopsToDeploy,
+            crossbows: c.crossbows - crossbowsUsed,
+            warHorses: c.warHorses - warHorsesUsed
+          };
+          if (c.id === targetCityId) return {
+            ...c,
+            factionId: state.playerFaction!.id,
+            troops: totalTroopsToDeploy, // Garrison the conquering army
+          };
+          return c;
+        }),
+        officers: state.officers.map(o =>
+          attackerOfficers.some(ao => ao.id === o.id)
+            ? { ...o, stamina: Math.max(0, o.stamina - 10), cityId: targetCityId, isGovernor: false }
+            : o
+        ),
+        battleFormation: null,
+      });
+      // Make the first attacker officer the new governor
+      set(s => ({
+        officers: s.officers.map(o =>
+          o.id === attackerOfficers[0].id ? { ...o, isGovernor: true } : o
+        )
+      }));
+      get().addLog(`${targetCity.name} 是一座空城！${commander.name} 率軍佔領了 ${targetCity.name}！`);
+      // Check if the losing faction has no more cities
+      const loserFactionId = targetCity.factionId || 0;
+      const remainingCities = get().cities.filter(c => c.factionId === loserFactionId);
+      if (remainingCities.length === 0) {
+        const loserFaction = state.factions.find(f => f.id === loserFactionId);
+        get().addLog(`${loserFaction?.name || '敵方'} 勢力已被消滅！`);
+      }
+      return;
+    }
+
+    const defenderTroopsPerOfficer = defenderOfficers.map(off => {
+      const maxForOfficer = off.leadership * 100;
+      const equalShare = Math.floor(targetCity.troops / Math.max(1, defenderOfficers.length));
+      return Math.min(equalShare, maxForOfficer);
+    });
+    const defenderTroopsDeployed = defenderTroopsPerOfficer.reduce((sum, t) => sum + t, 0);
 
     set({
       cities: state.cities.map(c => {
@@ -1527,7 +1581,10 @@ retreat: () => {
       city.morale,
       targetCity.morale,
       city.training,
-      attackerUnitTypes
+      attackerUnitTypes,
+      undefined, // defenderUnitTypes (auto-picked)
+      troopsPerOfficer,
+      defenderTroopsPerOfficer
     );
 
     set({ phase: 'battle' });
@@ -1562,9 +1619,20 @@ retreat: () => {
     const crossbowsUsed = city.crossbows - crossbowsAvailable;
     const warHorsesUsed = city.warHorses - warHorsesAvailable;
 
-    const totalTroopsToDeploy = attackerOfficers.length * 5000;
+    // Calculate actual troop allocation per officer
+    const troopsPerOfficer = attackerOfficers.map(off => {
+      const maxForOfficer = off.leadership * 100;
+      const equalShare = Math.floor(city.troops / attackerOfficers.length);
+      return Math.min(equalShare, maxForOfficer);
+    });
+    const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
     const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
-    const defenderTroopsDeployed = defenderOfficers.length * 5000;
+    const defenderTroopsPerOfficer = defenderOfficers.map(off => {
+      const maxForOfficer = off.leadership * 100;
+      const equalShare = Math.floor(targetCity.troops / Math.max(1, defenderOfficers.length));
+      return Math.min(equalShare, maxForOfficer);
+    });
+    const defenderTroopsDeployed = defenderTroopsPerOfficer.reduce((sum, t) => sum + t, 0);
 
     set({
       cities: state.cities.map(c => {
@@ -1587,8 +1655,8 @@ retreat: () => {
 
     // AI vs AI: Auto-resolve to avoid state corruption during endTurn (C1)
     if (targetCity.factionId !== state.playerFaction?.id) {
-      const attackerPower = attackerOfficers.reduce((s, o) => s + o.leadership + o.war, 0) + (attackerOfficers.length * 5000 / 100);
-      const defenderPower = defenderOfficers.reduce((s, o) => s + o.leadership + o.war, 0) + (defenderOfficers.length * 5000 / 100);
+      const attackerPower = attackerOfficers.reduce((s, o) => s + o.leadership + o.war, 0) + (totalTroopsToDeploy / 100);
+      const defenderPower = defenderOfficers.reduce((s, o) => s + o.leadership + o.war, 0) + (defenderTroopsDeployed / 100);
 
       const winnerFactionId = attackerPower > defenderPower ? (city.factionId || 0) : (targetCity.factionId || 0);
       const loserFactionId = winnerFactionId === (city.factionId || 0) ? (targetCity.factionId || 0) : (city.factionId || 0);
@@ -1622,7 +1690,10 @@ retreat: () => {
       city.morale,
       targetCity.morale,
       city.training,
-      attackerUnitTypes
+      attackerUnitTypes,
+      undefined, // defenderUnitTypes
+      troopsPerOfficer,
+      defenderTroopsPerOfficer
     );
 
     set({ phase: 'battle' });
