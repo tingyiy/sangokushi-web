@@ -172,7 +172,7 @@ describe('Historical Events', () => {
       gameSettings: { gameMode: 'historical' },
       year: 220,
       month: 1,
-      factions: [{ id: 1, rulerId: 20 }],
+      factions: [{ id: 1, rulerId: 11 }],
       officers: [{ id: 17, factionId: 2, isGovernor: false, relationships: [] }],
       cities: []
     } as unknown as GameState;
