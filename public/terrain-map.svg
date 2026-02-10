@@ -5,7 +5,7 @@
     Coordinate system: viewBox 0 0 1000 850 (multiply city x,y by 10 to get pixel coords)
     
     Geography based on actual RTK IV screenshots:
-    - Northwest: desert/arid (西涼, 安定)
+    - Northwest: desert/arid (西涼, 天水)
     - North: plains with mountain borders (太行山脈)
     - Central: Yellow River plains (中原)
     - West: Sichuan basin surrounded by mountains (秦嶺, 大巴山)
@@ -148,7 +148,7 @@
     L 430,680 L 410,640 L 400,600 L 410,570 Z
   " fill="#5a8a4a" stroke="none"/>
 
-  <!-- Lingnan (嶺南: 南海, 桂陽, 交趾) -->
+  <!-- Lingnan (嶺南: 桂陽, 零陵) -->
   <path d="
     M 300,700 L 400,690 L 500,700 L 600,720
     L 700,730 L 750,740 L 740,770 L 700,785
@@ -158,7 +158,7 @@
   
   <!-- ==================== MOUNTAINS ==================== -->
   
-  <!-- 太行山脈 Taihang Mountains (between 晉陽/上黨 and 鄴/濮陽) -->
+  <!-- 太行山脈 Taihang Mountains (between 晉陽 and 鄴/濮陽) -->
   <path d="
     M 560,80 L 580,100 L 590,130 L 600,160 
     L 605,190 L 610,220 L 610,250 L 600,280 
@@ -211,7 +211,7 @@
   <path d="M410,470 L420,455 L430,470 Z" fill="#9e8668" opacity="0.6"/>
   <path d="M440,485 L450,468 L460,488 Z" fill="#9e8668" opacity="0.6"/>
   
-  <!-- 岷山/西南山地 Southwest mountains (around 漢嘉, 建寧, 雲南) -->
+  <!-- 岷山/西南山地 Southwest mountains (around 建寧, 雲南) -->
   <path d="
     M 100,400 L 160,380 L 200,390 L 220,420 
     L 210,460 L 200,500 L 190,540 L 180,580 
@@ -235,7 +235,7 @@
   <path d="M560,665 L572,648 L585,665 Z" fill="#9e8668" opacity="0.5"/>
   <path d="M650,675 L662,658 L675,678 Z" fill="#9e8668" opacity="0.5"/>
   
-  <!-- 東南丘陵 Southeast hills (between 柴桑/會稽 and 廬陵) -->
+  <!-- 東南丘陵 Southeast hills (between 柴桑/會稽) -->
   <path d="
     M 720,500 L 770,490 L 820,500 L 860,520
     L 870,560 L 850,590 L 820,600 L 790,610
@@ -271,7 +271,7 @@
   <path d="M120,130 Q150,118 180,130" stroke="#b89960" stroke-width="1.5" fill="none" opacity="0.3"/>
   <path d="M200,60 Q225,50 250,60" stroke="#b89960" stroke-width="1.5" fill="none" opacity="0.3"/>
   
-  <!-- Arid transition zone (around 安定, 天水) -->
+  <!-- Arid transition zone (around 天水) -->
   <path d="
     M 280,170 L 340,160 L 400,180 L 420,210
     L 400,240 L 360,250 L 310,240 
@@ -370,7 +370,7 @@
     M 590,500 Q 595,530 600,560 Q 600,580 595,600 Q 590,630 580,660
   " stroke="#5cacde" stroke-width="2.5" fill="none" opacity="0.5" stroke-linecap="round"/>
   
-  <!-- 贛江 Gan River (through 廬陵 area) -->
+  <!-- 贛江 Gan River (through 建業/會稽 area) -->
   <path d="
     M 710,520 Q 715,550 718,580 Q 720,600 718,620 Q 715,650 710,680
   " stroke="#5cacde" stroke-width="2.5" fill="none" opacity="0.5" stroke-linecap="round"/>
@@ -418,14 +418,10 @@
     <line x1="680" y1="100" x2="580" y2="150"/>
     <!-- 南皮-晉陽 -->
     <line x1="680" y1="180" x2="580" y2="150"/>
-    <!-- 晉陽-上黨 -->
-    <line x1="580" y1="150" x2="580" y2="220"/>
     <!-- 南皮-鄴 -->
     <line x1="680" y1="180" x2="650" y2="240"/>
     <!-- 南皮-平原 -->
     <line x1="680" y1="180" x2="720" y2="240"/>
-    <!-- 上黨-鄴 -->
-    <line x1="580" y1="220" x2="650" y2="240"/>
     <!-- 鄴-平原 -->
     <line x1="650" y1="240" x2="720" y2="240"/>
     <!-- 鄴-濮陽 -->
@@ -434,10 +430,6 @@
     <line x1="720" y1="240" x2="680" y2="300"/>
     <!-- 平原-北海 -->
     <line x1="720" y1="240" x2="780" y2="280"/>
-    <!-- 上黨-洛陽 -->
-    <line x1="580" y1="220" x2="560" y2="300"/>
-    <!-- 上黨-長安 -->
-    <line x1="580" y1="220" x2="450" y2="280"/>
     <!-- 濮陽-洛陽 -->
     <line x1="680" y1="300" x2="560" y2="300"/>
     <!-- 濮陽-陳留 -->
@@ -512,52 +504,26 @@
     <line x1="600" y1="500" x2="600" y2="580"/>
     <!-- 柴桑-會稽 -->
     <line x1="700" y1="520" x2="850" y2="550"/>
-    <!-- 柴桑-廬陵 -->
-    <line x1="700" y1="520" x2="720" y2="600"/>
     <!-- 梓潼-成都 -->
     <line x1="320" y1="400" x2="300" y2="480"/>
-    <!-- 梓潼-漢嘉 -->
-    <line x1="320" y1="400" x2="250" y2="520"/>
     <!-- 成都-永安 -->
     <line x1="300" y1="480" x2="420" y2="520"/>
-    <!-- 成都-漢嘉 -->
-    <line x1="300" y1="480" x2="250" y2="520"/>
     <!-- 成都-建寧 -->
     <line x1="300" y1="480" x2="250" y2="620"/>
     <!-- 永安-長沙 -->
     <line x1="420" y1="520" x2="600" y2="580"/>
-    <!-- 長沙-廬陵 -->
-    <line x1="600" y1="580" x2="720" y2="600"/>
     <!-- 長沙-武陵 -->
     <line x1="600" y1="580" x2="500" y2="600"/>
-    <!-- 廬陵-武陵 -->
-    <line x1="720" y1="600" x2="500" y2="600"/>
     <!-- 武陵-零陵 -->
     <line x1="500" y1="600" x2="520" y2="660"/>
-    <!-- 漢嘉-建寧 -->
-    <line x1="250" y1="520" x2="250" y2="620"/>
     <!-- 建寧-零陵 -->
     <line x1="250" y1="620" x2="520" y2="660"/>
     <!-- 建寧-雲南 -->
     <line x1="250" y1="620" x2="220" y2="720"/>
     <!-- 零陵-雲南 -->
     <line x1="520" y1="660" x2="220" y2="720"/>
-    <!-- 廬陵-南海 -->
-    <line x1="720" y1="600" x2="720" y2="720"/>
-    <!-- 南海-桂陽 -->
-    <line x1="720" y1="720" x2="600" y2="720"/>
-    <!-- 南海-交趾 -->
-    <line x1="720" y1="720" x2="400" y2="780"/>
-    <!-- 桂陽-交趾 -->
-    <line x1="600" y1="720" x2="400" y2="780"/>
     <!-- 西涼-天水 -->
     <line x1="250" y1="150" x2="350" y2="250"/>
-    <!-- 安定-長安 -->
-    <line x1="380" y1="200" x2="450" y2="280"/>
-    <!-- 安定-天水 -->
-    <line x1="380" y1="200" x2="350" y2="250"/>
-    <!-- 安定-西涼 -->
-    <line x1="380" y1="200" x2="250" y2="150"/>
     <!-- 許昌-宛 -->
     <line x1="620" y1="360" x2="560" y2="380"/>
     <!-- 許昌-陳留 -->
@@ -566,12 +532,6 @@
     <line x1="620" y1="360" x2="760" y2="360"/>
     <!-- 許昌-新野 -->
     <line x1="620" y1="360" x2="550" y2="420"/>
-    <!-- 小沛-北海 -->
-    <line x1="720" y1="340" x2="780" y2="280"/>
-    <!-- 小沛-下邳 -->
-    <line x1="720" y1="340" x2="760" y2="360"/>
-    <!-- 小沛-許昌 -->
-    <line x1="720" y1="340" x2="620" y2="360"/>
   </g>
   
   <!-- ==================== CITY MARKERS ==================== -->
@@ -599,10 +559,7 @@
     <rect x="575" y="142" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="580" y="138" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">晉陽</text>
     
-    <!-- ID 6: 上黨 (58,22) -> (580,220) -->
-    <rect x="575" y="212" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="580" y="208" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">上黨</text>
-    
+
     <!-- ID 7: 鄴 (65,24) -> (650,240) -->
     <rect x="645" y="232" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="650" y="228" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">鄴</text>
@@ -699,18 +656,12 @@
     <rect x="595" y="572" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="600" y="568" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">長沙</text>
     
-    <!-- ID 31: 廬陵 (72,60) -> (720,600) -->
-    <rect x="715" y="592" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="720" y="588" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">廬陵</text>
-    
+
     <!-- ID 32: 武陵 (50,60) -> (500,600) -->
     <rect x="495" y="592" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="500" y="588" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">武陵</text>
     
-    <!-- ID 33: 漢嘉 (25,52) -> (250,520) -->
-    <rect x="245" y="512" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="250" y="508" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">漢嘉</text>
-    
+
     <!-- ID 34: 建寧 (25,62) -> (250,620) -->
     <rect x="245" y="612" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="250" y="608" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">建寧</text>
@@ -723,33 +674,21 @@
     <rect x="215" y="712" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="220" y="708" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">雲南</text>
     
-    <!-- ID 37: 南海 (72,72) -> (720,720) -->
-    <rect x="715" y="712" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="720" y="708" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">南海</text>
-    
+
     <!-- ID 38: 桂陽 (60,72) -> (600,720) -->
     <rect x="595" y="712" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="600" y="708" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">桂陽</text>
     
-    <!-- ID 39: 交趾 (40,78) -> (400,780) -->
-    <rect x="395" y="772" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="400" y="768" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">交趾</text>
-    
+
     <!-- ID 40: 西涼 (25,15) -> (250,150) -->
     <rect x="245" y="142" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="250" y="138" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">西涼</text>
     
-    <!-- ID 41: 安定 (38,20) -> (380,200) -->
-    <rect x="375" y="192" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="380" y="188" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">安定</text>
-    
+
     <!-- ID 42: 許昌 (62,36) -> (620,360) -->
     <rect x="615" y="352" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
     <text x="620" y="348" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">許昌</text>
     
-    <!-- ID 43: 小沛 (72,34) -> (720,340) -->
-    <rect x="715" y="332" width="10" height="10" fill="#ddd" stroke="#333" stroke-width="1"/>
-    <text x="720" y="328" font-size="11" fill="#2c1810" text-anchor="middle" font-family="serif" font-weight="bold">小沛</text>
   </g>
   
   <!-- ==================== GEOGRAPHIC LABELS ==================== -->
