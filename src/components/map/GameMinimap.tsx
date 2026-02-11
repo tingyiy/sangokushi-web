@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 
 export function GameMinimap() {
+  const { t } = useTranslation();
   const { cities, factions, selectedCityId, selectCity } = useGameStore();
 
   const getFactionColor = (factionId: number | null): string => {
@@ -11,7 +13,7 @@ export function GameMinimap() {
 
   return (
     <div className="game-minimap">
-      <svg viewBox="0 0 100 85" aria-label="地圖縮圖">
+      <svg viewBox="0 0 100 85" aria-label={t('minimap.ariaLabel')}>
         <image href="/terrain-map.svg" width="100" height="85" opacity="0.6" />
         {cities.map(city => {
           const color = getFactionColor(city.factionId);

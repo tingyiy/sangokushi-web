@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Officer } from '../types';
 
 interface Props {
@@ -8,21 +9,23 @@ interface Props {
 }
 
 export function OfficerSelectionOverlay({ officers, title, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="officer-overlay">
       <div className="officer-overlay-header">
         <span>{title}</span>
-        <button className="btn btn-cmd" onClick={onClose}>結束</button>
+        <button className="btn btn-cmd" onClick={onClose}>{t('common.close')}</button>
       </div>
       <table className="officer-table">
         <thead>
           <tr>
-            <th>姓名</th>
-            <th>統</th>
-            <th>武</th>
-            <th>智</th>
-            <th>政</th>
-            <th>魅</th>
+            <th>{t('officer.colName')}</th>
+            <th>{t('officer.colLeadership')}</th>
+            <th>{t('officer.colWar')}</th>
+            <th>{t('officer.colIntelligence')}</th>
+            <th>{t('officer.colPolitics')}</th>
+            <th>{t('officer.colCharisma')}</th>
           </tr>
         </thead>
         <tbody>

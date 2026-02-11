@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 
 /**
@@ -7,6 +8,7 @@ import { useGameStore } from '../store/gameStore';
  * Phase 0.3: Victory condition implementation.
  */
 const VictoryScreen: React.FC = () => {
+  const { t } = useTranslation();
   const { playerFaction, year, month, setPhase, cities } = useGameStore();
 
   const handleReturnToTitle = () => {
@@ -40,7 +42,7 @@ const VictoryScreen: React.FC = () => {
           animation: 'fadeIn 2s ease-in',
         }}
       >
-        天下統一
+        {t('victory.title')}
       </div>
 
       <div
@@ -50,7 +52,7 @@ const VictoryScreen: React.FC = () => {
           marginBottom: '1rem',
         }}
       >
-        恭喜 {playerFaction?.name} 達成大業！
+        {t('victory.congratulations', { factionName: playerFaction?.name })}
       </div>
 
       <div
@@ -60,7 +62,7 @@ const VictoryScreen: React.FC = () => {
           marginBottom: '3rem',
         }}
       >
-        {year}年{month}月 · 統一 {totalCities} 座城池
+        {t('victory.dateAndCities', { year, month, totalCities })}
       </div>
 
       <div
@@ -74,11 +76,11 @@ const VictoryScreen: React.FC = () => {
         }}
       >
         <p style={{ fontSize: '1.1rem', lineHeight: '1.8' }}>
-          歷經無數戰役，終於平定亂世。
+          {t('victory.flavorLine1')}
           <br />
-          您的英明領導將永載史冊，
+          {t('victory.flavorLine2')}
           <br />
-          成為後世傳頌的一代霸主！
+          {t('victory.flavorLine3')}
         </p>
       </div>
 
@@ -98,7 +100,7 @@ const VictoryScreen: React.FC = () => {
         onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
         onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        返回主選單
+        {t('common.returnToTitle')}
       </button>
 
       <style>{`

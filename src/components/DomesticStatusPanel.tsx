@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import type { City } from '../types';
 
@@ -14,6 +15,7 @@ interface Props {
 type SortKey = keyof Pick<City, 'name' | 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'morale' | 'training'>;
 
 export function DomesticStatusPanel({ isOpen, onClose }: Props) {
+  const { t } = useTranslation();
   const { cities, playerFaction } = useGameStore();
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -47,23 +49,23 @@ export function DomesticStatusPanel({ isOpen, onClose }: Props) {
     <div className="status-panel-overlay">
       <div className="status-panel">
         <div className="panel-header">
-          <h3>內政狀況表</h3>
+          <h3>{t('status.title')}</h3>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         <div className="panel-body">
           <table>
             <thead>
               <tr>
-                <th onClick={() => handleSort('name')}>城市名 {sortKey === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('population')}>人口 {sortKey === 'population' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('gold')}>金錢 {sortKey === 'gold' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('food')}>糧草 {sortKey === 'food' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('commerce')}>商業 {sortKey === 'commerce' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('agriculture')}>農業 {sortKey === 'agriculture' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('defense')}>防禦 {sortKey === 'defense' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('troops')}>士兵 {sortKey === 'troops' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('morale')}>士氣 {sortKey === 'morale' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
-                <th onClick={() => handleSort('training')}>訓練 {sortKey === 'training' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('name')}>{t('status.colCityName')} {sortKey === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('population')}>{t('status.colPopulation')} {sortKey === 'population' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('gold')}>{t('status.colGold')} {sortKey === 'gold' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('food')}>{t('status.colFood')} {sortKey === 'food' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('commerce')}>{t('status.colCommerce')} {sortKey === 'commerce' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('agriculture')}>{t('status.colAgriculture')} {sortKey === 'agriculture' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('defense')}>{t('status.colDefense')} {sortKey === 'defense' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('troops')}>{t('status.colTroops')} {sortKey === 'troops' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('morale')}>{t('status.colMorale')} {sortKey === 'morale' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th onClick={() => handleSort('training')}>{t('status.colTraining')} {sortKey === 'training' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
               </tr>
             </thead>
             <tbody>

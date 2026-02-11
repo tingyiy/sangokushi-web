@@ -1,6 +1,7 @@
 import type { UnitType, TerrainType } from '../types/battle';
 import type { Officer } from '../types';
 import { hasSkill } from './skills';
+import i18next from 'i18next';
 
 export interface UnitModifiers {
   movement: number;
@@ -113,9 +114,5 @@ export function calculateTacticSuccess(
 }
 
 export function getUnitTypeLabel(unitType: UnitType): string {
-  switch (unitType) {
-    case 'cavalry': return '騎';
-    case 'archer': return '弓';
-    case 'infantry': return '步';
-  }
+  return i18next.t(`battle:unitType.${unitType}`);
 }

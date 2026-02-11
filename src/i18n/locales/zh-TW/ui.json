@@ -48,9 +48,9 @@
   "sidebar": {
     "cityCount": "城{{count}}",
     "officerCount": "將{{count}}",
-    "troopCount": "兵{{count}}",
-    "goldCount": "金{{count}}",
-    "foodCount": "糧{{count}}"
+    "troopCount": "兵{{value}}",
+    "goldCount": "金{{value}}",
+    "foodCount": "糧{{value}}"
   },
   "log": {
     "title": "戰報"

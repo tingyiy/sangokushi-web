@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 
 /**
@@ -7,6 +8,7 @@ import { useGameStore } from '../store/gameStore';
  * Phase 0.3: Defeat condition implementation.
  */
 const DefeatScreen: React.FC = () => {
+  const { t } = useTranslation();
   const { playerFaction, year, month, setPhase, factions } = useGameStore();
 
   const handleReturnToTitle = () => {
@@ -44,7 +46,7 @@ const DefeatScreen: React.FC = () => {
           animation: 'fadeIn 2s ease-in',
         }}
       >
-        勢力覆滅
+        {t('defeat.title')}
       </div>
 
       <div
@@ -54,7 +56,7 @@ const DefeatScreen: React.FC = () => {
           marginBottom: '1rem',
         }}
       >
-        {playerFaction?.name} 已無立足之地
+        {t('defeat.noTerritory', { factionName: playerFaction?.name })}
       </div>
 
       <div
@@ -64,7 +66,7 @@ const DefeatScreen: React.FC = () => {
           marginBottom: '3rem',
         }}
       >
-        {year}年{month}月 · 霸業未成
+        {t('defeat.dateAndFailure', { year, month })}
       </div>
 
       <div
@@ -78,15 +80,15 @@ const DefeatScreen: React.FC = () => {
         }}
       >
         <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: '#888' }}>
-          戰場無情，勝敗乃兵家常事。
+          {t('defeat.flavorLine1')}
           <br />
-          雖未達成霸業，但您的奮戰精神
+          {t('defeat.flavorLine2')}
           <br />
-          已足以名留青史...
+          {t('defeat.flavorLine3')}
         </p>
         {conqueringFaction && (
           <p style={{ fontSize: '1rem', marginTop: '1rem', color: '#777' }}>
-            {conqueringFaction.name} 最終統一天下
+            {t('defeat.conqueror', { factionName: conqueringFaction.name })}
           </p>
         )}
       </div>
@@ -107,7 +109,7 @@ const DefeatScreen: React.FC = () => {
         onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
         onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        返回主選單
+        {t('common.returnToTitle')}
       </button>
 
       <style>{`

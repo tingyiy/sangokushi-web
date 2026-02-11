@@ -48,9 +48,9 @@
   "sidebar": {
     "cityCount": "Cities {{count}}",
     "officerCount": "Officers {{count}}",
-    "troopCount": "Troops {{count}}",
-    "goldCount": "Gold {{count}}",
-    "foodCount": "Food {{count}}"
+    "troopCount": "Troops {{value}}",
+    "goldCount": "Gold {{value}}",
+    "foodCount": "Food {{value}}"
   },
   "log": {
     "title": "War Log"

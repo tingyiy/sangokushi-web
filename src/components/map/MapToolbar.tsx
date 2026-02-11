@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 
 /**
@@ -11,23 +12,24 @@ interface Props {
 }
 
 export function MapToolbar({ onShowStatus, onShowSave, onShowLoad }: Props) {
+  const { t } = useTranslation();
   const { setPhase } = useGameStore();
 
   return (
     <div className="map-toolbar">
-      <button className="toolbar-btn" title="查看全勢力" onClick={onShowStatus}>
+      <button className="toolbar-btn" title={t('toolbar.viewStatus')} onClick={onShowStatus}>
         📊
       </button>
-      <button className="toolbar-btn" title="儲存" onClick={onShowSave}>
+      <button className="toolbar-btn" title={t('toolbar.save')} onClick={onShowSave}>
         💾
       </button>
-      <button className="toolbar-btn" title="載入" onClick={onShowLoad}>
+      <button className="toolbar-btn" title={t('toolbar.load')} onClick={onShowLoad}>
         📂
       </button>
-      <button className="toolbar-btn" title="設定" onClick={() => setPhase('settings')}>
+      <button className="toolbar-btn" title={t('toolbar.settings')} onClick={() => setPhase('settings')}>
         ⚙️
       </button>
-      <button className="toolbar-btn" title="返回標題" onClick={() => setPhase('title')}>
+      <button className="toolbar-btn" title={t('toolbar.returnToTitle')} onClick={() => setPhase('title')}>
         🏠
       </button>
 

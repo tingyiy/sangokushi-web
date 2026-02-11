@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 
 export function TitleScreen() {
+  const { t } = useTranslation();
   const { setPhase, getSaveSlots, loadGame } = useGameStore();
   const saveSlots = getSaveSlots();
   const availableSlots = saveSlots.filter(slot => slot.date);
@@ -23,20 +25,20 @@ export function TitleScreen() {
     <div className="title-screen brocade-bg">
       <div className="title-menu rtk-frame">
         <button className="title-menu-item" onClick={() => setPhase('scenario')}>
-          開始新遊戲
+          {t('title.newGame')}
         </button>
         <button
           className="title-menu-item"
           disabled={!hasSaves}
           onClick={handleLoad}
         >
-          載入進度存檔
+          {t('title.loadGame')}
         </button>
         <button
           className="title-menu-item"
           onClick={() => setPhase('rulerCreation')}
         >
-          登錄武將數值
+          {t('title.registerOfficer')}
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import '../i18n';
 import { GovernorAssignmentModal } from './GovernorAssignmentModal';
 import { useGameStore } from '../store/gameStore';
 import type { City, Faction, Officer } from '../types';

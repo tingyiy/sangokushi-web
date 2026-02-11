@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function TransportDialog({ toCityId, onClose }: Props) {
+  const { t } = useTranslation();
   const { selectedCityId, cities, transport } = useGameStore();
   const fromCity = cities.find(c => c.id === selectedCityId);
   const toCity = cities.find(c => c.id === toCityId);
@@ -27,22 +29,22 @@ export function TransportDialog({ toCityId, onClose }: Props) {
   return (
     <div className="modal-overlay">
       <div className="modal-content transport-dialog">
-        <h3>資源輸送：{toCity.name}</h3>
+        <h3>{t('transport.title', { cityName: toCity.name })}</h3>
         
         <div className="input-group">
-          <label>資源類型</label>
+          <label>{t('transport.resourceType')}</label>
           <select value={resource} onChange={(e) => {
             setResource(e.target.value as 'gold' | 'food' | 'troops');
             setAmount(0);
           }}>
-            <option value="gold">金 (現有: {fromCity.gold})</option>
-            <option value="food">糧 (現有: {fromCity.food})</option>
-            <option value="troops">兵 (現有: {fromCity.troops})</option>
+            <option value="gold">{t('transport.goldOption', { amount: fromCity.gold })}</option>
+            <option value="food">{t('transport.foodOption', { amount: fromCity.food })}</option>
+            <option value="troops">{t('transport.troopsOption', { amount: fromCity.troops })}</option>
           </select>
         </div>
 
         <div className="input-group">
-          <label>輸送數量</label>
+          <label>{t('transport.amount')}</label>
           <input 
             type="number" 
             value={amount} 
@@ -62,9 +64,9 @@ export function TransportDialog({ toCityId, onClose }: Props) {
         </div>
 
         <div className="modal-actions">
-          <button className="btn btn-cancel" onClick={onClose}>取消</button>
+          <button className="btn btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
           <button className="btn btn-confirm" onClick={handleTransport} disabled={amount <= 0}>
-            輸送
+            {t('transport.confirm')}
           </button>
         </div>
       </div>

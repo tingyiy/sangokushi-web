@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import '../i18n';
 import { generateNavalMap, generateSiegeMap, getGatePositions, isSiegeBattle } from './siegeMap';
 import { getUnitTypeLabel, getMovementRange, getAttackRange, getAttackModifier, getDefenseModifier, calculateTacticSuccess } from './unitTypes';
 import type { Officer } from '../types';

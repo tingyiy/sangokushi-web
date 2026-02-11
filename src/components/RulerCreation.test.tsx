@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
+import '../i18n';
 import { RulerCreation } from './RulerCreation';
 import { useGameStore } from '../store/gameStore';
 import type { City } from '../types';
