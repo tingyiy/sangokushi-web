@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { City } from '../types';
 
 /**
@@ -71,7 +72,7 @@ export function DomesticStatusPanel({ isOpen, onClose }: Props) {
             <tbody>
               {ownCities.map((city: City) => (
                 <tr key={city.id}>
-                  <td>{city.name}</td>
+                  <td>{localizedName(city.name)}</td>
                   <td>{city.population.toLocaleString()}</td>
                   <td>{city.gold.toLocaleString()}</td>
                   <td>{city.food.toLocaleString()}</td>

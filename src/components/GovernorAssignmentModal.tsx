@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 
 /**
@@ -34,12 +35,12 @@ export function GovernorAssignmentModal() {
     <div className="modal-overlay">
       <div className="modal-content">
         <h3>{t('governor.title')}</h3>
-        <p>{t('governor.prompt', { cityName: city?.name })}</p>
+        <p>{t('governor.prompt', { cityName: localizedName(city?.name ?? '') })}</p>
         
         <div className="officer-selection-list">
           {eligibleOfficers.map((o: Officer) => (
             <div key={o.id} className="officer-selection-row" onClick={() => handleAppoint(o.id)}>
-              <span className="name">{o.name}</span>
+              <span className="name">{localizedName(o.name)}</span>
               <span className="stats">{t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}</span>
             </div>
           ))}

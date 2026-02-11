@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * ToggleButton Component
@@ -75,12 +76,12 @@ export function GameSettingsScreen() {
           <div className="settings-row readonly">
             <span className="settings-label">{t('settings.selectedScenario')}</span>
             <span className="settings-value">
-              {scenario?.name}・{scenario?.subtitle}
+              {scenario ? t(`data:scenario.${scenario.id}.name`) : ''}・{scenario ? t(`data:scenario.${scenario.id}.subtitle`) : ''}
             </span>
           </div>
           <div className="settings-row readonly">
             <span className="settings-label">{t('settings.selectedRuler')}</span>
-            <span className="settings-value">{playerFaction?.name}</span>
+            <span className="settings-value">{localizedName(playerFaction?.name ?? '')}</span>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import './DuelScreen.css';
 
 export const DuelScreen: React.FC = () => {
@@ -24,7 +25,7 @@ export const DuelScreen: React.FC = () => {
 
       <div className="duel-arena">
         <div className="duel-fighter player">
-          <h3>{t('duel.playerFighter', { name: p1.name })}</h3>
+          <h3>{t('duel.playerFighter', { name: localizedName(p1.name) })}</h3>
           <div className="stat">{t('duel.warStat', { value: p1.war })}</div>
           <div className="hp-bar">
             <div className="hp-fill" style={{ width: `${p1Hp}%`, backgroundColor: p1Hp > 30 ? 'green' : 'red' }}></div>
@@ -37,7 +38,7 @@ export const DuelScreen: React.FC = () => {
         </div>
 
         <div className="duel-fighter enemy">
-          <h3>{t('duel.enemyFighter', { name: p2.name })}</h3>
+          <h3>{t('duel.enemyFighter', { name: localizedName(p2.name) })}</h3>
           <div className="stat">{t('duel.warStat', { value: p2.war })}</div>
           <div className="hp-bar">
             <div className="hp-fill" style={{ width: `${p2Hp}%`, backgroundColor: p2Hp > 30 ? 'green' : 'red' }}></div>

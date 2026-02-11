@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * DefeatScreen Component
@@ -56,7 +57,7 @@ const DefeatScreen: React.FC = () => {
           marginBottom: '1rem',
         }}
       >
-        {t('defeat.noTerritory', { factionName: playerFaction?.name })}
+        {t('defeat.noTerritory', { factionName: localizedName(playerFaction?.name ?? '') })}
       </div>
 
       <div
@@ -88,7 +89,7 @@ const DefeatScreen: React.FC = () => {
         </p>
         {conqueringFaction && (
           <p style={{ fontSize: '1rem', marginTop: '1rem', color: '#777' }}>
-            {t('defeat.conqueror', { factionName: conqueringFaction.name })}
+            {t('defeat.conqueror', { factionName: localizedName(conqueringFaction.name) })}
           </p>
         )}
       </div>

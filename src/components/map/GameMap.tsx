@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
+import { localizedName } from '../../i18n/dataNames';
 
 interface CityFlagProps {
   city: { id: number; x: number; y: number; name: string; factionId: number | null };
@@ -11,7 +12,8 @@ interface CityFlagProps {
 
 function CityFlag({ city, faction, ruler, isSelected, onClick }: CityFlagProps) {
   const color = faction?.color ?? '#6b7280';
-  const surname = ruler?.name?.charAt(0) ?? '';
+  const displayName = localizedName(ruler?.name ?? '');
+  const surname = displayName.charAt(0) ?? '';
   const flagWidth = 4;
   const flagHeight = 5;
 
@@ -54,7 +56,7 @@ function CityFlag({ city, faction, ruler, isSelected, onClick }: CityFlagProps) 
         fontSize="1.5"
         fontWeight={isSelected ? 'bold' : 'normal'}
       >
-        {city.name}
+        {localizedName(city.name)}
       </text>
       <rect
         x={city.x - 1}
@@ -95,7 +97,7 @@ function NeutralMarker({ city, isSelected, onClick }: NeutralMarkerProps) {
         fontSize="1.5"
         fontWeight={isSelected ? 'bold' : 'normal'}
       >
-        {city.name}
+        {localizedName(city.name)}
       </text>
     </g>
   );

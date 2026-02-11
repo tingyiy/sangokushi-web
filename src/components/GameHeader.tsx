@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * GameHeader Component
@@ -13,7 +14,7 @@ export function GameHeader() {
     <div className="date-badge rtk-frame">
       <span className="badge-date">{t('header.dateLabel', { year, month })}</span>
       <span className="badge-faction" style={{ color: playerFaction?.color ?? '#e5e7eb' }}>
-        {playerFaction?.name}
+        {localizedName(playerFaction?.name ?? '')}
       </span>
     </div>
   );

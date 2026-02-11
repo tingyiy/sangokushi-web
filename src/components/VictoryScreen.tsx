@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * VictoryScreen Component
@@ -52,7 +53,7 @@ const VictoryScreen: React.FC = () => {
           marginBottom: '1rem',
         }}
       >
-        {t('victory.congratulations', { factionName: playerFaction?.name })}
+        {t('victory.congratulations', { factionName: localizedName(playerFaction?.name ?? '') })}
       </div>
 
       <div

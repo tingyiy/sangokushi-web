@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 
 interface Props {
@@ -31,7 +32,7 @@ export function OfficerSelectionOverlay({ officers, title, onSelect, onClose }: 
         <tbody>
           {officers.map(o => (
             <tr key={o.id} onClick={() => onSelect(o.id)} style={{ cursor: 'pointer' }}>
-              <td>{o.name}</td>
+              <td>{localizedName(o.name)}</td>
               <td>{o.leadership}</td>
               <td>{o.war}</td>
               <td>{o.intelligence}</td>

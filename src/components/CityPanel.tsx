@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import { Portrait } from './Portrait';
 import { CityIllustration } from './CityIllustration';
 import { treasures } from '../data/treasures';
@@ -52,8 +53,8 @@ export function CityPanel() {
       </button>
       {/* City name with faction color */}
       <h3 className="city-name" style={{ color: faction?.color ?? '#9ca3af' }}>
-        {city.name}
-        {faction && <span className="city-faction">{t('city.factionSuffix', { name: faction.name })}</span>}
+        {localizedName(city.name)}
+        {faction && <span className="city-faction">{t('city.factionSuffix', { name: localizedName(faction.name) })}</span>}
         {!faction && <span className="city-faction">{t('city.emptyCity')}</span>}
       </h3>
 
@@ -129,13 +130,13 @@ export function CityPanel() {
                 {/* Portrait - Phase 0.5 */}
                 <Portrait
                   portraitId={o.portraitId}
-                  name={o.name}
+                  name={localizedName(o.name)}
                   size="small"
                   className="officer-portrait"
                 />
                 <span className="officer-name">
                   {o.isGovernor && <span className="governor-badge">{t('city.governorBadge')}</span>}
-                  {o.name}
+                  {localizedName(o.name)}
                 </span>
                 <span className="officer-stats">
                   {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
@@ -173,11 +174,11 @@ export function CityPanel() {
                 {/* Portrait - Phase 0.5 */}
                 <Portrait
                   portraitId={o.portraitId}
-                  name={o.name}
+                  name={localizedName(o.name)}
                   size="small"
                   className="officer-portrait"
                 />
-                <span className="officer-name">{o.name}</span>
+                <span className="officer-name">{localizedName(o.name)}</span>
                 <span className="officer-stats">
                   {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
                 </span>

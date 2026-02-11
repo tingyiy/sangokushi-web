@@ -35,7 +35,7 @@ export function ScenarioSelect() {
               }}
             >
               <span className="scenario-year">{t('scenario.yearLabel', { year: sc.year })}</span>
-              <span className="scenario-name">{sc.name}・{sc.subtitle}</span>
+              <span className="scenario-name">{t(`data:scenario.${sc.id}.name`)}・{t(`data:scenario.${sc.id}.subtitle`)}</span>
             </div>
           ))}
         </div>

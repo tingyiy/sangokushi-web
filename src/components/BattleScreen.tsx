@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import { useBattleStore } from '../store/battleStore';
+import { localizedName } from '../i18n/dataNames';
 import BattleMap from './map/BattleMap';
 import type { BattleTactic } from '../utils/unitTypes';
 import { calculateTacticSuccess, BATTLE_TACTICS, getAttackRange } from '../utils/unitTypes';
@@ -60,7 +61,7 @@ const BattleScreen: React.FC = () => {
     if (battle.isFinished && battle.winnerFactionId !== null && !showResults) {
       const winner = factions.find(f => f.id === battle.winnerFactionId);
       const loserFactionId = battle.winnerFactionId === battle.attackerId ? battle.defenderId : battle.attackerId;
-      addLog(t('battle:log.battleEnd', { winnerName: winner?.name || t('common.none') }));
+      addLog(t('battle:log.battleEnd', { winnerName: winner ? localizedName(winner.name) : t('common.none') }));
 
       const battleUnitsData = battle.units.map(u => ({
         officerId: u.officerId,
@@ -141,7 +142,7 @@ const BattleScreen: React.FC = () => {
           {t('battle:header.dayCounter', { day: battle.day, maxDays: battle.maxDays })} | {t(WEATHER_KEYS[battle.weather])} | {t('battle:header.windDirection')}{t(WIND_KEYS[battle.windDirection] || 'battle:wind.north')}
         </div>
         <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-          {t('battle:header.battleTitle', { attacker: factions.find(f => f.id === battle.attackerId)?.name, city: cities.find(c => c.id === battle.defenderCityId)?.name })}
+          {t('battle:header.battleTitle', { attacker: localizedName(factions.find(f => f.id === battle.attackerId)?.name ?? ''), city: localizedName(cities.find(c => c.id === battle.defenderCityId)?.name ?? '') })}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {isPlayerTurn && (
@@ -193,7 +194,7 @@ const BattleScreen: React.FC = () => {
           </div>
           {inspectedUnit && (
             <div style={{ padding: '6px 8px', borderTop: '1px solid #444', fontSize: '0.75rem' }}>
-              <div style={{ fontWeight: 'bold' }}>{inspectedUnit.officer.name} ({inspectedUnit.factionId === playerFactionId ? t('battle:side.player') : t('battle:side.enemy')})</div>
+              <div style={{ fontWeight: 'bold' }}>{localizedName(inspectedUnit.officer.name)} ({inspectedUnit.factionId === playerFactionId ? t('battle:side.player') : t('battle:side.enemy')})</div>
               <div>{t('battle:unit.troops')} {inspectedUnit.troops}/{inspectedUnit.maxTroops}</div>
               <div>{t('battle:unit.morale')} {inspectedUnit.morale} | {t('battle:unit.status')} {t(STATUS_KEYS[inspectedUnit.status])}</div>
               <div>{t('stat.leadership')}{inspectedUnit.officer.leadership} {t('stat.war')}{inspectedUnit.officer.war} {t('stat.intelligence')}{inspectedUnit.officer.intelligence}</div>
@@ -208,7 +209,7 @@ const BattleScreen: React.FC = () => {
           <>
             <div style={{ width: 180, border: '1px solid #555', padding: '6px 8px', background: '#333', borderRadius: 4, fontSize: '0.8rem' }}>
               <div style={{ fontWeight: 'bold', marginBottom: 2 }}>
-                {activeUnit.officer.name}
+                {localizedName(activeUnit.officer.name)}
               </div>
               <div>{t('battle:unit.troops')} {activeUnit.troops}/{activeUnit.maxTroops}</div>
               <div>{t('battle:unit.morale')} {activeUnit.morale} | {activeUnit.hasMoved ? t('battle:unit.moved') : t('battle:unit.canMove')}</div>
@@ -293,9 +294,9 @@ const BattleScreen: React.FC = () => {
               {battle.winnerFactionId === playerFactionId ? t('battle:result.victory') : t('battle:result.defeat')}
             </h2>
             <div style={{ textAlign: 'left', fontSize: '0.85rem', lineHeight: 1.8 }}>
-              <div>{t('battle:result.winner', { name: factions.find(f => f.id === battle.winnerFactionId)?.name })}</div>
+              <div>{t('battle:result.winner', { name: localizedName(factions.find(f => f.id === battle.winnerFactionId)?.name ?? '') })}</div>
               {battle.capturedOfficerIds.length > 0 && (
-                <div>{t('battle:result.captured', { names: battle.capturedOfficerIds.map(id => battle.units.find(u => u.officerId === id)?.officer.name).filter(Boolean).join('、') })}</div>
+                <div>{t('battle:result.captured', { names: battle.capturedOfficerIds.map(id => { const u = battle.units.find(u => u.officerId === id); return u ? localizedName(u.officer.name) : null; }).filter(Boolean).join('、') })}</div>
               )}
               <div>{t('battle:result.attackerRemaining', { count: battle.units.filter(u => u.factionId === battle.attackerId).reduce((s, u) => s + u.troops, 0) } as Record<string, unknown>)}</div>
               <div>{t('battle:result.defenderRemaining', { count: battle.units.filter(u => u.factionId === battle.defenderId).reduce((s, u) => s + u.troops, 0) } as Record<string, unknown>)}</div>

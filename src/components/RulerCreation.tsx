@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { Officer, RTK4Skill, Faction } from '../types';
 
 /**
@@ -137,7 +138,7 @@ export function RulerCreation() {
           <label htmlFor="start-city">{t('ruler.startCity')}</label>
           <select id="start-city" value={startCityId} onChange={e => setStartCityId(Number(e.target.value))}>
             {cities.filter(c => c.factionId === null).map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>{localizedName(c.name)}</option>
             ))}
           </select>
         </div>

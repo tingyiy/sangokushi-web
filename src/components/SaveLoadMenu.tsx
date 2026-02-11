@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 interface SaveLoadMenuProps {
   isOpen: boolean;
@@ -176,7 +177,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
 
         {mode === 'save' && (
           <div style={{ marginTop: '15px', color: '#888', fontSize: '0.85rem', textAlign: 'center' }}>
-            {t('save.currentProgress', { year, month, factionName: playerFaction?.name })}
+            {t('save.currentProgress', { year, month, factionName: localizedName(playerFaction?.name ?? '') })}
           </div>
         )}
       </div>

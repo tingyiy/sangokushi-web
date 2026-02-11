@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
+import { localizedName } from '../../i18n/dataNames';
 import type { CommandCategory } from '../../types';
 import { FormationDialog } from '../FormationDialog';
 import { TransportDialog } from '../TransportDialog';
@@ -69,7 +70,7 @@ export function CommandMenu() {
     openOfficerSelection(title, (officerId) => {
       const officer = officers.find(o => o.id === officerId);
       if (officer) {
-        addLog(t('command.officerExecute', { name: officer.name, action: title }));
+        addLog(t('command.officerExecute', { name: localizedName(officer.name), action: title }));
       }
       action();
       setSelection(null);
@@ -134,7 +135,7 @@ export function CommandMenu() {
                   if (!adjCity || adjCity.factionId !== playerFaction?.id) return null;
                   return (
                     <button key={adjId} className="btn btn-action btn-small" onClick={() => setDialog({ type: 'transport', targetCityId: adjId })}>
-                      {t('command.military.transportTo', { cityName: adjCity.name })}
+                      {t('command.military.transportTo', { cityName: localizedName(adjCity.name) })}
                     </button>
                   );
                 })}
@@ -147,7 +148,7 @@ export function CommandMenu() {
                   if (!adjCity || adjCity.factionId === playerFaction?.id) return null;
                   return (
                     <button key={adjId} className="btn btn-action" onClick={() => setDialog({ type: 'formation', targetCityId: adjId })}>
-                      {t('command.military.attackCity', { cityName: adjCity.name })}
+                      {t('command.military.attackCity', { cityName: localizedName(adjCity.name) })}
                     </button>
                   );
                 })}
@@ -163,7 +164,7 @@ export function CommandMenu() {
                 <div className="sub-menu">
                   <h5>{t('command.personnel.recruit')}</h5>
                   {unaffiliated.map(o => (
-                    <button key={o.id} className="btn btn-action btn-small" onClick={() => recruitOfficer(o.id)}>{o.name}</button>
+                    <button key={o.id} className="btn btn-action btn-small" onClick={() => recruitOfficer(o.id)}>{localizedName(o.name)}</button>
                   ))}
                 </div>
               )}
@@ -173,7 +174,7 @@ export function CommandMenu() {
                   <h5>{t('command.personnel.handlePOW')}</h5>
                   {pows.map(o => (
                     <div key={o.id} style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-action btn-small" onClick={() => recruitPOW(o.id)}>{t('command.personnel.recruitPOW', { name: o.name })}</button>
+                      <button className="btn btn-action btn-small" onClick={() => recruitPOW(o.id)}>{t('command.personnel.recruitPOW', { name: localizedName(o.name) })}</button>
                       <button className="btn btn-action btn-small btn-danger" onClick={() => executeOfficer(o.id)}>{t('command.personnel.execute')}</button>
                     </div>
                   ))}
@@ -184,7 +185,7 @@ export function CommandMenu() {
                 <h5>{t('command.personnel.reward')}</h5>
                 <div className="scroll-box">
                   {ownOfficers.filter(o => o.loyalty < 100).map(o => (
-                    <button key={o.id} className="btn btn-action btn-small" onClick={() => rewardOfficer(o.id, 'gold', 1000)}>{t('command.personnel.officerLoyalty', { name: o.name, loyalty: o.loyalty })}</button>
+                    <button key={o.id} className="btn btn-action btn-small" onClick={() => rewardOfficer(o.id, 'gold', 1000)}>{t('command.personnel.officerLoyalty', { name: localizedName(o.name), loyalty: o.loyalty })}</button>
                   ))}
                 </div>
               </div>
@@ -194,7 +195,7 @@ export function CommandMenu() {
                 <div className="scroll-box">
                   {ownOfficers.map(o => (
                     <div key={o.id} className="officer-row">
-                      <span>{o.name}</span>
+                      <span>{localizedName(o.name)}</span>
                       <div className="btn-group">
                         {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>{t('command.personnel.appointGovernor')}</button>}
                         <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>{t('command.personnel.appointAdvisor')}</button>
@@ -213,7 +214,7 @@ export function CommandMenu() {
                            {city.adjacentCityIds.map(adjId => {
                               const adjCity = cities.find(c => c.id === adjId);
                               if (adjCity && adjCity.factionId === playerFaction?.id) {
-                                return <option key={adjId} value={adjId}>{adjCity.name}</option>;
+                                return <option key={adjId} value={adjId}>{localizedName(adjCity.name)}</option>;
                               }
                               return null;
                            })}
@@ -235,7 +236,7 @@ export function CommandMenu() {
                 return (
                   <div key={f.id} className="faction-item">
                      <div className="faction-header">
-                        <span style={{ color: f.color, fontWeight: 'bold' }}>{f.name}</span>
+                        <span style={{ color: f.color, fontWeight: 'bold' }}>{localizedName(f.name)}</span>
                         <span className="hostility">{t('command.diplomacy.hostility', { value: hostility })} {isAlly && <span style={{color: '#ffd700'}}>★</span>}</span>
                      </div>
                      <div className="faction-actions">
@@ -269,8 +270,8 @@ export function CommandMenu() {
                 return (
                   <div key={adjCity.id} className="strategy-city-item">
                     <div className="strategy-city-header">
-                       <span className="city-name">{adjCity.name}</span>
-                       <span className="faction-name" style={{ color: targetFaction?.color }}>{targetFaction?.name}</span>
+                       <span className="city-name">{localizedName(adjCity.name)}</span>
+                       <span className="faction-name" style={{ color: targetFaction?.color }}>{localizedName(targetFaction?.name ?? '')}</span>
                     </div>
                     <div className="strategy-actions">
                        <button className="btn-tiny" onClick={() => rumor(adjCity.id)} title="rumor">{t('command.strategy.rumor')}</button>

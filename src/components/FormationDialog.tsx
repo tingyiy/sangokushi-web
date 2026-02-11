@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { UnitType } from '../types/battle';
 
 interface Props {
@@ -102,7 +103,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   return (
     <div className="modal-overlay">
       <div className="modal-content formation-dialog">
-        <h3>{t('formation.title', { cityName: targetCity.name })}</h3>
+        <h3>{t('formation.title', { cityName: localizedName(targetCity.name) })}</h3>
         <p>{t('formation.selectPrompt')}</p>
         
         <div className="officer-selection-list">
@@ -112,7 +113,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
             return (
               <div key={o.id} className={`officer-item ${isSelected ? 'selected' : ''}`} onClick={() => toggleOfficer(o.id)}>
                 <div className="officer-info">
-                  <span className="name">{o.name}</span>
+                  <span className="name">{localizedName(o.name)}</span>
                   <span className="stats">{t('formation.officerStats', { leadership: o.leadership, war: o.war, intelligence: o.intelligence })}</span>
                 </div>
                 {isSelected && (

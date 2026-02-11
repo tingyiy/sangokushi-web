@@ -1,4 +1,36 @@
 {
+  "scenario": {
+    "1": {
+      "name": "Dong Zhuo Deposes the Emperor",
+      "subtitle": "Luoyang in Flames",
+      "description": "Dong Zhuo deposes the young emperor, enthrones Emperor Xian, and moves the capital to Chang'an. Warlords across the land rise up against him."
+    },
+    "2": {
+      "name": "Warlords Vie for the Central Plains",
+      "subtitle": "Cao Cao's Expansion",
+      "description": "Cao Cao secures Yan Province, Lu Bu seizes Xu Province, Liu Bei stations at Xiapi, and Sun Ce rises in the Jiangdong region."
+    },
+    "3": {
+      "name": "Battle of Guandu",
+      "subtitle": "Struggle for Hebei",
+      "description": "Yuan Shao destroys Gongsun Zan, unifies Hebei, and plans to march south. Cao Cao wields the emperor's authority and faces Yuan Shao at Guandu."
+    },
+    "4": {
+      "name": "Battle of Red Cliffs",
+      "subtitle": "The Sleeping Dragon Awakens",
+      "description": "Cao Cao unifies the north and leads a great army southward. Liu Bei recruits Zhuge Liang and allies with Eastern Wu against Cao Cao."
+    },
+    "5": {
+      "name": "Three Kingdoms Established",
+      "subtitle": "King of Hanzhong",
+      "description": "Liu Bei captures Hanzhong and becomes King of Hanzhong. Guan Yu floods the Seven Armies, shaking all of China. Sun Quan seizes Jing Province."
+    },
+    "6": {
+      "name": "Star Falls at Wuzhang Plains",
+      "subtitle": "Zhuge Liang's Final Campaign",
+      "description": "Zhuge Liang launches his sixth northern expedition, facing Sima Yi at the Wuzhang Plains. The Prime Minister of Shu Han falls ill and passes away."
+    }
+  },
   "skill": {
     "diplomacy": "Diplomacy",
     "intelligence": "Intelligence",

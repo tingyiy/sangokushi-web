@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import { SelectionMinimap } from './map/SelectionMinimap';
 import { Portrait } from './Portrait';
 
@@ -55,7 +56,7 @@ export function FactionSelect() {
     <div className="faction-select-screen brocade-bg">
       {/* Header bar */}
       <div className="faction-header">
-        <span className="scenario-name">{scenario?.name}</span>
+        <span className="scenario-name">{scenario ? t(`data:scenario.${scenario.id}.name`) : ''}</span>
         <span className="faction-count">{t('faction.selectRulerCount', { count: factions.length })}</span>
         <div className="header-buttons">
           <button
@@ -125,7 +126,7 @@ export function FactionSelect() {
                     {ruler ? (
                       <Portrait
                         portraitId={ruler.portraitId}
-                        name={ruler.name}
+                        name={localizedName(ruler.name)}
                         size="large"
                       />
                     ) : (
@@ -133,7 +134,7 @@ export function FactionSelect() {
                     )}
                   </div>
                   <div className="faction-label">
-                    <span className="faction-name">{ruler?.name ?? faction.name}</span>
+                    <span className="faction-name">{localizedName(ruler?.name ?? faction.name)}</span>
                   </div>
                 </div>
               );

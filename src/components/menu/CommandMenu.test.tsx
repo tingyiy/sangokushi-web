@@ -18,6 +18,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('../../i18n/dataNames', () => ({
+  localizedName: (name: string) => name,
+}));
+
 vi.mock('../../store/gameStore', () => ({
   useGameStore: vi.fn(),
 }));

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 interface Props {
   toCityId: number;
@@ -29,7 +30,7 @@ export function TransportDialog({ toCityId, onClose }: Props) {
   return (
     <div className="modal-overlay">
       <div className="modal-content transport-dialog">
-        <h3>{t('transport.title', { cityName: toCity.name })}</h3>
+        <h3>{t('transport.title', { cityName: localizedName(toCity.name) })}</h3>
         
         <div className="input-group">
           <label>{t('transport.resourceType')}</label>
