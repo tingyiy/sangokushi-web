@@ -134,8 +134,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 ```
 
 **Key Principles:**
-- Main store in `src/store/gameStore.ts` (~2800 lines) for strategic layer
-- Battle store in `src/store/battleStore.ts` (~720 lines) for tactical combat
+- Main store in `src/store/gameStore.ts` (~2900 lines) for strategic layer
+- Battle store in `src/store/battleStore.ts` (~850 lines) for tactical combat
 - All game logic lives as store actions
 - Components consume via `useGameStore()` / `useBattleStore()` hooks
 - Scenario data is deeply copied at game start, then mutated in-place
@@ -213,7 +213,7 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 
 ### Key Files
 - `src/store/gameStore.ts` - Core game state and logic (~2900 lines, 67 actions)
-- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~840 lines, 16 actions)
+- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines, 16 actions)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
 - `src/components/GameScreen.tsx` - Main gameplay UI
@@ -227,19 +227,29 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 The Zustand stores work natively in Node.js — no browser or React required. `useGameStore.getState()` and `useBattleStore.getState()` are plain JS calls.
 
 ```bash
-# Auto-play a battle from the terminal
+# Interactive campaign (readline-based, all commands available)
+npm run cli -- --scenario 0 --faction 袁紹
+
+# Auto-play a single battle
 npm run cli -- --scenario 0 --faction 袁紹 --attack 平原
+
+# Exec mode (non-interactive, for scripts/agents):
+# Initialize a new game and save state:
+npx tsx src/cli/play.ts --scenario 0 --faction 袁紹 --savefile /tmp/g.json --exec "status"
+# Load saved state and run commands (semicolon-delimited):
+npx tsx src/cli/play.ts --savefile /tmp/g.json --exec "draft 鄴 2000; end; status"
 ```
 
-The CLI (`src/cli/play.ts`):
-- Loads scenario, selects faction, starts game
-- Sets up battle formation and initiates attack
-- Auto-plays both sides using AI (same logic as `runEnemyTurn`)
+The CLI (`src/cli/play.ts`, ~1470 lines):
+- **Interactive mode:** Full readline-based campaign with all command categories
+- **Exec mode (`--exec`):** Non-interactive, loads/saves state via `--savefile` JSON, runs semicolon-delimited commands
+- **Single-battle mode (`--attack`):** Auto-plays one battle and exits
+- **All commands implemented:** domestic, military, personnel, diplomacy, strategy, query, turn end
+- Battle AI for auto-play (same logic as `runEnemyTurn`)
 - Handles siege maps (gate attacks, breach, then combat)
 - Calls `resolveBattle` after battle ends (capture, flee, city transfer, ruler succession)
-- Prints full battle log and post-battle state
 
-**Only browser dependency:** `localStorage` in save/load (4 functions). See `REFACTOR.md` for abstraction plan.
+**Browser-only dependency:** `localStorage` in 4 save/load functions in `gameStore.ts`. The CLI uses its own filesystem-based `saveState`/`loadState` instead. These are not yet unified behind a common interface (low priority).
 
 ---
 
@@ -272,18 +282,17 @@ The CLI (`src/cli/play.ts`):
 
 **Flee Destination Priority (all fleeing officers go to the SAME city):**
 1. Adjacent friendly city (same faction, not the battle city)
-2. Any friendly city
-3. Adjacent unoccupied city → **city is claimed by the losing faction** (`factionId` set to loser)
-4. Any unoccupied city → **city is claimed**
-5. No available city → **100% captured** (nowhere to flee)
+2. Adjacent unoccupied city → **city is claimed by the losing faction** (`factionId` set to loser)
+3. No adjacent option → **100% captured** (nowhere to flee)
 
-**Key rule:** When fleeing officers claim an unoccupied city, the losing faction survives and that city becomes theirs. Officers keep their faction affiliation. The faction is only destroyed when it has zero cities AND all officers are captured.
+**Key rule:** RTK IV only allows flee to directly connected (adjacent) cities — no teleporting across the map. When fleeing officers claim an unoccupied city, the losing faction survives and that city becomes theirs. Officers keep their faction affiliation. The faction is only destroyed when it has zero cities AND all officers are captured.
 
-**Post-Battle Capture Processing (NOT YET IMPLEMENTED):**
-- Player is presented captured officers and can choose: 登用 (recruit), 幽閉 (imprison), or 釋放 (release)
-- Rulers cannot be executed, only imprisoned or released
+**Post-Battle Capture Processing:**
+- Player can recruit captured officers via `recruitPOW` (store action) / `recruitpow <name>` (CLI)
 - Officers may refuse recruitment based on loyalty and charisma comparison
+- Rulers cannot be executed, only imprisoned or released
 - Released officers return to their original ruler if their faction still exists, otherwise become 在野 (unaffiliated) in the city where they were released
+- **Not yet implemented in browser UI:** post-battle dialog presenting 登用/幽閉/釋放 choices
 
 ---
 
@@ -294,7 +303,7 @@ The CLI (`src/cli/play.ts`):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 314 tests across 27 test files
+- Current test suite: 316 tests across 27 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 
@@ -323,6 +332,16 @@ set({
   ),
 });
 ```
+
+---
+
+## Future Refactoring (Optional, Low Priority)
+
+These are potential improvements that are not blocking any features:
+
+- **StorageAdapter interface:** Unify browser `localStorage` (4 functions in `gameStore.ts`) and CLI filesystem-based `saveState`/`loadState` behind a common `StorageAdapter` interface. Would allow tests to use an in-memory adapter.
+- **Rule engine extraction:** Extract duplicated game rules (combat formulas, economy rules, capture chance) into `src/engine/rules/` for a single source of truth.
+- **Core engine extraction:** Convert stores to thin wrappers over pure `apply(state, action) → newState` functions for deterministic replay and time-travel debugging. Large effort (3-5 days).
 
 ---
 
