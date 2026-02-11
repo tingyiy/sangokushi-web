@@ -1334,6 +1334,44 @@ function parseArgs() {
 async function main() {
   const args = parseArgs();
 
+  // ── Help ──
+  if (args.help) {
+    log(`
+三國志 IV CLI — Romance of the Three Kingdoms IV (Terminal Edition)
+
+Usage:
+  npm run cli -- [options]
+
+Modes:
+  Interactive (default)  Play a full campaign from the terminal
+  Single battle          Auto-play one battle and exit
+  Exec mode              Run commands non-interactively (for scripts/AI agents)
+
+Options:
+  --help                 Show this help message
+  --scenario <n>         Scenario index (0-5, default: 0)
+                           0=董卓廢少帝(189) 1=群雄爭中原(194) 2=官渡之戰(200)
+                           3=赤壁之戰(208) 4=三國鼎立(219) 5=星落五丈原(234)
+  --faction <name|id>    Faction to play as (e.g. 袁紹 or 5)
+  --attack <city>        Single-battle mode: auto-play one attack then exit
+  --savefile <path>      JSON file for saving/loading game state (exec mode)
+  --exec "<commands>"    Exec mode: run semicolon-delimited commands then exit
+                           e.g. --exec "draft 鄴 2000; end; status"
+
+Examples:
+  npm run cli -- --scenario 0 --faction 袁紹             # Interactive campaign
+  npm run cli -- --scenario 0 --faction 曹操 --attack 濮陽  # Single battle
+  npm run cli -- --scenario 0 --faction 袁紹 --savefile /tmp/g.json --exec "status"
+  npm run cli -- --savefile /tmp/g.json --exec "commerce 鄴; end; status"
+
+Officer Stats:  L=Leadership W=War I=Intelligence P=Politics C=Charisma
+                體力=Stamina(0-100) 忠誠=Loyalty(0-100)
+
+In-game, type 'help' to see all available commands.
+`);
+    process.exit(0);
+  }
+
   // ── Exec Mode (non-interactive, for agent/script use) ──
   if (args.exec) {
     const savefile = args.savefile || '/tmp/rtk-game.json';
