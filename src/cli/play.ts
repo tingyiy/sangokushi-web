@@ -124,25 +124,53 @@ function runUnitAI(unitId: string) {
   );
   const atkRange = getAttackRange(unit.type);
 
+  // 1. If enemy is in attack range, attack directly
   if (distToNearest <= atkRange) {
     battle.getState().attackUnit(unit.id, nearest.id);
     return;
   }
 
-  if (state.isSiege && state.gates.length > 0) {
-    const nearestGate = findNearestGate(unit);
+  // 2. In siege with intact gates: prioritize gate attacks
+  const intactGates = state.isSiege
+    ? state.gates.filter(g => g.hp > 0)
+    : [];
+
+  if (intactGates.length > 0) {
+    const nearestGate = findNearestIntactGate(unit, intactGates);
     if (nearestGate) {
       const gateDist = getDistance(
         { q: nearestGate.q, r: nearestGate.r },
         { q: unit.x, r: unit.y }
       );
+      // If already adjacent to gate, attack it
       if (gateDist <= 1) {
         battle.getState().attackGate(unit.id, nearestGate.q, nearestGate.r);
         return;
       }
+      // Move TOWARD the gate (not toward enemies behind walls)
+      const moveTarget = getMoveTarget(unit, { x: nearestGate.q, y: nearestGate.r });
+      if (moveTarget && (moveTarget.q !== unit.x || moveTarget.r !== unit.y)) {
+        battle.getState().moveUnit(unit.id, moveTarget.q, moveTarget.r);
+      }
+      // After moving, check if now adjacent to a gate
+      const updatedUnit = battle.getState().units.find(u => u.id === unit.id);
+      if (updatedUnit && updatedUnit.troops > 0) {
+        const gateAfterMove = findNearestIntactGate(updatedUnit, battle.getState().gates.filter(g => g.hp > 0));
+        if (gateAfterMove) {
+          const gd = getDistance(
+            { q: gateAfterMove.q, r: gateAfterMove.r },
+            { q: updatedUnit.x, r: updatedUnit.y }
+          );
+          if (gd <= 1) {
+            battle.getState().attackGate(unit.id, gateAfterMove.q, gateAfterMove.r);
+          }
+        }
+      }
+      return;
     }
   }
 
+  // 3. No intact gates (field battle or gates breached): move toward enemy
   const moveTarget = getMoveTarget(unit, nearest);
   if (moveTarget && (moveTarget.q !== unit.x || moveTarget.r !== unit.y)) {
     battle.getState().moveUnit(unit.id, moveTarget.q, moveTarget.r);
@@ -156,29 +184,14 @@ function runUnitAI(unitId: string) {
     );
     if (newDist <= atkRange) {
       battle.getState().attackUnit(unit.id, nearest.id);
-      return;
-    }
-
-    if (state.isSiege) {
-      const nearestGate = findNearestGate(updatedUnit);
-      if (nearestGate) {
-        const gateDist = getDistance(
-          { q: nearestGate.q, r: nearestGate.r },
-          { q: updatedUnit.x, r: updatedUnit.y }
-        );
-        if (gateDist <= 1) {
-          battle.getState().attackGate(unit.id, nearestGate.q, nearestGate.r);
-          return;
-        }
-      }
     }
   }
 }
 
-function findNearestGate(unit: BattleUnit) {
-  const state = battle.getState();
-  if (state.gates.length === 0) return null;
-  return state.gates.reduce((best, g) => {
+function findNearestIntactGate(unit: BattleUnit, intactGates?: { q: number; r: number; hp: number }[]) {
+  const gates = intactGates ?? battle.getState().gates.filter(g => g.hp > 0);
+  if (gates.length === 0) return null;
+  return gates.reduce((best, g) => {
     const d = getDistance({ q: g.q, r: g.r }, { q: unit.x, r: unit.y });
     const bestD = getDistance({ q: best.q, r: best.r }, { q: unit.x, r: unit.y });
     return d < bestD ? g : best;
@@ -193,6 +206,11 @@ function getMoveTarget(unit: BattleUnit, target: BattleUnit | { x: number; y: nu
     { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
   ];
 
+  // In siege, breached gate hexes are passable
+  const breachedGateSet = new Set(
+    state.gates.filter(g => g.hp <= 0).map(g => `${g.q},${g.r}`)
+  );
+
   const targetPos = { q: target.x, r: target.y };
   let bestHex = { q: unit.x, r: unit.y };
   let bestDist = getDistance(targetPos, { q: unit.x, r: unit.y });
@@ -206,7 +224,12 @@ function getMoveTarget(unit: BattleUnit, target: BattleUnit | { x: number; y: nu
       if (candidate.q < 0 || candidate.q >= state.battleMap.width ||
           candidate.r < 0 || candidate.r >= state.battleMap.height) break;
       const terrain = state.battleMap.terrain[candidate.q][candidate.r];
-      if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) break;
+      if (terrain === 'mountain') break;
+      // In siege: walls ('city' terrain) block unless it's a breached gate hex
+      if (terrain === 'city') {
+        const key = `${candidate.q},${candidate.r}`;
+        if (!breachedGateSet.has(key)) break;
+      }
       if (state.units.some(u => u.id !== unit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0)) break;
       if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
       const d = getDistance(candidate, targetPos);

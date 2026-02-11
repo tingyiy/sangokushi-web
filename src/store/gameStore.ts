@@ -2615,8 +2615,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     );
 
     const updatedOfficers = state.officers.map(o => {
-      // If officer was captured during battle (in battleStore)
-      if (capturedSet.has(o.id)) {
+      // If officer was captured during battle (in battleStore) AND belongs to the losing faction
+      if (capturedSet.has(o.id) && o.factionId === loserFactionId) {
         get().addLog(`${o.name} 兵敗被俘！`);
         // Hold as POW at the battle city (will be processed by winner)
         return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };

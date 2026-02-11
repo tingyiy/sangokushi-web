@@ -173,7 +173,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     // Attacker units
     attackerOfficers.forEach((off, i) => {
       const unitType = attackerUnitTypes[i] || 'infantry';
-      const troops = attackerTroops[i] || 5000;
+      const troops = attackerTroops[i] ?? 5000;
       const spawn = attackerSpawns[i] || attackerSpawns[0];
       units.push({
         id: `attacker-${off.id}`,
@@ -197,7 +197,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     // Defender units
     defenderOfficers.forEach((off, i) => {
       const unitType = defenderUnitTypes[i] || 'infantry';
-      const troops = defenderTroops[i] || 5000;
+      const troops = defenderTroops[i] ?? 5000;
       const spawn = defenderSpawns[i] || defenderSpawns[0];
       units.push({
         id: `defender-${off.id}`,
@@ -246,6 +246,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       turnPhase: 'player',
       playerFactionId,
     });
+
+    // Check if battle should end immediately (e.g. all defenders have 0 troops)
+    get().checkBattleEnd();
   },
 
   /** Player clicks a friendly unit to make it the active (selected) unit */
@@ -362,9 +365,16 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         set(s => ({
           units: s.units.map(u =>
             u.factionId === defeatedTarget.factionId && u.troops > 0
-              ? { ...u, morale: Math.max(0, u.morale - 30) }
+              ? { ...u, morale: Math.max(0, u.morale - 30), status: 'routed' as const }
               : u
-          )
+          ),
+          // Mark all surviving units of defeated faction as routed
+          routedOfficerIds: [
+            ...s.routedOfficerIds,
+            ...s.units
+              .filter(u => u.factionId === defeatedTarget.factionId && u.troops > 0 && u.id !== defeatedTarget.id)
+              .map(u => u.officerId),
+          ],
         }));
         get().addBattleLog(`主將敗陣，${target.officer.name} 方全軍崩潰！`);
 
