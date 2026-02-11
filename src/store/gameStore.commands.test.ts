@@ -232,12 +232,13 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('金不足'));
     });
 
-    it('developFloodControl fails if no governor', () => {
+    it('developFloodControl falls back to best officer when no governor', () => {
       useGameStore.setState({
         officers: useGameStore.getState().officers.map(o => ({ ...o, isGovernor: false }))
       });
       useGameStore.getState().developFloodControl(1);
-      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無太守'));
+      // Should succeed by falling back to the best available officer
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('治水發展'));
     });
 
     it('developFloodControl fails if stamina < 20', () => {
