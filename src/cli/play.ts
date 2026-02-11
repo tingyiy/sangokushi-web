@@ -751,6 +751,8 @@ function handleCommand(input: string, factionId: number): boolean {
       const name = parts.slice(1).join('');
       const officer = findOfficerByName(name, -1); // POW
       if (!officer) { log(`  POW "${name}" not found.`); return false; }
+      // Select the city where the POW is held so the store can find recruiters
+      game.getState().selectCity(officer.cityId);
       game.getState().recruitPOW(officer.id);
       return false;
     }
@@ -847,7 +849,16 @@ function handleCommand(input: string, factionId: number): boolean {
       if (targetCity.factionId === factionId) { log('  Cannot attack your own city.'); return false; }
 
       const myCities = state.cities.filter(c => c.factionId === factionId);
-      const sourceCity = myCities.find(c => c.adjacentCityIds.includes(targetCity.id));
+      const adjacentCities = myCities
+        .filter(c => c.adjacentCityIds.includes(targetCity.id))
+        .sort((a, b) => {
+          // Prefer cities with more officers and troops
+          const aOff = state.officers.filter(o => o.cityId === a.id && o.factionId === factionId && o.stamina >= 30).length;
+          const bOff = state.officers.filter(o => o.cityId === b.id && o.factionId === factionId && o.stamina >= 30).length;
+          if (bOff !== aOff) return bOff - aOff;
+          return b.troops - a.troops;
+        });
+      const sourceCity = adjacentCities[0];
       if (!sourceCity) { log(`  No friendly city adjacent to ${targetCity.name}.`); return false; }
 
       // Get available officers sorted by leadership
