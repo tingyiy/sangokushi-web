@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings } from '../types';
 import type { UnitType } from '../types/battle';
 import { useBattleStore } from './battleStore';
@@ -282,7 +284,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       })),
       playerFaction: { ...faction, isPlayer: true },
       phase: 'settings',
-      log: [`${faction.name}，天命所歸。${state.year}年${state.month}月，征途開始！`],
+      log: [i18next.t('logs:game.factionChosen', { faction: localizedName(faction.name), year: state.year, month: state.month })],
     });
   },
 
@@ -300,7 +302,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   confirmSettings: () => {
     set({ phase: 'playing' });
-    get().addLog('遊戲設定完成，開始征戰！');
+    get().addLog(i18next.t('logs:game.settingsConfirm'));
   },
 
   selectCity: (cityId) => set({ selectedCityId: cityId, activeCommandCategory: null }),
@@ -325,7 +327,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const loserFactionId = battle.playerFactionId;
     const winnerFactionId = loserFactionId === battle.attackerId ? battle.defenderId : battle.attackerId;
 
-    get().addLog('我軍撤退了！');
+    get().addLog(i18next.t('logs:game.retreat'));
 
     get().resolveBattle(
       winnerFactionId,
@@ -448,15 +450,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           });
 
           updatedFactions = updatedFactions.map(f => f.id === faction.id ? { ...f, rulerId: successor.id } : f);
-          get().addLog(`【繼承】${deadOfficer.name} 逝世，由 ${successor.name} 繼任為君主。`);
+          get().addLog(i18next.t('logs:game.succession', { dead: localizedName(deadOfficer.name), successor: localizedName(successor.name) }));
         } else {
           // Faction collapses: remove faction and make its cities neutral
           updatedFactions = updatedFactions.filter(f => f.id !== faction.id);
           updatedCities = updatedCities.map(c => c.factionId === faction.id ? { ...c, factionId: null } : c);
-          get().addLog(`【滅亡】${deadOfficer.name} 逝世，該勢力因無繼承人而土崩瓦解。`);
+          get().addLog(i18next.t('logs:game.factionCollapse', { dead: localizedName(deadOfficer.name) }));
         }
       } else {
-        get().addLog(`【訃告】${deadOfficer.name} 病逝了。`);
+        get().addLog(i18next.t('logs:game.obituary', { name: localizedName(deadOfficer.name) }));
       }
     });
 
@@ -471,7 +473,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeCommandCategory: null,
     });
 
-    get().addLog(`── ${newYear}年${newMonth}月 ──`);
+    get().addLog(i18next.t('logs:game.turnHeader', { year: newYear, month: newMonth }));
 
     const postIncomeState = get();
 
@@ -491,7 +493,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     let finalFactions = get().factions;
 
     allEvents.forEach(event => {
-      get().addLog(`【事件】${event.name}：${event.description}`);
+      get().addLog(i18next.t('logs:game.event', { name: event.name, description: event.description }));
 
       // Apply random event effects
       const result = applyEventEffects(event, finalCities, finalOfficers);
@@ -511,7 +513,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 5. Phase 6.1: Advisor Suggestions
     if (state.playerFaction) {
       const suggestions = getAdvisorSuggestions(get());
-      suggestions.forEach(s => get().addLog(`【軍師】${s}`));
+      suggestions.forEach(s => get().addLog(i18next.t('logs:game.advisor', { suggestion: s })));
     }
 
     // Phase 7.9: Auto-assign governors for all player cities missing one
@@ -649,8 +651,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       cities: state.cities.map(c => c.id === cityId ? { ...c, taxRate: rate } : c)
     }));
     const city = get().cities.find(c => c.id === cityId);
-    const rateText = rate === 'low' ? '低 (5%)' : rate === 'medium' ? '中 (10%)' : '高 (15%)';
-    get().addLog(`${city?.name} 稅率已變更為 ${rateText}。`);
+    const rateText = i18next.t(`data:taxRate.${rate}`);
+    get().addLog(i18next.t('logs:domestic.taxRateChanged', { city: localizedName(city?.name ?? ''), rate: rateText }));
   },
 
   promoteOfficer: (officerId: number, rank: import('../types').OfficerRank) => {
@@ -658,14 +660,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       officers: state.officers.map(o => o.id === officerId ? { ...o, rank } : o)
     }));
     const officer = get().officers.find(o => o.id === officerId);
-    get().addLog(`${officer?.name} 已被任命為 ${rank}。`);
+    get().addLog(i18next.t('logs:domestic.promoted', { name: localizedName(officer?.name ?? ''), rank: i18next.t(`data:rank.${rank}`) }));
   },
 
   developCommerce: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法開發商業。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developCommerce_action'), required: 500, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -674,11 +676,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 20) {
-      get().addLog(`${executor.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
       return;
     }
     const bonus = Math.floor(executor.politics / 10);
@@ -694,14 +696,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 商業發展 +${10 + bonus}（花費 500 金，體力 -20）`);
+    get().addLog(i18next.t('logs:domestic.developCommerce', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 10 + bonus }));
   },
 
   developAgriculture: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法開發農業。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developAgriculture_action'), required: 500, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -710,11 +712,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 20) {
-      get().addLog(`${executor.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
       return;
     }
     const bonus = Math.floor(executor.politics / 10);
@@ -730,14 +732,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 農業發展 +${10 + bonus}（花費 500 金，體力 -20）`);
+    get().addLog(i18next.t('logs:domestic.developAgriculture', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 10 + bonus }));
   },
 
   reinforceDefense: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 300) {
-      if (city) get().addLog(`金不足，無法強化城防。需要 300（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.reinforceDefense_action'), required: 300, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -746,11 +748,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 20) {
-      get().addLog(`${executor.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
       return;
     }
     set({
@@ -765,14 +767,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 城防強化 +5（花費 300 金，體力 -20）`);
+    get().addLog(i18next.t('logs:domestic.reinforceDefense', { city: localizedName(city.name), officer: localizedName(executor.name) }));
   },
 
   developFloodControl: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法開發治水。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developFlood_action'), required: 500, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -781,11 +783,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 20) {
-      get().addLog(`${executor.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
       return;
     }
     const bonus = Math.floor(executor.politics / 15);
@@ -801,14 +803,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 治水發展 +${8 + bonus}（花費 500 金，體力 -20）`);
+    get().addLog(i18next.t('logs:domestic.developFlood', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 8 + bonus }));
   },
 
   developTechnology: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 800) {
-      if (city) get().addLog(`金不足，無法開發技術。需要 800（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developTech_action'), required: 800, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -817,11 +819,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 25) {
-      get().addLog(`${executor.name} 體力不足（需 25），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 25 }));
       return;
     }
     const bonus = Math.floor(executor.intelligence / 20);
@@ -837,18 +839,18 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 技術發展 +${5 + bonus}（花費 800 金，體力 -25）`);
+    get().addLog(i18next.t('logs:domestic.developTech', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 5 + bonus }));
   },
 
   trainTroops: (cityId, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.food < 500) {
-      if (city) get().addLog(`糧不足，無法訓練。需要 500（現有 ${city.food}）。`);
+      if (city) get().addLog(i18next.t('logs:error.foodInsufficient', { required: 500, current: city.food }));
       return;
     }
     if (city.troops <= 0) {
-      get().addLog('城中無兵，無法訓練。');
+      get().addLog(i18next.t('logs:error.noTroops'));
       return;
     }
     const executor = officerId
@@ -857,11 +859,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 20) {
-      get().addLog(`${executor.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
       return;
     }
     const trainingBonus = Math.floor(executor.leadership / 15);
@@ -882,14 +884,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 訓練部隊（花費 500 糧，體力 -20）`);
+    get().addLog(i18next.t('logs:domestic.trainTroops', { city: localizedName(city.name), officer: localizedName(executor.name) }));
   },
 
   manufacture: (cityId, weaponType, officerId) => {
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city || city.gold < 1000) {
-      if (city) get().addLog(`金不足，無法製造。需要 1000（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.manufacture_action'), required: 1000, current: city.gold }));
       return;
     }
     const executor = officerId
@@ -898,32 +900,26 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (!hasSkill(executor, 'manufacture')) {
-      get().addLog(`${executor.name} 不具備製造技能。`);
+      get().addLog(i18next.t('logs:error.noManufactureSkill', { name: localizedName(executor.name) }));
       return;
     }
     if (executor.stamina < 30) {
-      get().addLog(`${executor.name} 體力不足（需 30），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 30 }));
       return;
     }
 
     const tech = city.technology || 0;
     const gates = { crossbows: 30, warHorses: 40, batteringRams: 60, catapults: 80 };
     if (tech < gates[weaponType]) {
-      get().addLog(`技術不足（需 ${gates[weaponType]}），無法製造該武器。`);
+      get().addLog(i18next.t('logs:error.techInsufficient', { required: gates[weaponType] }));
       return;
     }
 
     const amount = 10 + Math.floor(tech / 10);
-    const weaponNames = {
-      crossbows: '弩',
-      warHorses: '軍馬',
-      batteringRams: '衝車',
-      catapults: '投石機'
-    };
 
     set({
       cities: state.cities.map(c =>
@@ -937,7 +933,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 製造了 ${amount} 單位 ${weaponNames[weaponType]}（花費 1000 金，體力 -30）`);
+    get().addLog(i18next.t('logs:domestic.manufacture', { city: localizedName(city.name), officer: localizedName(executor.name), amount, weapon: i18next.t(`data:weapon.${weaponType}`) }));
   },
 
   disasterRelief: (cityId, officerId) => {
@@ -948,7 +944,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const shortages: string[] = [];
         if (city.gold < 500) shortages.push(`金 需 500（現有 ${city.gold}）`);
         if (city.food < 1000) shortages.push(`糧 需 1000（現有 ${city.food}）`);
-        get().addLog(`資源不足，無法賑災。${shortages.join('、')}。`);
+        get().addLog(i18next.t('logs:error.resourceInsufficient', { action: i18next.t('logs:domestic.relief_action'), details: shortages.join(i18next.t('logs:common.comma')) }));
       }
       return;
     }
@@ -958,11 +954,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 15) {
-      get().addLog(`${executor.name} 體力不足（需 15），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 15 }));
       return;
     }
 
@@ -984,7 +980,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 賑災民心 +${15 + bonus}（花費 500 金, 1000 糧，體力 -15）`);
+    get().addLog(i18next.t('logs:domestic.relief', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 15 + bonus }));
   },
 
   recruitOfficer: (officerId, recruiterId) => {
@@ -1003,19 +999,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === playerFaction.id);
       if (recruiters.length === 0) {
-        get().addLog('城中無人可派。');
+        get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
       recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
     }
 
     if (!recruiter) {
-      get().addLog(recruiterId ? '指派武將不在該城或不屬於我方。' : '城中無人可派。');
+      get().addLog(recruiterId ? i18next.t('logs:error.officerNotInCityOrFaction') : i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
 
     if (recruiter.stamina < 15) {
-      get().addLog(`${recruiter.name} 體力不足（需 15），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(recruiter.name), required: 15 }));
       return;
     }
 
@@ -1036,9 +1032,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (success) {
-      get().addLog(`${recruiter.name} 成功招攬 ${officer.name}！忠誠 60（體力 -15）`);
+      get().addLog(i18next.t('logs:personnel.recruitSuccess', { recruiter: localizedName(recruiter.name), officer: localizedName(officer.name) }));
     } else {
-      get().addLog(`${recruiter.name} 招攬 ${officer.name} 失敗。（體力 -15）`);
+      get().addLog(i18next.t('logs:personnel.recruitFail', { recruiter: localizedName(recruiter.name), officer: localizedName(officer.name) }));
     }
   },
 
@@ -1053,19 +1049,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id);
       if (recruiters.length === 0) {
-        get().addLog('城中無人可派。');
+        get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
       recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
     }
 
     if (!recruiter) {
-      get().addLog(officerId ? '指派武將不在該城或不屬於我方。' : '城中無人可派。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCityOrFaction') : i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
 
     if (recruiter.stamina < 15) {
-      get().addLog(`${recruiter.name} 體力不足（需 15）。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficientShort', { name: localizedName(recruiter.name), required: 15 }));
       return;
     }
 
@@ -1088,12 +1084,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (found && foundOfficer) {
-      get().addLog(`${recruiter.name} 在 ${city.name} 找到了 ${foundOfficer.name}！（體力 -15）`);
+      get().addLog(i18next.t('logs:personnel.searchFoundOfficer', { recruiter: localizedName(recruiter.name), city: localizedName(city.name), officer: localizedName(foundOfficer.name) }));
     } else {
       if (Math.random() < 0.15) {
-        get().addLog(`${recruiter.name} 在 ${city.name} 搜索時發現了寶物！（體力 -15）`);
+        get().addLog(i18next.t('logs:personnel.searchFoundTreasure', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
       } else {
-        get().addLog(`${recruiter.name} 在 ${city.name} 搜索，一無所獲。（體力 -15）`);
+        get().addLog(i18next.t('logs:personnel.searchNothing', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
       }
     }
   },
@@ -1112,19 +1108,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
       if (recruiters.length === 0) {
-        get().addLog('城內無將領可執行勸降。');
+        get().addLog(i18next.t('logs:error.noOfficerForSurrender'));
         return;
       }
       recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
     }
 
     if (!recruiter) {
-      get().addLog(recruiterId ? '指派武將不在該城或不屬於我方。' : '城內無將領可執行勸降。');
+      get().addLog(recruiterId ? i18next.t('logs:error.officerNotInCityOrFaction') : i18next.t('logs:error.noOfficerForSurrender'));
       return;
     }
 
     if (recruiter.stamina < 15) {
-      get().addLog(`${recruiter.name} 體力不足（需 15）。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficientShort', { name: localizedName(recruiter.name), required: 15 }));
       return;
     }
 
@@ -1140,9 +1136,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (success) {
-      get().addLog(`${recruiter.name} 成功勸降了 ${officer.name}！（體力 -15）`);
+      get().addLog(i18next.t('logs:personnel.surrenderSuccess', { recruiter: localizedName(recruiter.name), officer: localizedName(officer.name) }));
     } else {
-      get().addLog(`${recruiter.name} 勸降 ${officer.name} 失敗。（體力 -15）`);
+      get().addLog(i18next.t('logs:personnel.surrenderFail', { recruiter: localizedName(recruiter.name), officer: localizedName(officer.name) }));
     }
   },
 
@@ -1151,12 +1147,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const city = state.cities.find(c => c.id === state.selectedCityId);
 
     if (type === 'treasure') {
-      get().addLog('寶物賞賜尚未實裝。');
+      get().addLog(i18next.t('logs:error.treasureRewardNotImplemented'));
       return;
     }
 
     if (!city || city.gold < amount) {
-      if (city) get().addLog(`金不足，無法賞賜。需要 ${amount}（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.rewardGoldInsufficient', { amount, current: city.gold }));
       return;
     }
 
@@ -1170,7 +1166,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     });
     const officer = state.officers.find(o => o.id === officerId);
-    get().addLog(`賞賜 ${officer?.name} ${amount} 金，忠誠上升。`);
+    get().addLog(i18next.t('logs:personnel.reward', { officer: localizedName(officer?.name ?? ''), amount }));
   },
 
   executeOfficer: (officerId) => {
@@ -1181,7 +1177,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       officers: state.officers.filter(o => o.id !== officerId)
     });
-    get().addLog(`處斬了 ${officer.name}。`);
+    get().addLog(i18next.t('logs:personnel.execute', { name: localizedName(officer.name) }));
   },
 
   dismissOfficer: (officerId) => {
@@ -1192,23 +1188,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       officers: state.officers.map(o => o.id === officerId ? { ...o, factionId: null, isGovernor: false, loyalty: 30 } : o)
     });
-    get().addLog(`${officer.name} 被逐出了勢力。`);
+    get().addLog(i18next.t('logs:personnel.banish', { name: localizedName(officer.name) }));
   },
 
   appointGovernor: (cityId, officerId) => {
     const state = get();
     const appointee = state.officers.find(o => o.id === officerId);
     if (!appointee) {
-      get().addLog('找不到該武將。');
+      get().addLog(i18next.t('logs:error.officerNotFound'));
       return;
     }
     if (appointee.factionId !== state.playerFaction?.id) {
-      get().addLog(`${appointee.name} 不屬於我方勢力，無法任命為太守。`);
+      get().addLog(i18next.t('logs:error.notOurFaction', { name: localizedName(appointee.name) }));
       return;
     }
     if (appointee.cityId !== cityId) {
       const targetCity = state.cities.find(c => c.id === cityId);
-      get().addLog(`${appointee.name} 不在 ${targetCity?.name || '該城'}，無法任命為太守。`);
+      get().addLog(i18next.t('logs:error.notInTargetCity', { name: localizedName(appointee.name), city: localizedName(targetCity?.name || '') }));
       return;
     }
     set({
@@ -1221,7 +1217,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     });
     const finalOfficer = state.officers.find(o => o.id === officerId);
-    get().addLog(`任命 ${finalOfficer?.name} 為太守。`);
+    get().addLog(i18next.t('logs:personnel.appointGovernor', { name: localizedName(finalOfficer?.name ?? '') }));
   },
 
   appointAdvisor: (officerId) => {
@@ -1233,7 +1229,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       factions: state.factions.map(f => f.id === state.playerFaction?.id ? { ...f, advisorId: officerId } : f),
       playerFaction: { ...state.playerFaction, advisorId: officerId }
     });
-    get().addLog(`任命 ${advisor?.name} 為軍師。`);
+    get().addLog(i18next.t('logs:personnel.appointAdvisor', { name: localizedName(advisor?.name ?? '') }));
   },
 
   draftTroops: (cityId, amount, officerId) => {
@@ -1247,11 +1243,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
+      get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
       return;
     }
     if (executor.stamina < 10) {
-      get().addLog(`${executor.name} 體力不足（需 10），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 10 }));
       return;
     }
 
@@ -1261,7 +1257,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const shortages: string[] = [];
       if (city.gold < goldCost) shortages.push(`金 ${goldCost}（現有 ${city.gold}）`);
       if (city.food < foodCost) shortages.push(`糧 ${foodCost}（現有 ${city.food}）`);
-      get().addLog(`資源不足，無法徵兵。需要：${shortages.join('、')}。`);
+      get().addLog(i18next.t('logs:error.resourceInsufficient', { action: i18next.t('logs:domestic.conscript_action'), details: shortages.join(i18next.t('logs:common.comma')) }));
       return;
     }
     const maxDraft = Math.floor(city.population * 0.1);
@@ -1284,7 +1280,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           : o
       ),
     });
-    get().addLog(`${city.name}：${executor.name} 徵兵 ${actual} 人（體力 -10）`);
+    get().addLog(i18next.t('logs:domestic.conscript', { city: localizedName(city.name), officer: localizedName(executor.name), amount: actual }));
   },
 
   transport: (fromCityId, toCityId, resource, amount) => {
@@ -1295,13 +1291,13 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const governor = state.officers.find(o => o.cityId === fromCityId && o.isGovernor);
     if (!governor || governor.stamina < 20) {
-      get().addLog('太守體力不足（需 20）。');
+      get().addLog(i18next.t('logs:error.transportStamina'));
       return;
     }
 
     if (fromCity[resource] < amount) {
       const label = resource === 'gold' ? '金' : resource === 'food' ? '糧' : '兵';
-      get().addLog(`${label}不足，無法輸送。需要 ${amount}（現有 ${fromCity[resource]}）。`);
+      get().addLog(i18next.t('logs:error.transportInsufficient', { label, amount, current: fromCity[resource] }));
       return;
     }
 
@@ -1313,7 +1309,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }),
       officers: state.officers.map(o => o.id === governor.id ? { ...o, stamina: o.stamina - 20 } : o)
     });
-    get().addLog(`從 ${fromCity.name} 向 ${toCity.name} 輸送了 ${amount} ${resource === 'gold' ? '金' : resource === 'food' ? '糧' : '兵'}。`);
+    get().addLog(i18next.t('logs:domestic.transport', { from: localizedName(fromCity.name), to: localizedName(toCity.name), amount, resource: i18next.t(`logs:common.${resource}`) }));
   },
 
   transferOfficer: (officerId, targetCityId) => {
@@ -1321,11 +1317,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const officer = state.officers.find(o => o.id === officerId);
     const destCity = state.cities.find(c => c.id === targetCityId);
     if (!officer || officer.stamina < 10) {
-      get().addLog(`${officer?.name || '武將'} 體力不足（需 10）。`);
+      get().addLog(i18next.t('logs:error.moveOfficerStamina', { name: localizedName(officer?.name ?? '') }));
       return;
     }
     if (!destCity || destCity.factionId !== state.playerFaction?.id) {
-      get().addLog('只能移動到我方城市。');
+      get().addLog(i18next.t('logs:error.moveOnlyFriendly'));
       return;
     }
 
@@ -1338,7 +1334,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set({ officers: updatedOfficers });
     const finalDestCity = state.cities.find(c => c.id === targetCityId);
-    get().addLog(`${officer.name} 移動到了 ${finalDestCity?.name}。`);
+    get().addLog(i18next.t('logs:personnel.moveOfficer', { name: localizedName(officer.name), city: localizedName(finalDestCity?.name ?? '') }));
   },
 
   setBattleFormation: (formation) => set({ battleFormation: formation }),
@@ -1351,7 +1347,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Find best player officer in city
     const pOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (pOfficers.length === 0) {
-      get().addLog('城中無將！');
+      get().addLog(i18next.t('logs:error.noCityOfficers'));
       return;
     }
     const p1 = pOfficers.reduce((prev, current) => (prev.war > current.war ? prev : current));
@@ -1363,7 +1359,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (enemyCityIds.length === 0) {
-      get().addLog('四周無敵軍。');
+      get().addLog(i18next.t('logs:error.noEnemyNearby'));
       return;
     }
 
@@ -1372,7 +1368,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const eOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === duelCity.factionId);
     if (eOfficers.length === 0) {
-      get().addLog(`${duelCity.name} 是一座空城。`);
+      get().addLog(i18next.t('logs:error.emptyCityDuel', { city: localizedName(duelCity.name) }));
       return;
     }
     const p2 = eOfficers[Math.floor(Math.random() * eOfficers.length)];
@@ -1538,7 +1534,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     if (attackerOfficers.length === 0) {
-      get().addLog('無將領可統兵。');
+      get().addLog(i18next.t('logs:error.noCommanders'));
       return;
     }
 
@@ -1555,18 +1551,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
     if (totalTroopsToDeploy <= 0) {
-      get().addLog(`兵力不足，無法出征。城內駐兵 ${city.troops}。`);
+      get().addLog(i18next.t('logs:error.insufficientTroopsBasic', { troops: city.troops }));
       return;
     }
     if (totalTroopsToDeploy > city.troops) {
-      get().addLog(`兵力不足，無法出征。需要 ${totalTroopsToDeploy}（城內駐兵 ${city.troops}）。`);
+      get().addLog(i18next.t('logs:error.insufficientTroopsRequired', { required: totalTroopsToDeploy, troops: city.troops }));
       return;
     }
 
     // Check commander stamina (highest leadership officer)
     const commander = attackerOfficers.reduce((prev, curr) => (prev.leadership > curr.leadership ? prev : curr));
     if (commander.stamina < 30) {
-      get().addLog(`${commander.name} 體力不足（需 30），無法出征。`);
+      get().addLog(i18next.t('logs:error.commanderStamina', { name: localizedName(commander.name) }));
       return;
     }
 
@@ -1582,7 +1578,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const shortages: string[] = [];
       if (city.crossbows < crossbowsUsed) shortages.push(`弩 需 ${crossbowsUsed}（現有 ${city.crossbows}）`);
       if (city.warHorses < warHorsesUsed) shortages.push(`軍馬 需 ${warHorsesUsed}（現有 ${city.warHorses}）`);
-      get().addLog(`城內武器不足，無法依此編制出征。${shortages.join('、')}。`);
+      get().addLog(i18next.t('logs:error.weaponShortage', { details: shortages.join(i18next.t('logs:common.comma')) }));
       return;
     }
 
@@ -1625,13 +1621,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id);
         if (promoted) set({ officers });
       }
-      get().addLog(`${targetCity.name} 是一座空城！${commander.name} 率軍佔領了 ${targetCity.name}！`);
+      get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
       // Check if the losing faction has no more cities
       const loserFactionId = targetCity.factionId || 0;
       const remainingCities = get().cities.filter(c => c.factionId === loserFactionId);
       if (remainingCities.length === 0) {
         const loserFaction = state.factions.find(f => f.id === loserFactionId);
-        get().addLog(`${loserFaction?.name || '敵方'} 勢力已被消滅！`);
+        get().addLog(i18next.t('logs:military.factionDestroyed', { faction: localizedName(loserFaction?.name ?? '') }));
       }
       return;
     }
@@ -1682,7 +1678,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     );
 
     set({ phase: 'battle' });
-    get().addLog(`出征 ${targetCity.name}！（所有參戰將領體力 -30）`);
+    get().addLog(i18next.t('logs:military.marchToCity', { city: localizedName(targetCity.name) }));
   },
 
   aiStartBattle: (fromCityId: number, targetCityId: number) => {
@@ -1755,7 +1751,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const winnerFactionId = attackerPower > defenderPower ? (city.factionId || 0) : (targetCity.factionId || 0);
       const loserFactionId = winnerFactionId === (city.factionId || 0) ? (targetCity.factionId || 0) : (city.factionId || 0);
 
-      get().addLog(`【合戰】${state.factions.find(f => f.id === city.factionId)?.name} 攻打 ${targetCity.name}，${attackerPower > defenderPower ? '攻陷了該城' : '被擊退了'}。`);
+      get().addLog(attackerPower > defenderPower ? i18next.t('logs:military.aiBattleWin', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), city: localizedName(targetCity.name) }) : i18next.t('logs:military.aiBattleLose', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), city: localizedName(targetCity.name) }));
 
       get().resolveBattle(
         winnerFactionId,
@@ -1771,7 +1767,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // AI vs Player: Switch to battle phase
     if (state.phase === 'battle') {
-      get().addLog(`【合戰】${state.factions.find(f => f.id === city.factionId)?.name} 欲攻打 ${targetCity.name}，但戰場已滿。`);
+      get().addLog(i18next.t('logs:military.aiBattleFull', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), city: localizedName(targetCity.name) }));
       return;
     }
 
@@ -1793,27 +1789,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     );
 
     set({ phase: 'battle' });
-    get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 軍從 ${city.name} 出征 ${targetCity.name}！`);
+    get().addLog(i18next.t('logs:military.aiMarch', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), from: localizedName(city.name), to: localizedName(targetCity.name) }));
   },
 
   improveRelations: (targetFactionId: number) => {
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      if (city) get().addLog(`金不足，無法進行贈呈。需要 1000（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.gift_action'), required: 1000, current: city.gold }));
       return;
     }
 
     // Find messenger (highest politics in city)
     const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (officersInCity.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
     if (messenger.stamina < 15) {
-      get().addLog(`${messenger.name} 體力不足（需 15），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 15 }));
       return;
     }
 
@@ -1849,26 +1845,26 @@ export const useGameStore = create<GameState>((set, get) => ({
       playerFaction: updatedFactions.find(f => f.id === state.playerFaction?.id) || state.playerFaction
     });
 
-    get().addLog(`${messenger.name} 出使 ${targetFaction.name}，敵對心降低了 ${reduction}。（體力 -15）`);
+    get().addLog(i18next.t('logs:diplomacy.giftSuccess', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction.name), reduction }));
   },
 
   formAlliance: (targetFactionId) => {
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 2000) {
-      if (city) get().addLog(`金不足，無法結盟。需要 2000（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.alliance_action'), required: 2000, current: city.gold }));
       return;
     }
 
     const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (officersInCity.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
     if (messenger.stamina < 20) {
-      get().addLog(`${messenger.name} 體力不足（需 20），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 20 }));
       return;
     }
 
@@ -1876,7 +1872,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!targetFaction) return;
 
     if (state.playerFaction?.allies.includes(targetFactionId)) {
-      get().addLog(`我方與 ${targetFaction.name} 已經是同盟了。`);
+      get().addLog(i18next.t('logs:error.alreadyAllied', { faction: localizedName(targetFaction.name) }));
       return;
     }
 
@@ -1909,7 +1905,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         factions: updatedFactions,
         playerFaction: updatedFactions.find(f => f.id === state.playerFaction?.id) || state.playerFaction
       });
-      get().addLog(`${messenger.name} 成功說服 ${targetFaction.name} 結為同盟！（體力 -20）`);
+      get().addLog(i18next.t('logs:diplomacy.allianceSuccess', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction.name) }));
     } else {
       // Failure increases hostility slightly
       const updatedFactions = state.factions.map(f => {
@@ -1923,7 +1919,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         factions: updatedFactions,
         playerFaction: updatedFactions.find(f => f.id === state.playerFaction?.id) || state.playerFaction
       });
-      get().addLog(`${messenger.name} 的結盟提議被 ${targetFaction.name} 拒絕了。（體力 -20）`);
+      get().addLog(i18next.t('logs:diplomacy.allianceRejected', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction.name) }));
     }
   },
 
@@ -1933,13 +1929,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!city) return;
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
     if (messenger.stamina < 20) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -1954,7 +1950,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const targetFaction = state.factions.find(f => f.id === allyFactionId);
     const targetCity = state.cities.find(c => c.id === targetCityId);
     if (success) {
-      get().addLog(`${messenger.name} 成功說服 ${targetFaction?.name} 共同進攻 ${targetCity?.name}！`);
+      get().addLog(i18next.t('logs:diplomacy.jointAttackSuccess', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction?.name ?? ''), city: localizedName(targetCity?.name ?? '') }));
       // Trigger ally attack
       const allyCities = state.cities.filter(c => c.factionId === allyFactionId);
       const neighborAllyCity = allyCities.find(ac => ac.adjacentCityIds.includes(targetCityId));
@@ -1962,7 +1958,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         get().aiStartBattle(neighborAllyCity.id, targetCityId);
       }
     } else {
-      get().addLog(`${targetFaction?.name} 拒絕了共同作戰的提議。`);
+      get().addLog(i18next.t('logs:diplomacy.jointAttackRejected', { faction: localizedName(targetFaction?.name ?? '') }));
     }
   },
 
@@ -1970,18 +1966,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      if (city) get().addLog(`金不足，無法提議停戰。需要 1000（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.ceasefire_action'), required: 1000, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
     if (messenger.stamina < 20) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2019,9 +2015,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         factions: updatedFactions,
         playerFaction: updatedFactions.find(f => f.id === state.playerFaction?.id) || state.playerFaction
       });
-      get().addLog(`${messenger.name} 成功與 ${targetFaction?.name} 達成停戰協議（期限一年）。`);
+      get().addLog(i18next.t('logs:diplomacy.ceasefireSuccess', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction?.name ?? '') }));
     } else {
-      get().addLog(`${targetFaction?.name} 拒絕了停戰協議。`);
+      get().addLog(i18next.t('logs:diplomacy.ceasefireRejected', { faction: localizedName(targetFaction?.name ?? '') }));
     }
   },
 
@@ -2031,13 +2027,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!city) return;
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
     if (messenger.stamina < 20) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2053,7 +2049,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const targetFaction = state.factions.find(f => f.id === targetFactionId);
     if (success && targetFaction) {
       // Transfer everything. 
-      get().addLog(`${targetFaction.name} 向我軍投降了！`);
+      get().addLog(i18next.t('logs:diplomacy.surrenderAccepted', { faction: localizedName(targetFaction.name) }));
       const freshCities = get().cities;
       const freshOfficers = get().officers;
       const freshFactions = get().factions;
@@ -2063,7 +2059,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         factions: freshFactions.filter(f => f.id !== targetFactionId)
       });
     } else {
-      get().addLog(`${targetFaction?.name} 斬釘截鐵地拒絕了投降的要求。`);
+      get().addLog(i18next.t('logs:diplomacy.surrenderRejected', { faction: localizedName(targetFaction?.name ?? '') }));
     }
   },
 
@@ -2093,7 +2089,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     });
     const targetFaction = state.factions.find(f => f.id === targetFactionId);
-    get().addLog(`背棄了與 ${targetFaction?.name} 的同盟！天下人皆感憤慨。`);
+    get().addLog(i18next.t('logs:diplomacy.betrayAlliance', { faction: localizedName(targetFaction?.name ?? '') }));
   },
 
   exchangeHostage: (officerId, targetFactionId) => {
@@ -2102,7 +2098,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const officer = state.officers.find(o => o.id === officerId);
     if (!officer || officer.factionId !== state.playerFaction.id) return;
     if (officer.cityId === -2) {
-      get().addLog(`${officer.name} 已經是人質了。`);
+      get().addLog(i18next.t('logs:error.alreadyHostage', { name: localizedName(officer.name) }));
       return;
     }
 
@@ -2111,7 +2107,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       officers: state.officers.map(o => o.id === officerId ? { ...o, cityId: -2 } : o) // -2 indicates hostage
     });
     const targetFaction = state.factions.find(f => f.id === targetFactionId);
-    get().addLog(`將 ${officer.name} 送往 ${targetFaction?.name} 作為人質。`);
+    get().addLog(i18next.t('logs:military.hostage', { officer: localizedName(officer.name), faction: localizedName(targetFaction?.name ?? '') }));
   },
 
 
@@ -2119,25 +2115,25 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法執行流言。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.rumor_action'), required: 500, current: city.gold }));
       return;
     }
 
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     // Phase 1.1: Check for 流言 skill
     if (!hasSkill(messenger, 'rumor')) {
-      get().addLog(`${messenger.name} 不具備流言技能，無法執行此計策。`);
+      get().addLog(i18next.t('logs:error.noSkillRumor', { name: localizedName(messenger.name) }));
       return;
     }
 
     if (messenger.stamina < 15) {
-      get().addLog(`${messenger.name} 體力不足（需 15），無法執行指令。`);
+      get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 15 }));
       return;
     }
 
@@ -2182,9 +2178,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }
       });
-      get().addLog(`${messenger.name} 在 ${targetCity.name} 散佈流言，民心動搖，將領忠誠下降！（體力 -15）`);
+      get().addLog(i18next.t('logs:strategy.rumorSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity.name) }));
     } else {
-      get().addLog(`${messenger.name} 的流言計策被識破了。（體力 -15）`);
+      get().addLog(i18next.t('logs:strategy.rumorFail', { messenger: localizedName(messenger.name) }));
     }
   },
 
@@ -2192,22 +2188,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 800) {
-      if (city) get().addLog(`金不足，無法反間。需要 800（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.provoke_action'), required: 800, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     if (!hasSkill(messenger, 'provoke')) {
-      get().addLog(`${messenger.name} 不具備做敵技能。`);
+      get().addLog(i18next.t('logs:error.noSkillProvoke', { name: localizedName(messenger.name) }));
       return;
     }
     if (messenger.stamina < 20) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2227,9 +2223,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (success) {
-      get().addLog(`${messenger.name} 成功實施反間，${targetOfficer.name} 的忠誠度下降了！`);
+      get().addLog(i18next.t('logs:strategy.provokeSuccess', { messenger: localizedName(messenger.name), officer: localizedName(targetOfficer.name) }));
     } else {
-      get().addLog(`${messenger.name} 的反間計策失敗了。`);
+      get().addLog(i18next.t('logs:strategy.provokeFail', { messenger: localizedName(messenger.name) }));
     }
   },
 
@@ -2237,22 +2233,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 1000) {
-      if (city) get().addLog(`金不足，無法煽動叛亂。需要 1000（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.tigerTrap_action'), required: 1000, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     if (!hasSkill(messenger, 'tigerTrap')) {
-      get().addLog(`${messenger.name} 不具備驅虎技能。`);
+      get().addLog(i18next.t('logs:error.noSkillTigerTrap', { name: localizedName(messenger.name) }));
       return;
     }
     if (messenger.stamina < 25) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2274,29 +2270,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 25 } : o)
     });
 
-    get().addLog(`${messenger.name} 在 ${targetCity.name} 煽動造反，民心大幅下降！`);
+    get().addLog(i18next.t('logs:strategy.tigerTrapSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity.name) }));
   },
 
   arson: (targetCityId) => {
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法放火。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.arson_action'), required: 500, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     if (!hasSkill(messenger, 'arson')) {
-      get().addLog(`${messenger.name} 不具備燒討技能。`);
+      get().addLog(i18next.t('logs:error.noSkillArson', { name: localizedName(messenger.name) }));
       return;
     }
     if (messenger.stamina < 20) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2318,9 +2314,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const targetCity = state.cities.find(c => c.id === targetCityId);
     if (success) {
-      get().addLog(`${messenger.name} 在 ${targetCity?.name} 放火成功，燒毀了大量物資！`);
+      get().addLog(i18next.t('logs:strategy.arsonSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity?.name ?? '') }));
     } else {
-      get().addLog(`${messenger.name} 在 ${targetCity?.name} 的放火行動失敗了。`);
+      get().addLog(i18next.t('logs:strategy.arsonFail', { messenger: localizedName(messenger.name), city: localizedName(targetCity?.name ?? '') }));
     }
   },
 
@@ -2328,22 +2324,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 500) {
-      if (city) get().addLog(`金不足，無法間諜。需要 500（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.espionage_action'), required: 500, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     if (!hasSkill(messenger, 'intelligence') && !hasSkill(messenger, 'espionage')) {
-      get().addLog(`${messenger.name} 不具備諜報技能。`);
+      get().addLog(i18next.t('logs:error.noSkillEspionage', { name: localizedName(messenger.name) }));
       return;
     }
     if (messenger.stamina < 15) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2370,9 +2366,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (result.success) {
-      get().addLog(`${messenger.name} 滲透入 ${targetCity?.name} 並送回了情報！`);
+      get().addLog(i18next.t('logs:strategy.espionageSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity?.name ?? '') }));
     } else {
-      get().addLog(`${messenger.name} 在 ${targetCity?.name} 潛入失敗，敵方加強了警戒。`);
+      get().addLog(i18next.t('logs:strategy.espionageFail', { messenger: localizedName(messenger.name), city: localizedName(targetCity?.name ?? '') }));
       if (result.loyaltyPenalty && targetCityId) {
         // Simplified loyalty penalty impact
         const currentState = get();
@@ -2387,22 +2383,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === state.selectedCityId);
     if (!city || city.gold < 300) {
-      if (city) get().addLog(`金不足，無法探查。需要 300（現有 ${city.gold}）。`);
+      if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.intelligence_action'), required: 300, current: city.gold }));
       return;
     }
     const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
     if (messengers.length === 0) {
-      get().addLog('城中無人可派。');
+      get().addLog(i18next.t('logs:error.noOfficerAvailable'));
       return;
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     if (!hasSkill(messenger, 'intelligence')) {
-      get().addLog(`${messenger.name} 不具備情報技能。`);
+      get().addLog(i18next.t('logs:error.noSkillIntelligence', { name: localizedName(messenger.name) }));
       return;
     }
     if (messenger.stamina < 15) {
-      get().addLog('體力不足。');
+      get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
       return;
     }
 
@@ -2419,7 +2415,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const targetCity = state.cities.find(c => c.id === targetCityId);
-    get().addLog(`${messenger.name} 收集了關於 ${targetCity?.name} 的最新情報。`);
+    get().addLog(i18next.t('logs:strategy.intelligenceSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity?.name ?? '') }));
   },
 
   /**
@@ -2455,7 +2451,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         return o;
       }),
     });
-    if (success) get().addLog(`${state.factions.find(f => f.id === factionId)?.name} 的 ${recruiter.name} 成功招攬了 ${officer.name}。`);
+    if (success) get().addLog(i18next.t('logs:ai.recruitSuccess', { faction: localizedName(state.factions.find(f => f.id === factionId)?.name ?? ''), recruiter: localizedName(recruiter.name), officer: localizedName(officer.name) }));
   },
 
   aiRecruitPOW: (cityId, officerId) => {
@@ -2482,7 +2478,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         return o;
       })
     });
-    if (success) get().addLog(`${state.factions.find(f => f.id === factionId)?.name} 成功勸降了戰俘 ${officer.name}。`);
+    if (success) get().addLog(i18next.t('logs:ai.powRecruitSuccess', { faction: localizedName(state.factions.find(f => f.id === factionId)?.name ?? ''), officer: localizedName(officer.name) }));
   },
 
   aiSearchOfficer: (cityId) => {
@@ -2513,7 +2509,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (found && foundOfficer) {
-      get().addLog(`${recruiter.name} 在 ${city.name} 發現了在野武將 ${foundOfficer.name}。`);
+      get().addLog(i18next.t('logs:ai.searchFound', { recruiter: localizedName(recruiter.name), city: localizedName(city.name), officer: localizedName(foundOfficer.name) }));
     }
   },
 
@@ -2551,7 +2547,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         : state.revealedCities
     });
 
-    if (result.success) get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 對 ${targetCity?.name} 進行了諜報活動。`);
+    if (result.success) get().addLog(i18next.t('logs:ai.espionageAction', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), city: localizedName(targetCity?.name ?? '') }));
   },
 
   aiRumor: (cityId, targetCityId) => {
@@ -2602,7 +2598,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             : c
         )
       });
-      get().addLog(`${state.factions.find(f => f.id === city.factionId)?.name} 在 ${targetCity.name} 散佈了流言。`);
+      get().addLog(i18next.t('logs:ai.rumorAction', { faction: localizedName(state.factions.find(f => f.id === city.factionId)?.name ?? ''), city: localizedName(targetCity.name) }));
     }
   },
 
@@ -2654,7 +2650,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updatedOfficers = state.officers.map(o => {
       // If officer was captured during battle (in battleStore) AND belongs to the losing faction
       if (capturedSet.has(o.id) && o.factionId === loserFactionId) {
-        get().addLog(`${o.name} 兵敗被俘！`);
+        get().addLog(i18next.t('logs:postBattle.captured', { name: localizedName(o.name) }));
         // Hold as POW at the battle city (will be processed by winner)
         return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
       }
@@ -2666,11 +2662,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (unit && (unit.troops <= 0 || unit.status === 'routed')) {
             // Officer's unit was destroyed or routed — try to flee
             if (fleeCity) {
-              get().addLog(`${o.name} 逃往 ${fleeCity.name}。`);
+              get().addLog(i18next.t('logs:postBattle.fleeToCity', { name: localizedName(o.name), city: localizedName(fleeCity.name) }));
               return { ...o, cityId: fleeCity.id, isGovernor: false };
             } else {
               // Nowhere to flee — captured
-              get().addLog(`${o.name} 無處可逃，被俘！`);
+              get().addLog(i18next.t('logs:postBattle.nowhereToFlee', { name: localizedName(o.name) }));
               return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
             }
           }
@@ -2679,14 +2675,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (Math.random() < 0.3) {
             // 30% chance to escape
             if (fleeCity) {
-              get().addLog(`${o.name} 棄城逃往 ${fleeCity.name}。`);
+              get().addLog(i18next.t('logs:postBattle.abandonCity', { name: localizedName(o.name), city: localizedName(fleeCity.name) }));
               return { ...o, cityId: fleeCity.id, isGovernor: false };
             } else {
-              get().addLog(`${o.name} 無處可逃，被俘。`);
+              get().addLog(i18next.t('logs:postBattle.abandonNoFlee', { name: localizedName(o.name) }));
               return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
             }
           } else {
-            get().addLog(`${o.name} 被俘。`);
+            get().addLog(i18next.t('logs:postBattle.capturedSimple', { name: localizedName(o.name) }));
             return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
           }
         }
@@ -2775,11 +2771,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           updatedFactions = updatedFactions.map(f =>
             f.id === loserFactionId ? { ...f, rulerId: successor.id } : f
           );
-          get().addLog(`${rulerCaptured.name} 被俘，${successor.name} 繼任為君主。`);
+          get().addLog(i18next.t('logs:postBattle.rulerCaptured', { ruler: localizedName(rulerCaptured.name), successor: localizedName(successor.name) }));
         } else {
           // No officers left — faction is destroyed
           updatedFactions = updatedFactions.filter(f => f.id !== loserFactionId);
-          get().addLog(`${loserFaction.name} 勢力已被消滅！`);
+          get().addLog(i18next.t('logs:postBattle.factionDestroyed', { faction: localizedName(loserFaction.name) }));
         }
       }
     }
@@ -2796,7 +2792,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions, battleResolved: true });
 
     const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
-    get().addLog(`${city.name} 已被 ${winnerFaction?.name || '敵軍'} 攻陷！剩餘守軍 ${Math.floor(totalSurvivingTroops * 0.8)}。`);
+    get().addLog(i18next.t('logs:postBattle.cityFallen', { city: localizedName(city.name), faction: localizedName(winnerFaction?.name ?? ''), troops: Math.floor(totalSurvivingTroops * 0.8) }));
   },
 
   /**
@@ -2824,11 +2820,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
 
       localStorage.setItem(`rtk4_save_${slot}`, JSON.stringify(saveData));
-      get().addLog(`遊戲已儲存至存檔 ${slot}`);
+      get().addLog(i18next.t('logs:game.savedToSlot', { slot }));
       return true;
     } catch (e) {
       console.error('Save game failed:', e);
-      get().addLog('儲存失敗！');
+      get().addLog(i18next.t('logs:game.saveFailed'));
       return false;
     }
   },
@@ -2843,7 +2839,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     try {
       const saveDataStr = localStorage.getItem(`rtk4_save_${slot}`);
       if (!saveDataStr) {
-        get().addLog(`存檔 ${slot} 不存在！`);
+        get().addLog(i18next.t('logs:game.slotNotFound', { slot }));
         return false;
       }
 
@@ -2875,7 +2871,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return true;
     } catch (e) {
       console.error('Load game failed:', e);
-      get().addLog('載入失敗！');
+      get().addLog(i18next.t('logs:game.loadFailed'));
       return false;
     }
   },
@@ -2916,7 +2912,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   deleteSave: (slot) => {
     try {
       localStorage.removeItem(`rtk4_save_${slot}`);
-      get().addLog(`存檔 ${slot} 已刪除`);
+      get().addLog(i18next.t('logs:game.slotDeleted', { slot }));
       return true;
     } catch (e) {
       console.error('Delete save failed:', e);
