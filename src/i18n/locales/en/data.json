@@ -1,0 +1,57 @@
+{
+  "skill": {
+    "diplomacy": "Diplomacy",
+    "intelligence": "Intelligence",
+    "talent": "Talent",
+    "manufacture": "Manufacture",
+    "provoke": "Provoke",
+    "tigerTrap": "Tiger Trap",
+    "rumor": "Rumor",
+    "arson": "Arson",
+    "espionage": "Espionage",
+    "infantry": "Infantry",
+    "cavalry": "Cavalry",
+    "archery": "Archery",
+    "naval": "Naval",
+    "firePlot": "Fire Plot",
+    "rockfall": "Rockfall",
+    "jointAttack": "Joint Attack",
+    "weatherChange": "Weather Change",
+    "windChange": "Wind Change",
+    "confusion": "Confusion",
+    "chainLink": "Chain Link",
+    "lightning": "Lightning",
+    "repair": "Repair",
+    "taunt": "Taunt",
+    "falseReport": "False Report",
+    "inspire": "Inspire",
+    "ambush": "Ambush"
+  },
+  "rank": {
+    "governor": "Governor",
+    "general": "General",
+    "viceroy": "Viceroy",
+    "advisor": "Advisor",
+    "attendant": "Attendant",
+    "common": "Common"
+  },
+  "category": {
+    "domestic": "Domestic",
+    "military": "Military",
+    "personnel": "Personnel",
+    "diplomacy": "Diplomacy",
+    "strategy": "Strategy",
+    "end": "End Turn"
+  },
+  "weapon": {
+    "crossbows": "Crossbows",
+    "warHorses": "War Horses",
+    "batteringRams": "Battering Rams",
+    "catapults": "Catapults"
+  },
+  "taxRate": {
+    "low": "Low (5%)",
+    "medium": "Medium (10%)",
+    "high": "High (15%)"
+  }
+}

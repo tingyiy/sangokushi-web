@@ -1,0 +1,57 @@
+{
+  "skill": {
+    "diplomacy": "外交",
+    "intelligence": "情報",
+    "talent": "人才",
+    "manufacture": "製造",
+    "provoke": "做敵",
+    "tigerTrap": "驅虎",
+    "rumor": "流言",
+    "arson": "燒討",
+    "espionage": "諜報",
+    "infantry": "步兵",
+    "cavalry": "騎兵",
+    "archery": "弓兵",
+    "naval": "海戰",
+    "firePlot": "火計",
+    "rockfall": "落石",
+    "jointAttack": "同討",
+    "weatherChange": "天變",
+    "windChange": "風變",
+    "confusion": "混亂",
+    "chainLink": "連環",
+    "lightning": "落雷",
+    "repair": "修復",
+    "taunt": "罵聲",
+    "falseReport": "虛報",
+    "inspire": "鼓舞",
+    "ambush": "伏兵"
+  },
+  "rank": {
+    "governor": "太守",
+    "general": "將軍",
+    "viceroy": "都督",
+    "advisor": "軍師",
+    "attendant": "侍中",
+    "common": "一般"
+  },
+  "category": {
+    "domestic": "內政",
+    "military": "軍事",
+    "personnel": "人事",
+    "diplomacy": "外交",
+    "strategy": "謀略",
+    "end": "結束"
+  },
+  "weapon": {
+    "crossbows": "弩",
+    "warHorses": "軍馬",
+    "batteringRams": "衝車",
+    "catapults": "投石機"
+  },
+  "taxRate": {
+    "low": "低 (5%)",
+    "medium": "中 (10%)",
+    "high": "高 (15%)"
+  }
+}

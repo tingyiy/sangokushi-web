@@ -1,0 +1,297 @@
+{
+  "title": {
+    "newGame": "開始新遊戲",
+    "loadGame": "載入進度存檔",
+    "registerOfficer": "登錄武將數值"
+  },
+  "common": {
+    "abort": "中止",
+    "confirm": "決定",
+    "cancel": "取消",
+    "close": "結束",
+    "return": "返回",
+    "returnToTitle": "返回主選單",
+    "nextPage": "下頁",
+    "ok": "確認",
+    "none": "無"
+  },
+  "scenario": {
+    "selectPrompt": "請選擇劇本。",
+    "yearLabel": "西元 {{year}}年"
+  },
+  "faction": {
+    "selectRulerCount": "選擇君主 {{count}}人",
+    "registerNewRuler": "登錄新君主"
+  },
+  "settings": {
+    "title": "遊戲設定",
+    "selectedScenario": "選擇劇本",
+    "selectedRuler": "選擇君主",
+    "battleMode": "戰爭方式",
+    "battleModeWatch": "看",
+    "battleModeSkip": "不看",
+    "gameMode": "遊戲方式",
+    "gameModeHistorical": "史實",
+    "gameModeFictional": "虛構",
+    "customOfficers": "登錄武將出場",
+    "customOfficersAll": "出場",
+    "customOfficersChoose": "退場",
+    "mouseSensitivity": "滑鼠靈敏度",
+    "music": "音樂",
+    "musicOn": "開",
+    "musicOff": "關",
+    "language": "語言"
+  },
+  "header": {
+    "dateLabel": "{{year}}年 {{month}}月"
+  },
+  "sidebar": {
+    "cityCount": "城{{count}}",
+    "officerCount": "將{{count}}",
+    "troopCount": "兵{{count}}",
+    "goldCount": "金{{count}}",
+    "foodCount": "糧{{count}}"
+  },
+  "log": {
+    "title": "戰報"
+  },
+  "city": {
+    "closeAriaLabel": "關閉城市資訊",
+    "factionSuffix": "（{{name}}）",
+    "emptyCity": "（空城）",
+    "population": "人口",
+    "troops": "兵力",
+    "gold": "金",
+    "food": "糧",
+    "commerce": "商業",
+    "agriculture": "農業",
+    "defense": "防禦",
+    "floodControl": "治水",
+    "technology": "技術",
+    "peopleLoyalty": "民忠",
+    "morale": "士氣",
+    "training": "訓練",
+    "unknownStats": "其餘情報未知",
+    "weaponInventory": "武器庫存",
+    "crossbows": "弩",
+    "warHorses": "軍馬",
+    "batteringRams": "衝車",
+    "catapults": "投石機",
+    "officers": "武將",
+    "governorBadge": "太守",
+    "unaffiliatedOfficers": "在野武將"
+  },
+  "stat": {
+    "leadership": "統",
+    "war": "武",
+    "intelligence": "智",
+    "politics": "政",
+    "charisma": "魅",
+    "loyalty": "忠",
+    "stamina": "體",
+    "leadershipFull": "統率",
+    "warFull": "武力",
+    "intelligenceFull": "智力",
+    "politicsFull": "政治",
+    "charismaFull": "魅力"
+  },
+  "status": {
+    "title": "內政狀況表",
+    "colCityName": "城市名",
+    "colPopulation": "人口",
+    "colGold": "金錢",
+    "colFood": "糧草",
+    "colCommerce": "商業",
+    "colAgriculture": "農業",
+    "colDefense": "防禦",
+    "colTroops": "士兵",
+    "colMorale": "士氣",
+    "colTraining": "訓練"
+  },
+  "command": {
+    "category": {
+      "domestic": "內政",
+      "military": "軍事",
+      "personnel": "人事",
+      "diplomacy": "外交",
+      "strategy": "謀略",
+      "end": "結束"
+    },
+    "notYourCity": "這不是你的城市。",
+    "noOfficersAvailable": "本城無可用武將。",
+    "officerExecute": "{{name}} 執行「{{action}}」。",
+    "domestic": {
+      "developCommerce": "商業開發（500金）",
+      "developAgriculture": "農業開發（500金）",
+      "reinforceDefense": "強化城防（300金）",
+      "floodControl": "治水（500金）",
+      "developTechnology": "技術開發（800金）",
+      "trainTroops": "訓練（500糧）",
+      "taxRate": "稅率設定",
+      "taxLow": "低",
+      "taxMedium": "中",
+      "taxHigh": "高",
+      "manufacture": "製造 (1000金)",
+      "manufactureCrossbows": "弩",
+      "manufactureWarHorses": "軍馬",
+      "manufactureBatteringRams": "衝車",
+      "manufactureCatapults": "投石機",
+      "disasterRelief": "賑災（500金+1000糧）"
+    },
+    "action": {
+      "developCommerce": "商業開發",
+      "developAgriculture": "農業開發",
+      "reinforceDefense": "強化城防",
+      "floodControl": "治水",
+      "developTechnology": "技術開發",
+      "trainTroops": "訓練",
+      "manufactureCrossbows": "製造弩",
+      "manufactureWarHorses": "製造軍馬",
+      "manufactureBatteringRams": "製造衝車",
+      "manufactureCatapults": "製造投石機",
+      "disasterRelief": "賑災",
+      "draft1000": "徵兵 1000",
+      "draft5000": "徵兵 5000"
+    },
+    "military": {
+      "draft1000": "徵兵 1000",
+      "draft5000": "徵兵 5000",
+      "transport": "輸送",
+      "transportTo": "至 {{cityName}}",
+      "attack": "出征",
+      "attackCity": "出征 {{cityName}}"
+    },
+    "personnel": {
+      "search": "搜索",
+      "recruit": "招攬",
+      "handlePOW": "處置俘虜",
+      "recruitPOW": "登用 {{name}}",
+      "execute": "處斬",
+      "reward": "褒賞 (1000金)",
+      "officerLoyalty": "{{name}} (忠{{loyalty}})",
+      "appointTransfer": "任命 / 移動",
+      "appointGovernor": "太守",
+      "appointAdvisor": "軍師",
+      "transfer": "移動",
+      "dismiss": "追放"
+    },
+    "diplomacy": {
+      "hostility": "敵對: {{value}}",
+      "improveRelations": "贈呈",
+      "formAlliance": "結盟",
+      "breakAlliance": "破棄",
+      "jointAttack": "共同",
+      "ceasefire": "停戰",
+      "demandSurrender": "勸降",
+      "hostage": "人質"
+    },
+    "strategy": {
+      "rumor": "流言",
+      "arson": "放火",
+      "incite": "煽動",
+      "spy": "諜報",
+      "gatherIntel": "密偵",
+      "counterEspionage": "反間"
+    }
+  },
+  "formation": {
+    "title": "出征準備：{{cityName}}",
+    "selectPrompt": "選擇參戰武將（最多5人，體力需30以上）",
+    "officerStats": "統 {{leadership}} 武 {{war}} 智 {{intelligence}}",
+    "noOfficers": "城中無可用將領（體力不足或無人在城）。",
+    "garrisonTroops": "城內駐兵：{{count}}",
+    "allocatedRemaining": "出征：{{allocated}} / 餘：{{remaining}}",
+    "weaponsHeld": "持有武器：",
+    "warHorseCount": "軍馬: {{count}}",
+    "crossbowCount": "弩: {{count}}",
+    "confirmBattle": "確認出陣"
+  },
+  "unitType": {
+    "infantry": "步兵",
+    "cavalry": "騎兵",
+    "archer": "弓兵"
+  },
+  "transport": {
+    "title": "資源輸送：{{cityName}}",
+    "resourceType": "資源類型",
+    "goldOption": "金 (現有: {{amount}})",
+    "foodOption": "糧 (現有: {{amount}})",
+    "troopsOption": "兵 (現有: {{amount}})",
+    "amount": "輸送數量",
+    "confirm": "輸送"
+  },
+  "officer": {
+    "colName": "姓名",
+    "colLeadership": "統",
+    "colWar": "武",
+    "colIntelligence": "智",
+    "colPolitics": "政",
+    "colCharisma": "魅"
+  },
+  "victory": {
+    "title": "天下統一",
+    "congratulations": "恭喜 {{factionName}} 達成大業！",
+    "dateAndCities": "{{year}}年{{month}}月 · 統一 {{totalCities}} 座城池",
+    "flavorLine1": "歷經無數戰役，終於平定亂世。",
+    "flavorLine2": "您的英明領導將永載史冊，",
+    "flavorLine3": "成為後世傳頌的一代霸主！"
+  },
+  "defeat": {
+    "title": "勢力覆滅",
+    "noTerritory": "{{factionName}} 已無立足之地",
+    "dateAndFailure": "{{year}}年{{month}}月 · 霸業未成",
+    "flavorLine1": "戰場無情，勝敗乃兵家常事。",
+    "flavorLine2": "雖未達成霸業，但您的奮戰精神",
+    "flavorLine3": "已足以名留青史...",
+    "conqueror": "{{factionName}} 最終統一天下"
+  },
+  "save": {
+    "title": "儲存遊戲",
+    "loadTitle": "載入遊戲",
+    "saveSuccess": "已儲存至存檔 {{slot}}",
+    "saveFailed": "儲存失敗！",
+    "loadFailed": "載入失敗！",
+    "confirmDelete": "確定要刪除存檔 {{slot}} 嗎？",
+    "deleted": "存檔 {{slot}} 已刪除",
+    "emptySlot": "空存檔",
+    "slotLabel": "存檔 {{slot}}",
+    "delete": "刪除",
+    "currentProgress": "目前進度: {{year}}年{{month}}月 · {{factionName}}"
+  },
+  "event": {
+    "officerRecruited": "【登庸】{{name}} 答應了您的邀請，正式加入我軍！",
+    "recruitButton": "接見並招攬",
+    "declineButton": "婉拒"
+  },
+  "governor": {
+    "title": "任命太守",
+    "prompt": "{{cityName}} 目前沒有太守，請從以下武將中挑選一位擔任："
+  },
+  "ruler": {
+    "defaultName": "新君主",
+    "pointsExceeded": "能力點數總和不能超過 {{max}}！",
+    "noScenarioError": "未選擇劇本或劇本資料錯誤！",
+    "factionNameSuffix": "{{name}}勢力",
+    "title": "新君主登錄",
+    "nameLabel": "姓名",
+    "leadershipLabel": "統率 ({{value}})",
+    "warLabel": "武力 ({{value}})",
+    "intelligenceLabel": "智力 ({{value}})",
+    "politicsLabel": "政治 ({{value}})",
+    "charismaLabel": "魅力 ({{value}})",
+    "remainingPoints": "剩餘點數: {{points}}",
+    "startCity": "根據地",
+    "factionColor": "旗幟顏色",
+    "create": "建立君主"
+  },
+  "toolbar": {
+    "viewStatus": "查看全勢力",
+    "save": "儲存",
+    "load": "載入",
+    "settings": "設定",
+    "returnToTitle": "返回標題"
+  },
+  "minimap": {
+    "ariaLabel": "地圖縮圖"
+  }
+}

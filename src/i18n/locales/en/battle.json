@@ -1,0 +1,113 @@
+{
+  "weather": {
+    "sunny": "Clear",
+    "rain": "Rain",
+    "cloudy": "Cloudy",
+    "storm": "Storm"
+  },
+  "wind": {
+    "north": "N",
+    "northeast": "NE",
+    "southeast": "SE",
+    "south": "S",
+    "southwest": "SW",
+    "northwest": "NW"
+  },
+  "status": {
+    "active": "Ready",
+    "done": "Done",
+    "routed": "Routed",
+    "confused": "Confused"
+  },
+  "terrain": {
+    "plain": "Plain",
+    "forest": "Forest",
+    "mountain": "Mtn",
+    "river": "River",
+    "city": "City",
+    "gate": "Gate",
+    "bridge": "Bridge"
+  },
+  "unitType": {
+    "infantry": "Inf",
+    "cavalry": "Cav",
+    "archer": "Arc"
+  },
+  "log": {
+    "battleEnd": "Battle over! Winner: {{winnerName}}",
+    "title": "Battle Log"
+  },
+  "confirm": {
+    "retreat": "Are you sure you want to retreat? This counts as a defeat."
+  },
+  "header": {
+    "dayCounter": "Day {{day}} / {{maxDays}}",
+    "windDirection": "Wind: ",
+    "battleTitle": "{{attacker}} attacks {{city}}"
+  },
+  "action": {
+    "endTurn": "End Turn ({{count}} ready)",
+    "retreat": "Retreat",
+    "move": "Move",
+    "attack": "Attack",
+    "tactic": "Tactic",
+    "attackGate": "Attack Gate",
+    "duel": "Duel"
+  },
+  "mode": {
+    "movePrompt": "Select move target (blue area)",
+    "attackPrompt": "Select attack target (red markers)",
+    "tacticPrompt": "Select tactic target"
+  },
+  "enemyPhase": "Enemy phase...",
+  "roster": {
+    "playerSummary": "Allies: {{active}} ready / {{done}} done"
+  },
+  "side": {
+    "player": "Allies",
+    "enemy": "Enemy"
+  },
+  "unit": {
+    "troops": "Troops:",
+    "morale": "Morale:",
+    "status": "Status:",
+    "moved": "Moved",
+    "canMove": "Can Move"
+  },
+  "tactic": {
+    "successRate": "Success: {{rate}}%",
+    "none": "No tactics available"
+  },
+  "hint": {
+    "playerIdle": "Select an allied unit on the map to give orders, or press \"End Turn\" to end the day."
+  },
+  "result": {
+    "victory": "Victory!",
+    "defeat": "Defeat...",
+    "winner": "Winner: {{name}}",
+    "captured": "Captured: {{names}}",
+    "attackerRemaining": "Attacker remaining: {{count}}",
+    "defenderRemaining": "Defender remaining: {{count}}"
+  },
+  "map": {
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "resetView": "Reset View",
+    "centerOnActive": "Center on Active Unit"
+  },
+  "duel": {
+    "title": "Duel - Round {{round}}",
+    "playerFighter": "{{name}} (Ally)",
+    "enemyFighter": "{{name}} (Enemy)",
+    "warStat": "War: {{value}}",
+    "attack": "Attack",
+    "heavyAttack": "Heavy Attack",
+    "defend": "Defend",
+    "flee": "Flee",
+    "enemyTurn": "Enemy's turn...",
+    "resultWin": "Victory!",
+    "resultLose": "Defeat...",
+    "resultDraw": "Draw",
+    "resultFlee": "Duel Over"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "weather": {
+    "sunny": "晴",
+    "rain": "雨",
+    "cloudy": "陰",
+    "storm": "暴風"
+  },
+  "wind": {
+    "north": "↑北",
+    "northeast": "↗東北",
+    "southeast": "↘東南",
+    "south": "↓南",
+    "southwest": "↙西南",
+    "northwest": "↖西北"
+  },
+  "status": {
+    "active": "可行動",
+    "done": "已行動",
+    "routed": "潰走",
+    "confused": "混亂"
+  },
+  "terrain": {
+    "plain": "平",
+    "forest": "林",
+    "mountain": "山",
+    "river": "川",
+    "city": "城",
+    "gate": "門",
+    "bridge": "橋"
+  },
+  "unitType": {
+    "infantry": "步",
+    "cavalry": "騎",
+    "archer": "弓"
+  },
+  "log": {
+    "battleEnd": "戰鬥結束！勝利者：{{winnerName}}",
+    "title": "戰鬥記錄"
+  },
+  "confirm": {
+    "retreat": "確定要撤退嗎？撤退將判定為敗北。"
+  },
+  "header": {
+    "dayCounter": "第 {{day}} / {{maxDays}} 日",
+    "windDirection": "風向：",
+    "battleTitle": "{{attacker}} 攻打 {{city}}"
+  },
+  "action": {
+    "endTurn": "結束回合 ({{count}} 待命)",
+    "retreat": "撤退",
+    "move": "移動",
+    "attack": "攻擊",
+    "tactic": "計略",
+    "attackGate": "攻門",
+    "duel": "單挑"
+  },
+  "mode": {
+    "movePrompt": "選擇移動目標（藍色區域）",
+    "attackPrompt": "選擇攻擊目標（紅色標記）",
+    "tacticPrompt": "選擇計略目標"
+  },
+  "enemyPhase": "敵方行動中...",
+  "roster": {
+    "playerSummary": "我方：{{active}} 可行動 / {{done}} 已行動"
+  },
+  "side": {
+    "player": "我方",
+    "enemy": "敵方"
+  },
+  "unit": {
+    "troops": "兵力:",
+    "morale": "士氣:",
+    "status": "狀態:",
+    "moved": "已移動",
+    "canMove": "可移動"
+  },
+  "tactic": {
+    "successRate": "成功率: {{rate}}%",
+    "none": "無可用計略"
+  },
+  "hint": {
+    "playerIdle": "點選地圖上的我方武將來下達指令，或按「結束回合」結束本日行動。"
+  },
+  "result": {
+    "victory": "勝利！",
+    "defeat": "敗北...",
+    "winner": "勝方：{{name}}",
+    "captured": "俘虜：{{names}}",
+    "attackerRemaining": "攻方殘兵：{{count}}",
+    "defenderRemaining": "守方殘兵：{{count}}"
+  },
+  "map": {
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "resetView": "全覽",
+    "centerOnActive": "居中目前武將"
+  },
+  "duel": {
+    "title": "單挑 - 第 {{round}} 回合",
+    "playerFighter": "{{name}} (我方)",
+    "enemyFighter": "{{name}} (敵方)",
+    "warStat": "武力: {{value}}",
+    "attack": "普通攻擊",
+    "heavyAttack": "全力一擊",
+    "defend": "防禦",
+    "flee": "逃跑",
+    "enemyTurn": "敵方行動中...",
+    "resultWin": "勝利！",
+    "resultLose": "敗北...",
+    "resultDraw": "平局",
+    "resultFlee": "戰鬥結束"
+  }
+}
