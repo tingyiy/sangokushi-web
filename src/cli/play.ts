@@ -1206,6 +1206,8 @@ async function runInteractiveCampaign(factionId: number) {
 
     try {
       const turnEnded = handleCommand(input, factionId);
+      
+      // Force an immediate flush of the game log after every command
       flushGameLog();
 
       // After endTurn, show abbreviated status
