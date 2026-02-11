@@ -353,12 +353,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Phase 6.2: Salary definition
     const rankSalaries: Record<string, number> = {
-      '太守': 100,
-      '將軍': 80,
-      '都督': 80,
-      '軍師': 70,
-      '侍中': 60,
-      '一般': 30,
+      'governor': 100,
+      'general': 80,
+      'viceroy': 80,
+      'advisor': 70,
+      'attendant': 60,
+      'common': 30,
     };
 
     // 1. All faction income & Phase 6.7 Population/Tax
@@ -441,7 +441,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (candidates.length > 0) {
           // Heuristic: highest rank, then highest leadership + charisma
           const successor = candidates.reduce((prev, curr) => {
-            const rankOrder: Record<string, number> = { '太守': 6, '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
+            const rankOrder: Record<string, number> = { 'governor': 6, 'viceroy': 5, 'general': 4, 'advisor': 3, 'attendant': 2, 'common': 1 };
             const prevScore = (rankOrder[prev.rank] || 0) * 1000 + prev.leadership + prev.charisma;
             const currScore = (rankOrder[curr.rank] || 0) * 1000 + curr.leadership + curr.charisma;
             return currScore > prevScore ? curr : prev;
@@ -901,7 +901,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
-    if (!hasSkill(executor, '製造')) {
+    if (!hasSkill(executor, 'manufacture')) {
       get().addLog(`${executor.name} 不具備製造技能。`);
       return;
     }
@@ -1075,7 +1075,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     for (const officer of unaffiliated) {
       let chance = 30 + recruiter.charisma / 2;
-      if (hasSkill(recruiter, '人才')) chance += 15;
+      if (hasSkill(recruiter, 'talent')) chance += 15;
       if (Math.random() * 100 < chance) {
         foundOfficer = officer;
         found = true;
@@ -1700,11 +1700,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     let crossbowsAvailable = city.crossbows;
     let warHorsesAvailable = city.warHorses;
     const attackerUnitTypes: UnitType[] = attackerOfficers.map(o => {
-      if (hasSkill(o, '騎兵') && warHorsesAvailable >= 1000) {
+      if (hasSkill(o, 'cavalry') && warHorsesAvailable >= 1000) {
         warHorsesAvailable -= 1000;
         return 'cavalry';
       }
-      if (hasSkill(o, '弓兵') && crossbowsAvailable >= 1000) {
+      if (hasSkill(o, 'archery') && crossbowsAvailable >= 1000) {
         crossbowsAvailable -= 1000;
         return 'archer';
       }
@@ -1944,7 +1944,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     let successChance = 50 + messenger.politics / 5;
-    if (hasSkill(messenger, '外交')) successChance += 15;
+    if (hasSkill(messenger, 'diplomacy')) successChance += 15;
     const success = Math.random() * 100 < successChance;
 
     set({
@@ -2131,7 +2131,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
     // Phase 1.1: Check for 流言 skill
-    if (!hasSkill(messenger, '流言')) {
+    if (!hasSkill(messenger, 'rumor')) {
       get().addLog(`${messenger.name} 不具備流言技能，無法執行此計策。`);
       return;
     }
@@ -2202,7 +2202,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '做敵')) {
+    if (!hasSkill(messenger, 'provoke')) {
       get().addLog(`${messenger.name} 不具備做敵技能。`);
       return;
     }
@@ -2247,7 +2247,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '驅虎')) {
+    if (!hasSkill(messenger, 'tigerTrap')) {
       get().addLog(`${messenger.name} 不具備驅虎技能。`);
       return;
     }
@@ -2291,7 +2291,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '燒討')) {
+    if (!hasSkill(messenger, 'arson')) {
       get().addLog(`${messenger.name} 不具備燒討技能。`);
       return;
     }
@@ -2338,7 +2338,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '情報') && !hasSkill(messenger, '諜報')) {
+    if (!hasSkill(messenger, 'intelligence') && !hasSkill(messenger, 'espionage')) {
       get().addLog(`${messenger.name} 不具備諜報技能。`);
       return;
     }
@@ -2349,7 +2349,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const targetCity = state.cities.find(c => c.id === targetCityId);
     const result = spyingSystem.spy(
-      { intelligence: messenger.intelligence, espionage: hasSkill(messenger, '諜報') },
+      { intelligence: messenger.intelligence, espionage: hasSkill(messenger, 'espionage') },
       targetCityId,
       state.playerFaction!.id,
       targetCity?.factionId || null
@@ -2397,7 +2397,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '情報')) {
+    if (!hasSkill(messenger, 'intelligence')) {
       get().addLog(`${messenger.name} 不具備情報技能。`);
       return;
     }
@@ -2500,7 +2500,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     for (const officer of unaffiliated) {
       let chance = 30 + recruiter.charisma / 2;
-      if (hasSkill(recruiter, '人才')) chance += 15;
+      if (hasSkill(recruiter, 'talent')) chance += 15;
       if (Math.random() * 100 < chance) {
         foundOfficer = officer;
         found = true;
@@ -2525,12 +2525,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (messengers.length === 0) return;
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '情報') && !hasSkill(messenger, '諜報')) return;
+    if (!hasSkill(messenger, 'intelligence') && !hasSkill(messenger, 'espionage')) return;
     if (messenger.stamina < 15) return;
 
     const targetCity = state.cities.find(c => c.id === targetCityId);
     const result = spyingSystem.spy(
-      { intelligence: messenger.intelligence, espionage: hasSkill(messenger, '諜報') },
+      { intelligence: messenger.intelligence, espionage: hasSkill(messenger, 'espionage') },
       targetCityId,
       city.factionId!,
       targetCity?.factionId || null
@@ -2563,7 +2563,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (messengers.length === 0) return;
     const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
-    if (!hasSkill(messenger, '流言')) return;
+    if (!hasSkill(messenger, 'rumor')) return;
     if (messenger.stamina < 15) return;
 
     const targetCity = state.cities.find(c => c.id === targetCityId);
@@ -2766,7 +2766,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const remainingOfficers = updatedOfficers.filter(o => o.factionId === loserFactionId);
         if (remainingOfficers.length > 0) {
           // Pick successor: highest rank, then highest leadership + charisma
-          const rankOrder: Record<string, number> = { '太守': 6, '都督': 5, '將軍': 4, '軍師': 3, '侍中': 2, '一般': 1 };
+          const rankOrder: Record<string, number> = { 'governor': 6, 'viceroy': 5, 'general': 4, 'advisor': 3, 'attendant': 2, 'common': 1 };
           const successor = remainingOfficers.reduce((prev, curr) => {
             const prevScore = (rankOrder[prev.rank] || 0) * 1000 + prev.leadership + prev.charisma;
             const currScore = (rankOrder[curr.rank] || 0) * 1000 + curr.leadership + curr.charisma;

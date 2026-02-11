@@ -457,7 +457,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       get().addBattleLog(`${unit.officer.name} 施展「${tactic}」成功！`);
 
       switch (tactic) {
-        case '火計':
+        case 'firePlot':
           if (targetHex) {
             set(s => ({ fireHexes: [...s.fireHexes, { q: targetHex.q, r: targetHex.r, turnsLeft: 3 }] }));
             if (targetUnit) {
@@ -465,26 +465,26 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '混亂':
+        case 'confusion':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, status: 'confused' as const, confusedTurns: 2 } : u);
           }
           break;
-        case '罵聲':
+        case 'taunt':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, morale: Math.max(0, u.morale - 10) } : u);
           }
           break;
-        case '鼓舞':
+        case 'inspire':
           nextUnits = nextUnits.map(u => u.id === unitId ? { ...u, morale: Math.min(100, u.morale + 15) } : u);
           break;
-        case '伏兵':
+        case 'ambush':
           if (targetUnit) {
             const dmg = Math.floor(unit.troops * 0.2);
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 10, status: 'confused' as const } : u);
           }
           break;
-        case '同討':
+        case 'jointAttack':
           if (targetUnit) {
             const friend = nextUnits.find(u => u.factionId === targetUnit!.factionId && u.id !== targetUnit!.id);
             if (friend) {
@@ -493,18 +493,18 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '天變': {
+        case 'weatherChange': {
           const weathers = ['sunny', 'rain', 'cloudy', 'storm'] as const;
           set({ weather: weathers[Math.floor(Math.random() * 4)] });
           break;
         }
-        case '風變':
+        case 'windChange':
           set({ windDirection: Math.floor(Math.random() * 6) });
           break;
-        case '修復':
+        case 'repair':
           set(s => ({ gates: s.gates.map(g => ({ ...g, hp: Math.min(g.maxHp, g.hp + 500) })) }));
           break;
-        case '落石':
+        case 'rockfall':
           if (targetUnit) {
             let terr: TerrainType = 'plain';
             if (targetUnit.x >= 0 && targetUnit.x < state.battleMap.width && targetUnit.y >= 0 && targetUnit.y < state.battleMap.height) {
@@ -516,18 +516,18 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '連環':
+        case 'chainLink':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, chained: true, status: 'confused' as const, confusedTurns: 3 } : u);
           }
           break;
-        case '落雷':
+        case 'lightning':
           if (targetHex && targetUnit) {
             const dmg = Math.floor(targetUnit.troops * 0.5);
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 30 } : u);
           }
           break;
-        case '虛報':
+        case 'falseReport':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, status: 'confused' as const, confusedTurns: 3, morale: u.morale - 20 } : u);
           }

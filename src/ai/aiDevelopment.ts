@@ -83,7 +83,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
     }
     
     // Priority 6: Manufacture
-    if (city.gold >= 1500 && city.technology >= 50 && hasSkill(governor, '製造')) {
+    if (city.gold >= 1500 && city.technology >= 50 && hasSkill(governor, 'manufacture')) {
         const weapon = Math.random() > 0.5 ? 'crossbows' : 'warHorses';
         decisions.push({
             action: 'manufacture',

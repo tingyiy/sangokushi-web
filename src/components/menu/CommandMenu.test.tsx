@@ -30,7 +30,7 @@ describe('CommandMenu', () => {
         { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1], taxRate: 'medium' },
       ],
       officers: [
-        { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, stamina: 100, loyalty: 100, skills: ['製造'] },
+        { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, stamina: 100, loyalty: 100, skills: ['manufacture'] },
       ],
       factions: [
         { id: 1, name: '曹操', color: '#ff0000', relations: { 2: 60 }, allies: [] },
@@ -83,25 +83,25 @@ describe('CommandMenu', () => {
 
   it('renders categories', () => {
     render(<CommandMenu />);
-    expect(screen.getByText('內政')).toBeDefined();
-    expect(screen.getByText('軍事')).toBeDefined();
-    expect(screen.getByText('結束')).toBeDefined();
+    expect(screen.getByText('domestic')).toBeDefined();
+    expect(screen.getByText('military')).toBeDefined();
+    expect(screen.getByText('end')).toBeDefined();
   });
 
   it('switches categories', () => {
     render(<CommandMenu />);
-    fireEvent.click(screen.getByText('內政'));
-    expect(mockSetActiveCommandCategory).toHaveBeenCalledWith('內政');
+    fireEvent.click(screen.getByText('domestic'));
+    expect(mockSetActiveCommandCategory).toHaveBeenCalledWith('domestic');
   });
 
   it('renders actions when category is active', () => {
     (useGameStore as unknown as vi.Mock).mockReturnValue({
       ...(useGameStore as unknown as vi.Mock)(),
-      activeCommandCategory: '內政',
+      activeCommandCategory: 'domestic',
       selectedCityId: 1,
       cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2] }],
       playerFaction: { id: 1 },
-      officers: [{ id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, skills: ['製造'] }],
+      officers: [{ id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, skills: ['manufacture'] }],
       developCommerce: mockDevelopCommerce,
     });
     

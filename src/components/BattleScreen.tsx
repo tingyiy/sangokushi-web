@@ -14,7 +14,7 @@ const WEATHER_LABELS: Record<BattleWeather, string> = {
 const WIND_LABELS = ['↑北', '↗東北', '↘東南', '↓南', '↙西南', '↖西北'];
 
 const STATUS_LABELS: Record<string, string> = {
-  active: '可行動', done: '已行動', routed: '潰走', confused: '混亂'
+  active: '可行動', done: '已行動', routed: '潰走', confused: 'confusion'
 };
 
 const BattleScreen: React.FC = () => {

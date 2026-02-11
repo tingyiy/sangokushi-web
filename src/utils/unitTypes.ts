@@ -54,7 +54,7 @@ const TERRAIN_DEFAULT = 1.0;
 
 export function getAttackModifier(unitType: UnitType, terrain: TerrainType, officer: Officer): number {
   let mod = UNIT_TYPE_MODIFIERS[unitType].attackModifier[terrain] ?? TERRAIN_DEFAULT;
-  if (terrain === 'river' && hasSkill(officer, '海戰')) {
+  if (terrain === 'river' && hasSkill(officer, 'naval')) {
     mod *= 1.2;
   }
   return mod;
@@ -62,14 +62,14 @@ export function getAttackModifier(unitType: UnitType, terrain: TerrainType, offi
 
 export function getDefenseModifier(unitType: UnitType, terrain: TerrainType, officer: Officer): number {
   let mod = UNIT_TYPE_MODIFIERS[unitType].defenseModifier[terrain] ?? TERRAIN_DEFAULT;
-  if (terrain === 'river' && hasSkill(officer, '海戰')) {
+  if (terrain === 'river' && hasSkill(officer, 'naval')) {
     mod *= 1.2;
   }
   return mod;
 }
 
 export const BATTLE_TACTICS = [
-  '火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷', '修復', '罵聲', '虛報', '鼓舞', '伏兵'
+  'firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning', 'repair', 'taunt', 'falseReport', 'inspire', 'ambush'
 ] as const;
 
 export type BattleTactic = typeof BATTLE_TACTICS[number];
@@ -88,19 +88,19 @@ export function calculateTacticSuccess(
   targetIntelligence?: number
 ): number {
   const baseChance: Record<BattleTactic, number> = {
-    '火計': 30,
-    '落石': 25,
-    '同討': 20,
-    '天變': 35,
-    '風變': 35,
-    '混亂': 25,
-    '連環': 30,
-    '落雷': 15,
-    '修復': 40,
-    '罵聲': 45,
-    '虛報': 30,
-    '鼓舞': 40,
-    '伏兵': 25,
+    'firePlot': 30,
+    'rockfall': 25,
+    'jointAttack': 20,
+    'weatherChange': 35,
+    'windChange': 35,
+    'confusion': 25,
+    'chainLink': 30,
+    'lightning': 15,
+    'repair': 40,
+    'taunt': 45,
+    'falseReport': 30,
+    'inspire': 40,
+    'ambush': 25,
   };
 
   let chance = baseChance[tactic] + officerIntelligence / 2;

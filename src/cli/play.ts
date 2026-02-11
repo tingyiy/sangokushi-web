@@ -818,8 +818,8 @@ function handleCommand(input: string, factionId: number): boolean {
       const name = parts[1] || '';
       const officer = findOfficerByName(name, factionId);
       const rankMap: Record<string, string> = {
-        '一般': '一般', '侍中': '侍中', '軍師': '軍師', '將軍': '將軍', '都督': '都督', '太守': '太守',
-        general: '一般', attendant: '侍中', strategist: '軍師', commander: '將軍', viceroy: '都督', governor: '太守',
+        'common': 'common', 'attendant': 'attendant', 'advisor': 'advisor', 'general': 'general', 'viceroy': 'viceroy', 'governor': 'governor',
+        general: 'common', attendant: 'attendant', strategist: 'advisor', commander: 'general', viceroy: 'viceroy', governor: 'governor',
       };
       const rank = rankMap[(parts[2] || '').toLowerCase()] || rankMap[parts[2] || ''];
       if (!officer || !rank) { log('  Usage: promote <officer> <一般|侍中|軍師|將軍|都督>'); return false; }
@@ -918,11 +918,11 @@ function handleCommand(input: string, factionId: number): boolean {
         let crossbowsAvail = sourceCity.crossbows;
         let horsesAvail = sourceCity.warHorses;
         unitTypes = selectedOfficers.map(o => {
-          if (hasSkill(o, '騎兵') && horsesAvail >= 1000) {
+          if (hasSkill(o, 'cavalry') && horsesAvail >= 1000) {
             horsesAvail -= 1000;
             return 'cavalry';
           }
-          if (hasSkill(o, '弓兵') && crossbowsAvail >= 1000) {
+          if (hasSkill(o, 'archery') && crossbowsAvail >= 1000) {
             crossbowsAvail -= 1000;
             return 'archer';
           }

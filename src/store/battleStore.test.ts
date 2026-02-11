@@ -13,7 +13,7 @@ const mockOfficer: Officer = {
   intelligence: 95,
   politics: 94,
   charisma: 98,
-  skills: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷', '修復', '罵聲', '虛報', '鼓舞', '伏兵'] as RTK4Skill[],
+  skills: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning', 'repair', 'taunt', 'falseReport', 'inspire', 'ambush'] as RTK4Skill[],
   factionId: 1,
   cityId: 1,
   stamina: 100,
@@ -33,7 +33,7 @@ const mockEnemy: Officer = {
   intelligence: 85,
   politics: 82,
   charisma: 99,
-  skills: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷', '修復', '罵聲', '虛報', '鼓舞', '伏兵'] as RTK4Skill[],
+  skills: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning', 'repair', 'taunt', 'falseReport', 'inspire', 'ambush'] as RTK4Skill[],
   factionId: 2,
   cityId: 2,
   stamina: 100,
@@ -196,19 +196,19 @@ describe('Battle Store', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.01); // Force success
 
     // Fire
-    executeTactic(attacker.id, '火計', defender.id, { q: defender.x, r: defender.y });
+    executeTactic(attacker.id, 'firePlot', defender.id, { q: defender.x, r: defender.y });
     const state1 = useBattleStore.getState();
     expect(state1.fireHexes.length).toBe(1);
     const burntDefender = state1.units.find(u => u.id === defender.id);
     expect(burntDefender!.troops).toBeLessThan(5000);
 
     // Chaos
-    executeTactic(attacker.id, '混亂', defender.id);
+    executeTactic(attacker.id, 'confusion', defender.id);
     const confusedDefender = useBattleStore.getState().units.find(u => u.id === defender.id);
     expect(confusedDefender!.status).toBe('confused');
 
     // Ambush
-    executeTactic(attacker.id, '伏兵', defender.id);
+    executeTactic(attacker.id, 'ambush', defender.id);
     const ambushedDefender = useBattleStore.getState().units.find(u => u.id === defender.id);
     expect(ambushedDefender!.troops).toBeLessThan(burntDefender!.troops);
     expect(ambushedDefender!.status).toBe('confused');
@@ -218,7 +218,7 @@ describe('Battle Store', () => {
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy, ally]);
     const defender2 = useBattleStore.getState().units[2];
     
-    executeTactic(attacker.id, '同討', defender.id);
+    executeTactic(attacker.id, 'jointAttack', defender.id);
     // Logic: target attacks friend. 
     // defender attacks defender2
     const betrayedAlly = useBattleStore.getState().units.find(u => u.id === defender2.id);
