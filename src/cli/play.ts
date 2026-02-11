@@ -22,6 +22,7 @@ import { getMovementRange, getAttackRange } from '../utils/unitTypes';
 import { hasSkill } from '../utils/skills';
 import { audioSystem } from '../systems/audio';
 import type { BattleUnit } from '../types/battle';
+import i18next from 'i18next';
 import type { City } from '../types';
 
 // Disable audio in CLI mode
@@ -291,7 +292,7 @@ function runBattle(): { winner: string; winnerFactionId: number | null; log: str
 
   if (result.isFinished && winnerFactionId !== null) {
     const loserFactionId = winnerFactionId === result.attackerId ? result.defenderId : result.attackerId;
-    game.getState().addLog(`戰鬥結束！勝利者：${winnerName}`);
+    game.getState().addLog(i18next.t('logs:ai.battleEnd', { winner: winnerName }));
 
     const battleUnitsData = result.units.map(u => ({
       officerId: u.officerId,

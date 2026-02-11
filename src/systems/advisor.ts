@@ -1,4 +1,6 @@
 import type { GameState } from '../store/gameStore';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * Advisor System - Phase 6.1
@@ -17,21 +19,22 @@ export function getAdvisorSuggestions(state: GameState): string[] {
   // 1. Check for weak city development
   const playerCities = cities.filter(c => c.factionId === playerFaction.id);
   playerCities.forEach(city => {
+    const cityName = localizedName(city.name);
     // low gold / high potential
     if (city.gold < 1000 && city.commerce < 500 && quality > 60) {
-      suggestions.push(`${city.name} 的金錢不足，應當開發商業以增加收入。`);
+      suggestions.push(i18next.t('logs:advisor.lowGold', { city: cityName }));
     }
     // low food
     if (city.food < 3000 && city.agriculture < 500 && quality > 60) {
-      suggestions.push(`${city.name} 的糧草儲備堪憂，建議加強農業開發。`);
+      suggestions.push(i18next.t('logs:advisor.lowFood', { city: cityName }));
     }
     // low troops
     if (city.troops < 3000 && quality > 50) {
-      suggestions.push(`${city.name} 兵力薄弱，容易成為敵軍目標，建議徵兵。`);
+      suggestions.push(i18next.t('logs:advisor.lowTroops', { city: cityName }));
     }
     // low training
     if (city.troops > 5000 && city.training < 50 && quality > 65) {
-      suggestions.push(`${city.name} 的部隊缺乏訓練，戰鬥力不足，應加強訓練。`);
+      suggestions.push(i18next.t('logs:advisor.lowTraining', { city: cityName }));
     }
   });
 
@@ -40,7 +43,7 @@ export function getAdvisorSuggestions(state: GameState): string[] {
   playerOfficers.forEach(officer => {
     if (officer.loyalty < 70 && officer.id !== playerFaction.rulerId) {
       if (quality > 70) {
-        suggestions.push(`${officer.name} 忠誠度僅為 ${officer.loyalty}，應立即褒賞以防叛變！`);
+        suggestions.push(i18next.t('logs:advisor.lowLoyalty', { officer: localizedName(officer.name), loyalty: officer.loyalty }));
       }
     }
   });

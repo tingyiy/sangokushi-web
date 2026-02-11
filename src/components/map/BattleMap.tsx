@@ -5,6 +5,7 @@ import { hexToPixel, getDistance } from '../../utils/hex';
 import { getMoveRange } from '../../utils/pathfinding';
 import { getMovementRange, getAttackRange, getUnitTypeLabel } from '../../utils/unitTypes';
 import type { TerrainType } from '../../types/battle';
+import { localizedName } from '../../i18n/dataNames';
 
 const HEX_SIZE = 32;
 
@@ -302,7 +303,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
               strokeWidth={unit.status === 'confused' ? 2 : 0}
             />
             <text textAnchor="middle" dy="-.2em" fill="white" fontSize="10" fontWeight="bold" pointerEvents="none">
-              {unit.officer.name.substring(0, 2)}
+              {localizedName(unit.officer.name).substring(0, 3)}
             </text>
             <text textAnchor="middle" dy="1em" fill="white" fontSize="8" pointerEvents="none">
               {getUnitTypeLabel(unit.type)}

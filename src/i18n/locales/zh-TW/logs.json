@@ -152,7 +152,70 @@
     "powRecruitSuccess": "{{faction}} 成功勸降了戰俘 {{officer}}。",
     "searchFound": "{{recruiter}} 在 {{city}} 發現了在野武將 {{officer}}。",
     "espionageAction": "{{faction}} 對 {{city}} 進行了諜報活動。",
-    "rumorAction": "{{faction}} 在 {{city}} 散佈了流言。"
+    "rumorAction": "{{faction}} 在 {{city}} 散佈了流言。",
+    "rewardOfficer": "主公賜予 {{officer}} 獎金以安撫其心。",
+    "recruitFree": "{{city}}：嘗試登庸在野武將 {{officer}}。",
+    "recruitPOW": "{{city}}：嘗試登庸戰俘 {{officer}}。",
+    "searchOfficer": "{{city}}：派遣武將在城內搜索人才。",
+    "appointGovernor": "{{city}}：任命 {{officer}} 為太守。",
+    "disasterRelief": "{{city}}：進行賑災以安撫民心。",
+    "developFlood": "{{city}}：進行治水工程。",
+    "reinforceDefense": "{{city}}：加強城防。",
+    "developCommerce": "{{city}}：開發商業。",
+    "developAgriculture": "{{city}}：開發農業。",
+    "developTech": "{{city}}：提升技術水平。",
+    "manufacture": "{{city}}：製造{{weapon}}。",
+    "draftTroops": "{{city}}：徵兵 2000 以加強防禦。",
+    "trainTroops": "{{city}}：進行軍事訓練。",
+    "attack": "{{city}} 向 {{target}} 發動了攻勢！",
+    "transport": "{{city}}：向 {{target}} 輸送增援部隊。",
+    "spy": "{{city}}：派人潛入 {{target}} 刺探情報。",
+    "rumor": "{{city}}：在 {{target}} 散布流言以動搖民心。",
+    "improveRelations": "{{faction}} 派遣使者向 {{other}} 示好。",
+    "formAlliance": "{{faction}} 提議與 {{other}} 締結同盟。",
+    "battleEnd": "戰鬥結束！勝利者：{{winner}}",
+    "weaponCrossbows": "弩",
+    "weaponWarHorses": "軍馬"
+  },
+  "event": {
+    "flood": {
+      "name": "洪水",
+      "description": "{{city}} 發生了大規模洪水，人口與物資受到損失。"
+    },
+    "locusts": {
+      "name": "蝗災",
+      "description": "{{city}} 遭到蝗蟲襲擊，糧草損失慘重。"
+    },
+    "plague": {
+      "name": "瘟疫",
+      "description": "{{city}} 爆發了瘟疫，人口與兵力減少。"
+    },
+    "harvest": {
+      "name": "豐收",
+      "description": "{{city}} 今年獲得了大豐收，糧草收入增加！"
+    },
+    "officerVisit": {
+      "name": "武將求見",
+      "description": "{{officer}} 來到了 {{city}} 求見主公，是否接見？"
+    },
+    "chibi": {
+      "name": "赤壁之戰",
+      "description": "曹操統一北方後大舉南下，欲一舉平定江東。孫權、劉備組成聯軍，在赤壁以火攻大破曹軍。",
+      "effects": "曹操勢力部隊大損，孫劉聯盟聲勢大振！"
+    },
+    "caocaoDeath": {
+      "name": "曹操歸天",
+      "description": "一代梟雄曹操在洛陽病逝，其次子曹丕繼位魏王。",
+      "effects": "曹操逝世，由曹丕繼任其位。"
+    },
+    "effectsLabel": "效果：{{effects}}"
+  },
+  "advisor": {
+    "lowGold": "{{city}} 的金錢不足，應當開發商業以增加收入。",
+    "lowFood": "{{city}} 的糧草儲備堪憂，建議加強農業開發。",
+    "lowTroops": "{{city}} 兵力薄弱，容易成為敵軍目標，建議徵兵。",
+    "lowTraining": "{{city}} 的部隊缺乏訓練，戰鬥力不足，應加強訓練。",
+    "lowLoyalty": "{{officer}} 忠誠度僅為 {{loyalty}}，應立即褒賞以防叛變！"
   },
   "common": {
     "comma": "、",

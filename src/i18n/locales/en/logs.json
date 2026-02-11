@@ -152,7 +152,70 @@
     "powRecruitSuccess": "{{faction}} convinced POW {{officer}} to join.",
     "searchFound": "{{recruiter}} discovered unaffiliated officer {{officer}} in {{city}}.",
     "espionageAction": "{{faction}} conducted espionage on {{city}}.",
-    "rumorAction": "{{faction}} spread rumors in {{city}}."
+    "rumorAction": "{{faction}} spread rumors in {{city}}.",
+    "rewardOfficer": "The ruler rewarded {{officer}} to secure their loyalty.",
+    "recruitFree": "{{city}}: Attempted to recruit unaffiliated officer {{officer}}.",
+    "recruitPOW": "{{city}}: Attempted to recruit POW {{officer}}.",
+    "searchOfficer": "{{city}}: Dispatched officers to search for talent.",
+    "appointGovernor": "{{city}}: Appointed {{officer}} as governor.",
+    "disasterRelief": "{{city}}: Provided disaster relief to restore morale.",
+    "developFlood": "{{city}}: Carried out flood control works.",
+    "reinforceDefense": "{{city}}: Reinforced city defenses.",
+    "developCommerce": "{{city}}: Developed commerce.",
+    "developAgriculture": "{{city}}: Developed agriculture.",
+    "developTech": "{{city}}: Improved technology.",
+    "manufacture": "{{city}}: Manufactured {{weapon}}.",
+    "draftTroops": "{{city}}: Drafted 2000 troops to strengthen defenses.",
+    "trainTroops": "{{city}}: Conducted military training.",
+    "attack": "{{city}} launched an attack on {{target}}!",
+    "transport": "{{city}}: Sent reinforcements to {{target}}.",
+    "spy": "{{city}}: Infiltrated {{target}} to gather intelligence.",
+    "rumor": "{{city}}: Spread rumors in {{target}} to undermine morale.",
+    "improveRelations": "{{faction}} sent an envoy to {{other}} as a gesture of goodwill.",
+    "formAlliance": "{{faction}} proposed an alliance with {{other}}.",
+    "battleEnd": "Battle ended! Victor: {{winner}}",
+    "weaponCrossbows": "crossbows",
+    "weaponWarHorses": "war horses"
+  },
+  "event": {
+    "flood": {
+      "name": "Flood",
+      "description": "A devastating flood struck {{city}}, causing loss of population and supplies."
+    },
+    "locusts": {
+      "name": "Locust Plague",
+      "description": "{{city}} was ravaged by locusts, causing severe food losses."
+    },
+    "plague": {
+      "name": "Plague",
+      "description": "A plague broke out in {{city}}, reducing population and troops."
+    },
+    "harvest": {
+      "name": "Bountiful Harvest",
+      "description": "{{city}} enjoyed a bountiful harvest this year, increasing food reserves!"
+    },
+    "officerVisit": {
+      "name": "Officer Seeks Audience",
+      "description": "{{officer}} has come to {{city}} seeking an audience with the lord. Will you receive them?"
+    },
+    "chibi": {
+      "name": "Battle of Red Cliffs",
+      "description": "After unifying the north, Cao Cao leads a great army south to conquer Jiangdong. Sun Quan and Liu Bei form an alliance and defeat Cao Cao's forces with a devastating fire attack at Red Cliffs.",
+      "effects": "Cao Cao's forces suffer heavy losses. The Sun-Liu alliance rises in power!"
+    },
+    "caocaoDeath": {
+      "name": "Death of Cao Cao",
+      "description": "The great hero Cao Cao passes away from illness in Luoyang. His second son Cao Pi succeeds him as King of Wei.",
+      "effects": "Cao Cao has passed away. Cao Pi succeeds as ruler."
+    },
+    "effectsLabel": "Effects: {{effects}}"
+  },
+  "advisor": {
+    "lowGold": "{{city}} is low on gold. Commerce development is recommended to increase revenue.",
+    "lowFood": "{{city}}'s food reserves are concerning. Agricultural development is advised.",
+    "lowTroops": "{{city}} has weak defenses and could be an easy target. Troop conscription is recommended.",
+    "lowTraining": "{{city}}'s troops are poorly trained and lack combat effectiveness. Training is recommended.",
+    "lowLoyalty": "{{officer}}'s loyalty is only {{loyalty}}. Immediate rewards are advised to prevent defection!"
   },
   "common": {
     "comma": ", ",

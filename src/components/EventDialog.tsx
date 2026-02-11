@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * EventDialog Component - Phase 6.4
@@ -23,7 +24,7 @@ export function EventDialog() {
             : o
         )
       }));
-      useGameStore.getState().addLog(t('event.officerRecruited', { name: officers.find(o => o.id === event.officerId)?.name }));
+      useGameStore.getState().addLog(t('event.officerRecruited', { name: localizedName(officers.find(o => o.id === event.officerId)?.name ?? '') }));
     }
     popEvent();
   };

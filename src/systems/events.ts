@@ -1,5 +1,7 @@
 import type { City, Officer, GameEvent } from '../types';
 import type { GameState } from '../store/gameStore';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * Random Events System - Phase 6.4
@@ -19,8 +21,8 @@ export function rollRandomEvents(state: GameState): GameEvent[] {
       events.push({
         id: `flood-${city.id}-${year}-${month}`,
         type: 'flood',
-        name: '洪水',
-        description: `${city.name} 發生了大規模洪水，人口與物資受到損失。`,
+        name: i18next.t('logs:event.flood.name'),
+        description: i18next.t('logs:event.flood.description', { city: localizedName(city.name) }),
         cityId: city.id,
         year,
         month
@@ -31,8 +33,8 @@ export function rollRandomEvents(state: GameState): GameEvent[] {
       events.push({
         id: `locusts-${city.id}-${year}-${month}`,
         type: 'locusts',
-        name: '蝗災',
-        description: `${city.name} 遭到蝗蟲襲擊，糧草損失慘重。`,
+        name: i18next.t('logs:event.locusts.name'),
+        description: i18next.t('logs:event.locusts.description', { city: localizedName(city.name) }),
         cityId: city.id,
         year,
         month
@@ -43,8 +45,8 @@ export function rollRandomEvents(state: GameState): GameEvent[] {
       events.push({
         id: `plague-${city.id}-${year}-${month}`,
         type: 'plague',
-        name: '瘟疫',
-        description: `${city.name} 爆發了瘟疫，人口與兵力減少。`,
+        name: i18next.t('logs:event.plague.name'),
+        description: i18next.t('logs:event.plague.description', { city: localizedName(city.name) }),
         cityId: city.id,
         year,
         month
@@ -55,8 +57,8 @@ export function rollRandomEvents(state: GameState): GameEvent[] {
       events.push({
         id: `harvest-${city.id}-${year}-${month}`,
         type: 'harvest',
-        name: '豐收',
-        description: `${city.name} 今年獲得了大豐收，糧草收入增加！`,
+        name: i18next.t('logs:event.harvest.name'),
+        description: i18next.t('logs:event.harvest.description', { city: localizedName(city.name) }),
         cityId: city.id,
         year,
         month
@@ -89,8 +91,8 @@ export function rollOfficerVisits(state: GameState): GameEvent[] {
         events.push({
           id: `visit-${officer.id}-${year}-${month}`,
           type: 'officerVisit',
-          name: '武將求見',
-          description: `${officer.name} 來到了 ${city.name} 求見主公，是否接見？`,
+          name: i18next.t('logs:event.officerVisit.name'),
+          description: i18next.t('logs:event.officerVisit.description', { officer: localizedName(officer.name), city: localizedName(city.name) }),
           cityId: city.id,
           officerId: officer.id,
           year,
