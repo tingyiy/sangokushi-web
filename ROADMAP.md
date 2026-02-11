@@ -2,111 +2,27 @@
 
 ---
 
+## RTK IV Gap Analysis
+
+We cover 5 of RTK IV's 7 command categories. Two entire systems are missing: **商人 (Merchant)** — a trading economy with seasonal price fluctuation, and **助言 (Advisor)** — interactive counsel where the player asks their advisor for strategic recommendations before acting. Additionally, RTK IV features **旅人 (Travelers)** — 8 wandering NPCs who teach skills and give treasures, **埋伏 (Plant Spy)** — a mole infiltration system where officers defect to spy and betray in battle, and **異民族 (Barbarian Invasions)** — four border tribes that raid cities. None of these exist in our codebase.
+
+See [plans/rtk4-gap-analysis.md](plans/rtk4-gap-analysis.md) for the full comparison table, implementation plans, effort estimates, and phased rollout order.
+
+---
+
 ## Internationalization (i18n)
 
-Currently all text is hardcoded in Traditional Chinese (繁體中文). Target: support English and Japanese as additional languages.
+Currently all text is hardcoded in Traditional Chinese (繁體中文). Target: support English and Japanese. ~1,100 translatable strings across UI components, store logs, CLI text, and game data. Key challenge: type literals (`'內政' | '軍事'`) used as both discriminators and display text must be decoupled into English keys. Officer/city English names already exist in data files (`name_en` fields).
 
-### Scope (~1,100 translatable strings)
+See [plans/i18n.md](plans/i18n.md) for scope audit, 6 implementation phases, stack recommendation (`react-i18next`), and before/after code examples.
 
-| Category | Location | Count | Templated? | Difficulty |
-|---|---|---|---|---|
-| UI Components | 22 `.tsx` files | ~200 | ~40% | Medium |
-| Game Store Logs | `gameStore.ts` `addLog()` | ~100 | ~90% | High |
-| Battle Store Logs | `battleStore.ts` `addBattleLog()` | ~14 | 100% | Medium |
-| CLI Text | `cli/play.ts` | ~150 | ~80% | Medium (low priority) |
-| Game Data (names) | `data/*.ts`, `systems/*.ts` | ~580 | ~10% | High (proper nouns) |
-| Type Definitions | `types/index.ts` | ~35 | 0% | High (refactor needed) |
-| Debug API | `debug/rtk-api.ts` | ~20 | ~70% | Low priority |
+---
 
-### Key Challenges
+## Map Overhaul
 
-1. **Template literals with interpolation** — Most log messages use `` `${officer.name} 商業發展 +${bonus}（花費 500 金）` ``. Word order differs across languages; need ICU MessageFormat or i18next interpolation.
+The current map (`ChinaMap.tsx`, 730 lines) is a single static SVG with flat gradient fills. RTK IV's original maps are pixel-art masterpieces with 4 seasonal variants — spring blossoms, summer green, autumn gold, winter snow. We want to replicate this aesthetic with seasonal palette switching, terrain detail, and castle-style city markers.
 
-2. **Type literals as display values** — `CommandCategory` (`'內政' | '軍事'`...) and `OfficerRank` (`'太守' | '將軍'`...) are used both as type discriminators AND rendered text. Must decouple into English keys + translation lookup.
-
-3. **Proper nouns** — Officer names (曹操), city names (洛陽), skill names (火計), treasure names (方天畫戟) are historical terms with established romanized forms. Decision: translate city names and game terms; offer romanization for officer names (Cao Cao) but keep Chinese as default.
-
-4. **Store logs called outside React** — `gameStore.ts` and `battleStore.ts` are plain Zustand stores used by both browser and CLI. i18next works standalone in Node.js, so `i18next.t()` can be called directly in store actions.
-
-### Recommended Stack
-
-**`react-i18next` + `i18next`** — React `useTranslation()` hook for components, standalone `i18next.t()` for stores and CLI. Supports namespaces, interpolation, plurals.
-
-### File Structure
-
-```
-src/i18n/
-  index.ts              # i18next init config, language detection
-  locales/
-    zh-TW/
-      ui.json           # UI component strings (~200)
-      logs.json         # Store log messages (~114)
-      data.json         # Officer names, city names, skills, treasures (~580)
-      battle.json       # Battle UI and battle log strings
-    en/
-      ui.json
-      logs.json
-      data.json
-      battle.json
-    ja/
-      ...
-```
-
-### Implementation Phases
-
-**Phase 1: Foundation (1-2 days)**
-- Install `react-i18next` + `i18next`
-- Create `src/i18n/index.ts` with config, `zh-TW` as default locale
-- Extract current Chinese strings into `zh-TW/*.json` namespace files
-- Wire `<I18nextProvider>` in `App.tsx`
-- Zero user-visible change — all strings come from `zh-TW` files
-
-**Phase 2: Decouple Type Literals (1 day)**
-- Refactor `CommandCategory` from `'內政' | '軍事'` to `'domestic' | 'military' | ...`
-- Refactor `OfficerRank` from `'太守' | '將軍'` to `'governor' | 'general' | ...`
-- Refactor `RTK4_SKILLS` array to English keys
-- Add translation lookup maps; update all store comparisons and component renders
-- This is the riskiest step — touches types, stores, and components
-
-**Phase 3: UI Components (2-3 days)**
-- Replace hardcoded strings in all 22 `.tsx` files with `t()` calls
-- Handle interpolated strings: `t('develop.commerce', { city, bonus, cost })`
-- Add language switcher in settings menu
-- Bulk of the mechanical work
-
-**Phase 4: Store Logs (1-2 days)**
-- Replace all `addLog()` template literals in `gameStore.ts` with `i18next.t()` calls
-- Replace all `addBattleLog()` in `battleStore.ts`
-- Pass interpolation values as objects instead of embedding in template strings
-
-**Phase 5: Game Data (1-2 days)**
-- Create English name tables for officers (450), cities (43), factions, skills (27), treasures (24)
-- Decide: translate officer names to romanized (Cao Cao) or keep Chinese with tooltip
-- Scenario names, descriptions, historical event text
-
-**Phase 6: CLI (1 day, optional)**
-- Extract help text and display strings to translation files
-- CLI could default to English, use `--lang zh-TW` to switch
-
-### Example: Before/After
-
-```typescript
-// BEFORE (gameStore.ts)
-get().addLog(`${city.name}：${executor.name} 商業發展 +${bonus}（花費 500 金，體力 -20）`);
-
-// AFTER
-get().addLog(i18next.t('logs:commerce.develop', {
-  city: t('data:city.' + city.id),
-  officer: t('data:officer.' + executor.id),
-  bonus, cost: 500, stamina: 20,
-}));
-
-// en/logs.json
-{ "commerce.develop": "{{city}}: {{officer}} developed commerce +{{bonus}} (cost {{cost}} gold, stamina -{{stamina}})" }
-
-// zh-TW/logs.json
-{ "commerce.develop": "{{city}}：{{officer}} 商業發展 +{{bonus}}（花費 {{cost}} 金，體力 -{{stamina}}）" }
-```
+See [plans/map-overhaul.md](plans/map-overhaul.md) for the reference screenshots, 3 implementation approaches (SVG layers recommended), and phased plan.
 
 ---
 
