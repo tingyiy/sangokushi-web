@@ -222,22 +222,31 @@ Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / 
 - `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
 - `src/data/scenarios.ts` - Scenario definitions
 - `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
-- `src/i18n/index.ts` - i18next config, language detection
-- `src/i18n/locales/{zh-TW,en}/` - Translation files (ui.json, data.json, battle.json)
+- `src/i18n/index.ts` - i18next config, browser language detection
+- `src/i18n/dataNames.ts` - `localizedName()` helper for officer/city/faction name translation
+- `src/i18n/cli.ts` - CLI-specific i18n init (Node.js, no browser detector)
+- `src/i18n/locales/{zh-TW,en}/` - Translation files (ui.json, data.json, battle.json, logs.json, cli.json)
+- `src/store/i18n-logs.test.ts` - Regression tests ensuring no Chinese leaks into English UI
 
 ### Internationalization (i18n)
 
-**Stack:** `react-i18next` + `i18next`. Default locale: `zh-TW`.
+**Stack:** `react-i18next` + `i18next` + `i18next-browser-languagedetector`. Default locale: `zh-TW`.
+
+**Language Detection:** Browser language is auto-detected on first visit. Detection order: `localStorage` → `navigator` → fallback (`zh-TW`). Supported languages: `zh-TW`, `en`. User can override via the language switcher in `GameSettingsScreen.tsx`.
 
 **Type literals use English keys** (decoupled from display text):
 - `RTK4Skill`: `'firePlot' | 'confusion' | 'diplomacy' | ...` (27 skills)
 - `OfficerRank`: `'governor' | 'general' | 'advisor' | ...` (6 ranks)
 - `CommandCategory`: `'domestic' | 'military' | ...` (6 categories)
 
-**Namespaces:**
+**Namespaces (5):**
 - `ui` (default): General UI strings — titles, labels, commands, settings
-- `data`: Display names for skills, ranks, categories, weapons
+- `data`: Display names for skills, ranks, categories, weapons, officer/city/faction names
 - `battle`: Battle-specific strings — weather, terrain, status, duel, tactics
+- `logs`: Store log messages, AI descriptions, event messages, advisor suggestions
+- `cli`: CLI-specific strings (Phase 6 — not yet populated)
+
+**Locale files:** `src/i18n/locales/{zh-TW,en}/{ui,data,battle,logs,cli}.json`
 
 **Usage in components:**
 ```typescript
@@ -255,10 +264,27 @@ t('header.dateLabel', { year: 189, month: 1 }) // → "189年 1月" / "1 / 189"
 **Usage in stores/utilities (outside React):**
 ```typescript
 import i18next from 'i18next';
+i18next.t('logs:battle.attack', { attacker: name, defender: target })
 i18next.t('battle:unitType.infantry') // → "步" / "Inf"
 ```
 
+**Officer/City/Faction name localization:**
+```typescript
+import { localizedName } from '../i18n/dataNames';
+localizedName('曹操')    // → "Cao Cao" (en) / "曹操" (zh-TW)
+localizedName('鄴')      // → "Ye" (en) / "鄴" (zh-TW)
+```
+The `localizedName()` helper in `src/i18n/dataNames.ts` looks up English translations from the `data` namespace. Use it for ALL officer, city, and faction names displayed in UI or logs.
+
 **Language switcher:** In `GameSettingsScreen.tsx` — toggle between 繁體中文 and English.
+
+**i18n Conventions (IMPORTANT for new code):**
+- All new UI strings MUST use `t()` calls, never hardcoded Chinese
+- All new log messages MUST use `i18next.t('logs:...')`, never inline Chinese
+- All officer/city/faction names MUST use `localizedName()` for display
+- Add keys to BOTH `zh-TW` and `en` locale files when adding new strings
+- Test setup (`src/test/setup.ts`) forces `zh-TW` so existing tests expecting Chinese continue to pass
+- Regression tests in `src/store/i18n-logs.test.ts` scan source files for Chinese leaks — run `npm test` to catch violations
 
 ### Headless / CLI
 
@@ -341,9 +367,10 @@ The CLI (`src/cli/play.ts`, ~1470 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 316 tests across 27 test files
+- Current test suite: 329 tests across 28 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
+- i18n regression tests: `src/store/i18n-logs.test.ts` (13 tests scanning for Chinese leaks)
 
 ---
 
