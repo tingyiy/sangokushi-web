@@ -101,7 +101,7 @@ src/
 
 - [AGENTS.md](./AGENTS.md) -- Guidelines for AI coding assistants / AI 程式助手指引
 - [GEMINI.md](./GEMINI.md) -- Project overview for Gemini / 專案概述（Gemini 用）
-- [AutomationAPI.md](./AutomationAPI.md) -- Client-side game automation API / 客戶端遊戲自動化 API
+- [BrowserAPI.md](./BrowserAPI.md) -- Client-side game automation API (`window.rtk`) / 客戶端遊戲自動化 API
 
 ## License / 授權聲明
 

@@ -232,7 +232,7 @@ describe('gameStore - Stamina Consumption System', () => {
 
       const updatedCity = useGameStore.getState().cities.find(c => c.id === 1);
       expect(updatedCity?.commerce).toBe(initialCommerce);
-      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無太守'));
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('城中無武將'));
     });
   });
 

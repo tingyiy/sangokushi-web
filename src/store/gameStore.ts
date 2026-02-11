@@ -10,6 +10,22 @@ import { getAdvisorSuggestions } from '../systems/advisor';
 import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from '../systems/events';
 import { checkHistoricalEvents } from '../data/historicalEvents';
 
+/**
+ * Auto-assign the best available officer as governor for a city that has none.
+ * Mutates the officers array in-place and returns the promoted officer (or null).
+ */
+function autoAssignGovernorInPlace(officers: Officer[], cityId: number, factionId: number): Officer | null {
+  const hasGov = officers.some(o => o.cityId === cityId && o.factionId === factionId && o.isGovernor);
+  if (hasGov) return null;
+  const candidates = officers
+    .filter(o => o.cityId === cityId && o.factionId === factionId)
+    .sort((a, b) => (b.politics + b.leadership) - (a.politics + a.leadership));
+  if (candidates.length === 0) return null;
+  const idx = officers.findIndex(o => o.id === candidates[0].id);
+  officers[idx] = { ...officers[idx], isGovernor: true };
+  return officers[idx];
+}
+
 /** Compute which map edge the attacker approaches from based on city coordinates */
 function getAttackDirection(fromCity: City, toCity: City): 'north' | 'south' | 'east' | 'west' {
   const dx = fromCity.x - toCity.x; // positive = attacker is east of target
@@ -498,17 +514,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       suggestions.forEach(s => get().addLog(`【軍師】${s}`));
     }
 
-    // Phase 7.9: Check for missing governors in player cities
-    let pendingGovCityId = null;
+    // Phase 7.9: Auto-assign governors for all player cities missing one
     if (state.playerFaction) {
       const playerCities = finalCities.filter(c => c.factionId === state.playerFaction?.id);
-      const cityWithoutGov = playerCities.find(c => {
-        const hasGov = finalOfficers.some(o => o.cityId === c.id && o.factionId === state.playerFaction?.id && o.isGovernor);
-        const hasAnyOfficer = finalOfficers.some(o => o.cityId === c.id && o.factionId === state.playerFaction?.id);
-        return !hasGov && hasAnyOfficer;
-      });
-      if (cityWithoutGov) {
-        pendingGovCityId = cityWithoutGov.id;
+      for (const pc of playerCities) {
+        autoAssignGovernorInPlace(finalOfficers, pc.id, state.playerFaction.id);
       }
     }
 
@@ -524,7 +534,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           return true;
         })
       })),
-      pendingGovernorAssignmentCityId: pendingGovCityId,
+      pendingGovernorAssignmentCityId: null,
       pendingEvents: allEvents
     });
   },
@@ -660,10 +670,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 20) {
@@ -695,10 +706,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 20) {
@@ -730,10 +742,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 20) {
@@ -764,10 +777,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 20) {
@@ -799,10 +813,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 25) {
@@ -838,10 +853,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 20) {
@@ -878,10 +894,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (!hasSkill(executor, '製造')) {
@@ -937,10 +954,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 15) {
@@ -1180,8 +1198,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   appointGovernor: (cityId, officerId) => {
     const state = get();
     const appointee = state.officers.find(o => o.id === officerId);
-    if (!appointee || appointee.cityId !== cityId || appointee.factionId !== state.playerFaction?.id) {
-      get().addLog('無法任命該武將為太守。');
+    if (!appointee) {
+      get().addLog('找不到該武將。');
+      return;
+    }
+    if (appointee.factionId !== state.playerFaction?.id) {
+      get().addLog(`${appointee.name} 不屬於我方勢力，無法任命為太守。`);
+      return;
+    }
+    if (appointee.cityId !== cityId) {
+      const targetCity = state.cities.find(c => c.id === cityId);
+      get().addLog(`${appointee.name} 不在 ${targetCity?.name || '該城'}，無法任命為太守。`);
       return;
     }
     set({
@@ -1216,10 +1243,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const executor = officerId
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+      : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
+        || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
 
     if (!executor) {
-      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無太守，無法執行指令。');
+      get().addLog(officerId ? '指派武將不在該城，無法執行指令。' : '城中無武將，無法執行指令。');
       return;
     }
     if (executor.stamina < 10) {
@@ -1301,9 +1329,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       return;
     }
 
-    set({
-      officers: state.officers.map(o => o.id === officerId ? { ...o, cityId: targetCityId, isGovernor: false, stamina: o.stamina - 10 } : o)
-    });
+    const wasGovernor = officer.isGovernor;
+    const sourceCityId = officer.cityId;
+    const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, cityId: targetCityId, isGovernor: false, stamina: o.stamina - 10 } : o);
+    // If the transferred officer was the governor, auto-assign a new one for the source city
+    if (wasGovernor && sourceCityId !== null) {
+      autoAssignGovernorInPlace(updatedOfficers, sourceCityId, state.playerFaction!.id);
+    }
+    set({ officers: updatedOfficers });
     const finalDestCity = state.cities.find(c => c.id === targetCityId);
     get().addLog(`${officer.name} 移動到了 ${finalDestCity?.name}。`);
   },
@@ -1586,6 +1619,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           o.id === attackerOfficers[0].id ? { ...o, isGovernor: true } : o
         )
       }));
+      // Auto-assign governor for the source city if the governor left
+      {
+        const officers = get().officers.slice();
+        const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id);
+        if (promoted) set({ officers });
+      }
       get().addLog(`${targetCity.name} 是一座空城！${commander.name} 率軍佔領了 ${targetCity.name}！`);
       // Check if the losing faction has no more cities
       const loserFactionId = targetCity.factionId || 0;
@@ -2742,6 +2781,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           updatedFactions = updatedFactions.filter(f => f.id !== loserFactionId);
           get().addLog(`${loserFaction.name} 勢力已被消滅！`);
         }
+      }
+    }
+
+    // Auto-assign governors for any cities left without one (both factions)
+    const affectedFactionIds = new Set([winnerFactionId, loserFactionId]);
+    for (const fid of affectedFactionIds) {
+      const factionCities = updatedCities.filter(c => c.factionId === fid);
+      for (const fc of factionCities) {
+        autoAssignGovernorInPlace(updatedOfficers, fc.id, fid);
       }
     }
 

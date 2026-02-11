@@ -1,4 +1,4 @@
-# AutomationAPI — Client-Side Game Automation API
+# BrowserAPI — Client-Side Game Automation API (`window.rtk`)
 
 ## Goal
 
