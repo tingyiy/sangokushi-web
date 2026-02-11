@@ -2,7 +2,7 @@
 
 **Guidelines for agentic coding assistants working in this repository.**
 
-This is a browser-based Romance of the Three Kingdoms (三國志) strategy game inspired by RTK IV, built with React + TypeScript + Vite. All in-game text uses Traditional Chinese (繁體中文).
+This is a browser-based Romance of the Three Kingdoms (三國志) strategy game inspired by RTK IV, built with React + TypeScript + Vite. UI supports Traditional Chinese (繁體中文) and English via i18next.
 
 ---
 
@@ -209,7 +209,8 @@ Phase determines which screen renders:
 - `battle` → `BattleScreen`
 
 ### Command Categories
-All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀略' | '結束'`
+English keys: `'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' | 'end'`
+Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / "Domestic" (en)
 
 ### Key Files
 - `src/store/gameStore.ts` - Core game state and logic (~2900 lines, 67 actions)
@@ -221,6 +222,43 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 - `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
 - `src/data/scenarios.ts` - Scenario definitions
 - `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
+- `src/i18n/index.ts` - i18next config, language detection
+- `src/i18n/locales/{zh-TW,en}/` - Translation files (ui.json, data.json, battle.json)
+
+### Internationalization (i18n)
+
+**Stack:** `react-i18next` + `i18next`. Default locale: `zh-TW`.
+
+**Type literals use English keys** (decoupled from display text):
+- `RTK4Skill`: `'firePlot' | 'confusion' | 'diplomacy' | ...` (27 skills)
+- `OfficerRank`: `'governor' | 'general' | 'advisor' | ...` (6 ranks)
+- `CommandCategory`: `'domestic' | 'military' | ...` (6 categories)
+
+**Namespaces:**
+- `ui` (default): General UI strings — titles, labels, commands, settings
+- `data`: Display names for skills, ranks, categories, weapons
+- `battle`: Battle-specific strings — weather, terrain, status, duel, tactics
+
+**Usage in components:**
+```typescript
+import { useTranslation } from 'react-i18next';
+const { t } = useTranslation();
+// Default namespace (ui)
+t('common.cancel')           // → "取消" / "Cancel"
+// Cross-namespace
+t('data:skill.firePlot')     // → "火計" / "Fire Plot"
+t('battle:weather.sunny')    // → "晴" / "Clear"
+// Interpolation
+t('header.dateLabel', { year: 189, month: 1 }) // → "189年 1月" / "1 / 189"
+```
+
+**Usage in stores/utilities (outside React):**
+```typescript
+import i18next from 'i18next';
+i18next.t('battle:unitType.infantry') // → "步" / "Inf"
+```
+
+**Language switcher:** In `GameSettingsScreen.tsx` — toggle between 繁體中文 and English.
 
 ### Headless / CLI
 
