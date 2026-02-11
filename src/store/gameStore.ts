@@ -189,6 +189,26 @@ export interface GameState {
   /** Fog of War: check if city is revealed */
   isCityRevealed: (cityId: number) => boolean;
 }
+const SETTINGS_KEY = 'rtk4_settings';
+
+const DEFAULT_SETTINGS: GameSettings = {
+  battleMode: 'watch',
+  gameMode: 'historical',
+  customOfficers: 'all',
+  intelligenceSensitivity: 3,
+  musicEnabled: true,
+};
+
+const loadSettings = (): GameSettings => {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+  } catch (e) {
+    console.error('Failed to load settings:', e);
+    return DEFAULT_SETTINGS;
+  }
+};
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: 'title',
@@ -198,13 +218,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   officers: [],
   factions: [],
   selectedFactionId: null,
-  gameSettings: {
-    battleMode: 'watch',
-    gameMode: 'historical',
-    customOfficers: 'all',
-    intelligenceSensitivity: 3,
-    musicEnabled: true,
-  },
+  gameSettings: loadSettings(),
   year: 190,
   month: 1,
   selectedCityId: null,
@@ -258,9 +272,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSelectedFactionId: (factionId) => set({ selectedFactionId: factionId }),
 
-  setGameSettings: (settings) => set(state => ({
-    gameSettings: { ...state.gameSettings, ...settings },
-  })),
+  setGameSettings: (settings) => set(state => {
+    const newSettings = { ...state.gameSettings, ...settings };
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+    return { gameSettings: newSettings };
+  }),
 
   confirmSettings: () => {
     set({ phase: 'playing' });
