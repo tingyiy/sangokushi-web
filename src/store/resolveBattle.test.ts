@@ -8,7 +8,8 @@
  * - 全軍覆沒: officer's army wiped out, but the officer can escape or be captured
  * - Captured officers → imprisoned (factionId: -1, cityId: -1)
  * - Non-captured defeated officers → flee
- * - Flee priority: adjacent friendly > any friendly > adjacent unoccupied (claim) > any unoccupied (claim) > 100% captured
+ * - Flee priority: adjacent friendly > adjacent unoccupied (claim) > 100% captured
+ * - RTK IV only allows flee to directly connected (adjacent) cities
  * - ALL fleeing officers go to the SAME city
  * - Claimed unoccupied cities become owned by the losing faction
  * - Officers who flee keep their faction affiliation
@@ -426,9 +427,10 @@ describe('resolveBattle - RTK IV Post-Battle Mechanics', () => {
   });
 
   /**
-   * Flee to non-adjacent friendly city when no adjacent friendly exists.
+   * RTK IV: only adjacent cities are valid flee targets.
+   * Non-adjacent friendly city should NOT be reachable — officer is captured.
    */
-  test('officers flee to non-adjacent friendly city if no adjacent friendly', () => {
+  test('officers captured when only non-adjacent friendly city exists', () => {
     const cityA = makeCity({ id: 1, name: '平原', factionId: 2, adjacentCityIds: [2] });
     const cityB = makeCity({ id: 2, name: '北海', factionId: 1, adjacentCityIds: [1] }); // enemy, adjacent
     const cityC = makeCity({ id: 3, name: '成都', factionId: 2, adjacentCityIds: [] }); // friendly, non-adjacent
@@ -459,9 +461,10 @@ describe('resolveBattle - RTK IV Post-Battle Mechanics', () => {
     const state = useGameStore.getState();
     const liu = state.officers.find(o => o.id === 10)!;
 
-    // Should flee to 成都 (non-adjacent friendly) since 北海 is enemy
-    expect(liu.cityId).toBe(3);
-    expect(liu.factionId).toBe(2);
+    // No adjacent friendly or unoccupied cities — captured
+    expect(liu.factionId).toBe(-1);
+    expect(liu.cityId).toBe(1);
+    expect(state.log.some(l => l.includes('無處可逃'))).toBe(true);
   });
 
   /**
@@ -662,5 +665,89 @@ describe('resolveBattle - RTK IV Post-Battle Mechanics', () => {
     // Faction 2 should be destroyed
     expect(state.factions.find(f => f.id === 2)).toBeUndefined();
     expect(state.log.some(l => l.includes('已被消滅'))).toBe(true);
+  });
+
+  /**
+   * RTK IV: non-adjacent unoccupied city (even 2 hops) is NOT a valid flee target.
+   * Officer should be captured.
+   */
+  test('officers cannot flee to non-adjacent unoccupied city (2 hops)', () => {
+    const cityA = makeCity({ id: 1, name: '平原', factionId: 2, adjacentCityIds: [2] });
+    const cityB = makeCity({ id: 2, name: '北海', factionId: 1, adjacentCityIds: [1, 3] }); // enemy, adjacent
+    const cityC = makeCity({ id: 3, name: '濮陽', factionId: null, adjacentCityIds: [2] }); // unoccupied, 2 hops
+
+    useGameStore.setState({
+      cities: [cityA, cityB, cityC],
+      officers: [
+        makeOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 1 }),
+        makeOfficer({ id: 20, name: '曹操', factionId: 1, cityId: 2 }),
+      ],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 20 }),
+        makeFaction({ id: 2, name: '劉備', rulerId: 10 }),
+      ],
+      log: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, 2, 1,
+      [
+        { officerId: 20, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 10, troops: 0, factionId: 2, status: 'active' },
+      ],
+      []
+    );
+
+    const state = useGameStore.getState();
+    const liu = state.officers.find(o => o.id === 10)!;
+
+    // No adjacent friendly or unoccupied — captured even though 濮陽 is 2 hops away
+    expect(liu.factionId).toBe(-1);
+    expect(liu.cityId).toBe(1);
+    expect(state.cities.find(c => c.id === 3)!.factionId).toBeNull(); // unclaimed
+  });
+
+  /**
+   * Distant unoccupied city (3+ hops) is obviously unreachable.
+   * Officers should be captured.
+   */
+  test('officers cannot flee to distant unoccupied city beyond 2 hops', () => {
+    const cityA = makeCity({ id: 1, name: '下邳', factionId: 2, adjacentCityIds: [2] });
+    const cityB = makeCity({ id: 2, name: '北海', factionId: 1, adjacentCityIds: [1, 3] }); // enemy
+    const cityC = makeCity({ id: 3, name: '平原', factionId: 1, adjacentCityIds: [2, 4] }); // enemy
+    const cityD = makeCity({ id: 4, name: '會稽', factionId: null, adjacentCityIds: [3] }); // unoccupied, 3 hops away
+
+    useGameStore.setState({
+      cities: [cityA, cityB, cityC, cityD],
+      officers: [
+        makeOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 1 }),
+        makeOfficer({ id: 20, name: '曹操', factionId: 1, cityId: 2 }),
+      ],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 20 }),
+        makeFaction({ id: 2, name: '劉備', rulerId: 10 }),
+      ],
+      log: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, 2, 1,
+      [
+        { officerId: 20, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 10, troops: 0, factionId: 2, status: 'active' },
+      ],
+      []
+    );
+
+    const state = useGameStore.getState();
+    const liu = state.officers.find(o => o.id === 10)!;
+
+    // Should be captured — 會稽 is 3 hops away, out of range
+    expect(liu.factionId).toBe(-1);
+    expect(liu.cityId).toBe(1); // held at battle city
+    expect(state.cities.find(c => c.id === 4)!.factionId).toBeNull(); // unclaimed
+    expect(state.log.some(l => l.includes('無處可逃'))).toBe(true);
   });
 });

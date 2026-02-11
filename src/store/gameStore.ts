@@ -2587,24 +2587,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // ── RTK IV Flee Logic ──
     // Determine the flee destination for the losing faction ONCE (all officers go to the same city).
-    // Priority: adjacent friendly > any friendly > adjacent unoccupied > any unoccupied > nowhere (captured)
-    const friendlyCities = state.cities.filter(c => c.factionId === loserFactionId && c.id !== cityId);
-    const unoccupiedCities = state.cities.filter(c => c.factionId === null);
-    const adjacentFriendly = friendlyCities.filter(c => city.adjacentCityIds.includes(c.id));
-    const adjacentUnoccupied = unoccupiedCities.filter(c => city.adjacentCityIds.includes(c.id));
+    // Priority: adjacent friendly > adjacent unoccupied (claim) > nowhere (captured)
+    // RTK IV only allows flee to directly connected (adjacent) cities.
+    const adjacentFriendly = state.cities.filter(
+      c => c.factionId === loserFactionId && c.id !== cityId && city.adjacentCityIds.includes(c.id)
+    );
+    const adjacentUnoccupied = state.cities.filter(
+      c => c.factionId === null && city.adjacentCityIds.includes(c.id)
+    );
 
     let fleeCity: typeof city | null = null;
     let claimingUnoccupied = false;
 
     if (adjacentFriendly.length > 0) {
       fleeCity = adjacentFriendly[Math.floor(Math.random() * adjacentFriendly.length)];
-    } else if (friendlyCities.length > 0) {
-      fleeCity = friendlyCities[Math.floor(Math.random() * friendlyCities.length)];
     } else if (adjacentUnoccupied.length > 0) {
       fleeCity = adjacentUnoccupied[Math.floor(Math.random() * adjacentUnoccupied.length)];
-      claimingUnoccupied = true;
-    } else if (unoccupiedCities.length > 0) {
-      fleeCity = unoccupiedCities[Math.floor(Math.random() * unoccupiedCities.length)];
       claimingUnoccupied = true;
     }
     // If fleeCity is still null, nowhere to flee → all non-captured officers are captured
