@@ -198,10 +198,10 @@ export const TERRAIN_PALETTES: Record<Season, TerrainPalette> = {
  * Road line styling per season.
  */
 export const SEASON_ROAD_STYLE: Record<Season, { stroke: string; opacity: number }> = {
-  spring: { stroke: '#586838', opacity: 0.4 },
-  summer: { stroke: '#486028', opacity: 0.35 },
-  autumn: { stroke: '#786028', opacity: 0.45 },
-  winter: { stroke: '#686868', opacity: 0.5 },
+  spring: { stroke: '#8b7a56', opacity: 0.3 },
+  summer: { stroke: '#7a7040', opacity: 0.28 },
+  autumn: { stroke: '#9a8050', opacity: 0.35 },
+  winter: { stroke: '#8a8a80', opacity: 0.35 },
 };
 
 /**
@@ -246,5 +246,23 @@ export const MAP_ZOOM = {
   max: 4.0,
   step: 0.15,
   default: 1.0,
-  wheelFactor: 0.1,
+  wheelFactor: 0.06,
 };
+
+/**
+ * Scale multiplier for each mouse-sensitivity level (1-5).
+ * Applied to both strategic and battle map wheel zoom.
+ */
+const SENSITIVITY_SCALE: Record<number, number> = {
+  1: 0.4,
+  2: 0.7,
+  3: 1.0,
+  4: 1.5,
+  5: 2.0,
+};
+
+/** Return the wheel factor scaled by the player's sensitivity setting (1-5). */
+export function getWheelFactor(sensitivity: number): number {
+  const scale = SENSITIVITY_SCALE[sensitivity] ?? 1.0;
+  return MAP_ZOOM.wheelFactor * scale;
+}

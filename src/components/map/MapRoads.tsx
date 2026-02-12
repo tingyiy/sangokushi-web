@@ -11,7 +11,8 @@ interface MapRoadsProps {
  * MapRoads: Renders adjacency connection lines between cities.
  *
  * Each edge is drawn once (deduped by comparing city IDs).
- * Road styling subtly changes per season for visual cohesion.
+ * Roads are rendered as subtle dirt-track paths that blend with terrain,
+ * similar to how RTK IV implies connectivity through the landscape.
  */
 export function MapRoads({ cities, season }: MapRoadsProps) {
   const style = SEASON_ROAD_STYLE[season];
@@ -30,9 +31,9 @@ export function MapRoads({ cities, season }: MapRoadsProps) {
               x2={adj.x}
               y2={adj.y}
               stroke={style.stroke}
-              strokeWidth="0.15"
+              strokeWidth="0.35"
               opacity={style.opacity}
-              strokeDasharray="0.5,0.3"
+              strokeLinecap="round"
             />
           );
         }),

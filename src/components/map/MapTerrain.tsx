@@ -9,6 +9,13 @@ interface MapTerrainProps {
 /** Shared transition style for smooth seasonal color changes */
 const T: React.CSSProperties = { transition: 'fill 1.5s, stroke 1.5s' };
 
+/** River flow animation style — dashed stroke that scrolls */
+const RIVER: React.CSSProperties = {
+  transition: 'stroke 1.5s',
+  strokeDasharray: '1.5, 0.8',
+  animation: 'river-flow 3s linear infinite',
+};
+
 /**
  * MapTerrain: Renders the full strategic map terrain as inline SVG elements.
  *
@@ -30,6 +37,27 @@ const T: React.CSSProperties = { transition: 'fill 1.5s, stroke 1.5s' };
  * 8. Coast foam
  * 9. Seasonal overlays (snow, blossoms, leaves)
  */
+/** Landmass coastline path data — reused for both the fill and the clipPath */
+const LANDMASS_D = `
+  M 5,0
+  L 40,0 L 50,0 L 60,0 L 70,0 L 80,0
+  L 83,2 L 87,5 L 90,8 L 92,10
+  L 91,12 L 89,14 L 88,17 L 87,20
+  L 86,23 L 85.5,26 L 85,28 L 84,30
+  L 83,32 L 82,35 L 81,37 L 80,39
+  L 79.5,41 L 79,43 L 78.5,44 L 80,46
+  L 82,47 L 85,48 L 88,49 L 90,51
+  L 91,53 L 90,56 L 89,58 L 87,59
+  L 85,60 L 83,61 L 81,62 L 79,64
+  L 78,66 L 77,68 L 76,70 L 75,72
+  L 74,74 L 72,76 L 70,77 L 68,77.5
+  L 66,78 L 64,78.2 L 62,78.5 L 60,79
+  L 55,80 L 50,81 L 45,81.5 L 40,82
+  L 35,82.5 L 30,82.8 L 25,83
+  L 20,82.5 L 15,81.5 L 10,81
+  L 5,80.5 L 0,80 L 0,0 Z
+`;
+
 export function MapTerrain({ season }: MapTerrainProps) {
   const p = TERRAIN_PALETTES[season];
 
@@ -38,35 +66,20 @@ export function MapTerrain({ season }: MapTerrainProps) {
       {/* SVG pattern definitions (seasonal colors baked in) */}
       <MapPatterns palette={p} />
 
+      {/* Clip path: constrains rivers/lakes to stay within the landmass */}
+      <defs>
+        <clipPath id="land-clip">
+          <path d={LANDMASS_D} />
+        </clipPath>
+      </defs>
+
       {/* ==================== 1. OCEAN BACKGROUND ==================== */}
       <rect x="0" y="0" width="100" height="85" fill="url(#pat-water)" style={T} />
-
-      {/* Deep ocean areas (further from coast) */}
-      <ellipse cx="95" cy="30" rx="12" ry="25" fill={p.ocean2} opacity="0.5" style={T} />
-      <ellipse cx="90" cy="70" rx="15" ry="18" fill={p.ocean2} opacity="0.5" style={T} />
 
 
       {/* ==================== 2. MAIN LANDMASS ==================== */}
       <path
-        d={`
-          M 5,0
-          L 40,0 L 50,0 L 60,0 L 70,0 L 80,0
-          L 83,2 L 87,5 L 90,8 L 92,10
-          L 91,12 L 89,14 L 88,17 L 87,20
-          L 86,23 L 85.5,26 L 85,28 L 84,30
-          L 83,32 L 82,35 L 81,37 L 80,39
-          L 79.5,41 L 79,43 L 78.5,44 L 80,46
-          L 82,47 L 85,48 L 88,49 L 90,51
-          L 91,53 L 90,56 L 89,58 L 87,59
-          L 85,60 L 83,61 L 81,62 L 79,64
-          L 78,66 L 77,68 L 76,70 L 75,72
-          L 74,74 L 72,76 L 70,77 L 68,77.5
-          L 66,78 L 64,78.2 L 62,78.5 L 60,79
-          L 55,80 L 50,81 L 45,81.5 L 40,82
-          L 35,82.5 L 30,82.8 L 25,83
-          L 20,82.5 L 15,81.5 L 10,81
-          L 5,80.5 L 0,80 L 0,0 Z
-        `}
+        d={LANDMASS_D}
         fill={p.land}
         stroke="none"
         style={T}
@@ -185,11 +198,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
         style={T}
       />
       {/* Taihang peaks */}
-      <path d="M 55.5,10 L 56.5,8 L 57.5,10 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 56.5,13 L 57.2,11.5 L 58,13 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 57.5,16 L 58.2,14.5 L 59,16 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 58,19 L 58.8,17.2 L 59.5,19 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 58.5,22 L 59.3,20.5 L 60,22 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 55.5,10 L 56.5,9.2 L 57.5,10 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 56.5,13 L 57.2,12.3 L 58,13 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 57.5,16 L 58.2,15.3 L 59,16 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 58,19 L 58.8,18.2 L 59.5,19 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 58.5,22 L 59.3,21.3 L 60,22 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
 
       {/* 燕山 Yan Mountains (north of 薊/北平) */}
       <path
@@ -203,9 +216,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.8"
         style={T}
       />
-      <path d="M 65,6 L 66.5,4 L 68,6 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 72,5.5 L 73.2,3.8 L 74.5,5.5 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 79,6.5 L 80,4.8 L 81,6.5 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 65,6.5 L 66.5,5.5 L 68,6.5 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 72,6 L 73.2,5.2 L 74.5,6 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 79,7 L 80,6.2 L 81,7 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
 
       {/* 秦嶺 Qinling Mountains (between 長安/漢中 and 洛陽/宛) */}
       <path
@@ -221,10 +234,10 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.85"
         style={T}
       />
-      <path d="M 38,28.5 L 39.5,26.5 L 41,28.5 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 43,29 L 44.5,27 L 46,29 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 48,30 L 49.2,28.2 L 50.5,30 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
-      <path d="M 53,31 L 54,29.5 L 55,31.5 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 38,29.5 L 39.5,28.5 L 41,29.5 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 43,30 L 44.5,29 L 46,30 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 48,31 L 49.2,30 L 50.5,31 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
+      <path d="M 53,32 L 54,31.2 L 55,32 Z" fill={p.mountainPeak} opacity="0.7" style={T} />
 
       {/* 大巴山 Daba Mountains (north of Sichuan, between 漢中 and 梓潼) */}
       <path
@@ -239,8 +252,8 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.8"
         style={T}
       />
-      <path d="M 28,32 L 29.5,30 L 31,32 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 34,31 L 35.2,29.2 L 36.5,31 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 28,33 L 29.5,32 L 31,33 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 34,32 L 35.2,31 L 36.5,32 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
 
       {/* 巫山 Wu Mountains (between 永安 and 江陵, Three Gorges) */}
       <path
@@ -255,8 +268,8 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.75"
         style={T}
       />
-      <path d="M 41,47 L 42,45.5 L 43,47 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 44,48.5 L 45,46.8 L 46,48.8 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 41,48 L 42,47.2 L 43,48 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 44,49.5 L 45,48.7 L 46,49.5 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
 
       {/* 岷山/西南山地 Southwest mountains (around 建寧/雲南) */}
       <path
@@ -273,10 +286,10 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.8"
         style={T}
       />
-      <path d="M 13,42 L 14.5,39.5 L 16,42 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 14,50 L 15.5,47.8 L 16.8,50 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 13.5,58 L 15,55.8 L 16.2,58 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
-      <path d="M 13,66 L 14.5,64 L 15.8,66 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 13,43 L 14.5,41.8 L 16,43 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 14,51 L 15.5,49.8 L 16.8,51 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 13.5,59 L 15,57.8 L 16.2,59 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
+      <path d="M 13,67 L 14.5,65.8 L 15.8,67 Z" fill={p.mountainPeak} opacity="0.6" style={T} />
 
       {/* 南嶺 Nanling Mountains (between 荊南 and 嶺南) */}
       <path
@@ -292,9 +305,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.7"
         style={T}
       />
-      <path d="M 46,66 L 47.5,64.2 L 49,66 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
-      <path d="M 56,66.5 L 57.2,64.8 L 58.5,66.5 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
-      <path d="M 65,67.5 L 66.2,65.8 L 67.5,67.8 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
+      <path d="M 46,67 L 47.5,66 L 49,67 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
+      <path d="M 56,67.5 L 57.2,66.5 L 58.5,67.5 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
+      <path d="M 65,68.5 L 66.2,67.5 L 67.5,68.5 Z" fill={p.mountainPeak} opacity="0.5" style={T} />
 
       {/* 東南丘陵 Southeast hills (between 柴桑/會稽) */}
       <path
@@ -308,9 +321,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
         opacity="0.6"
         style={T}
       />
-      <path d="M 75,51 L 76.2,49.5 L 77.5,51 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
-      <path d="M 81,53 L 82,51.5 L 83,53 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
-      <path d="M 77,58 L 78,56.5 L 79,58 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
+      <path d="M 75,51.5 L 76.2,50.8 L 77.5,51.5 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
+      <path d="M 81,53.5 L 82,52.8 L 83,53.5 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
+      <path d="M 77,58.5 L 78,57.8 L 79,58.5 Z" fill={p.seHillPeak} opacity="0.4" style={T} />
 
       {/* Northern plateau hills (above 晉陽, near 西涼) */}
       <path
@@ -366,11 +379,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
       />
 
 
-      {/* ==================== 6. RIVERS ==================== */}
+      {/* ==================== 6. RIVERS (clipped to land) ==================== */}
+      <g clipPath="url(#land-clip)">
 
       {/* 黃河 Yellow River - upper course */}
       <path
-        className="river-animated"
         d={`
           M 5,20
           Q 10,18 15,16
@@ -385,12 +398,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
         fill="none"
         opacity="0.8"
         strokeLinecap="round"
-        style={T}
+        style={RIVER}
       />
 
       {/* Yellow River middle course (flows east through 中原) */}
       <path
-        className="river-animated"
         d={`
           M 53,18
           Q 56,19 58,20
@@ -404,7 +416,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
         fill="none"
         opacity="0.8"
         strokeLinecap="round"
-        style={T}
+        style={RIVER}
       />
 
       {/* Yellow River entering sea (near 北海) */}
@@ -431,7 +443,6 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* 長江 Yangtze River - upper (from Sichuan through Three Gorges) */}
       <path
-        className="river-animated"
         d={`
           M 15,53
           Q 20,52 25,51
@@ -444,12 +455,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
         fill="none"
         opacity="0.85"
         strokeLinecap="round"
-        style={T}
+        style={RIVER}
       />
 
       {/* Middle Yangtze (through 江陵/江夏/柴桑) */}
       <path
-        className="river-animated"
         d={`
           M 43,52
           Q 46,52.5 49,52
@@ -464,12 +474,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
         fill="none"
         opacity="0.85"
         strokeLinecap="round"
-        style={T}
+        style={RIVER}
       />
 
       {/* Lower Yangtze (through 廬江/建業 to sea) */}
       <path
-        className="river-animated"
         d={`
           M 74,52
           Q 76,51 78,49
@@ -482,7 +491,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
         fill="none"
         opacity="0.8"
         strokeLinecap="round"
-        style={T}
+        style={RIVER}
       />
 
       {/* 漢水 Han River (from 漢中 through 襄陽 to 江夏) */}
@@ -566,38 +575,13 @@ export function MapTerrain({ season }: MapTerrainProps) {
       {/* 太湖 Tai Lake (near 建業/會稽) */}
       <ellipse cx="83" cy="48" rx="1.5" ry="1.2" fill="url(#pat-lake)" opacity="0.6" style={T} />
 
+      </g>{/* end land-clip group */}
+
 
       {/* ==================== 8. COAST FOAM ==================== */}
-
-      {/* Northern coastline foam */}
-      <path
-        d={`
-          M 87,10 Q 86,12 85.5,15 Q 84.8,18 84.5,21 Q 84,24 83.8,27
-          Q 83.5,30 83,33 Q 82.5,36 82,38 Q 81.5,40 81.2,42
-        `}
-        stroke={p.coastFoam}
-        strokeWidth="0.2"
-        fill="none"
-        opacity="0.4"
-        strokeDasharray="0.8,0.4"
-        style={T}
-      />
-
-      {/* Southern coastline foam */}
-      <path
-        d={`
-          M 87,44.5 Q 88,47 89,50 Q 89.5,53 88.8,56
-          Q 88,58 86.5,60 Q 84.5,62 82.5,63.5
-          Q 80,65 78,66.5 Q 76,68 74.5,70
-          Q 73,72 72,74 Q 71,76 70,77.5
-        `}
-        stroke={p.coastFoam}
-        strokeWidth="0.2"
-        fill="none"
-        opacity="0.4"
-        strokeDasharray="0.8,0.4"
-        style={T}
-      />
+      {/* Removed — the previous foam paths traced arcs into the ocean
+          instead of following the coastline, looking like stray rivers.
+          The landmass edge itself provides sufficient coast definition. */}
 
 
       {/* ==================== 9. SEASONAL OVERLAYS ==================== */}
@@ -702,147 +686,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
         </g>
       )}
 
-      {/* ── Spring: Cherry blossom dots near 長安, 洛陽, 襄陽 ── */}
-      {season === 'spring' && (
-        <g className="spring-overlay">
-          {/* Blossom clusters near 長安 (45,28) */}
-          {[
-            [43.2, 26.5, 0.35, '#f9b4c2'],
-            [44.8, 27.2, 0.3, '#f7a0b2'],
-            [46.5, 26.8, 0.4, '#f9c0cc'],
-            [44.0, 29.2, 0.3, '#f7a0b2'],
-            [45.5, 29.8, 0.35, '#f9b4c2'],
-            [43.5, 28.0, 0.25, '#fcd0d8'],
-            [46.8, 28.5, 0.3, '#f9b4c2'],
-            [44.5, 26.0, 0.28, '#f7a0b2'],
-          ].map(([cx, cy, r, fill], i) => (
-            <circle
-              key={`blossom-changan-${i}`}
-              cx={cx}
-              cy={cy}
-              r={r as number}
-              fill={fill as string}
-              opacity={0.6 + (i % 3) * 0.1}
-            />
-          ))}
-
-          {/* Blossom clusters near 洛陽 (56,30) */}
-          {[
-            [54.5, 28.5, 0.35, '#f9b4c2'],
-            [55.8, 29.0, 0.4, '#f7a0b2'],
-            [57.2, 28.8, 0.3, '#f9c0cc'],
-            [56.5, 31.5, 0.35, '#f7a0b2'],
-            [55.0, 31.0, 0.3, '#f9b4c2'],
-            [57.8, 30.5, 0.28, '#fcd0d8'],
-            [54.2, 30.0, 0.32, '#f9b4c2'],
-            [57.5, 29.5, 0.25, '#f7a0b2'],
-          ].map(([cx, cy, r, fill], i) => (
-            <circle
-              key={`blossom-luoyang-${i}`}
-              cx={cx}
-              cy={cy}
-              r={r as number}
-              fill={fill as string}
-              opacity={0.55 + (i % 3) * 0.12}
-            />
-          ))}
-
-          {/* Blossom clusters near 襄陽 (55,47) */}
-          {[
-            [53.5, 45.5, 0.35, '#f9b4c2'],
-            [54.8, 46.2, 0.3, '#f7a0b2'],
-            [56.2, 45.8, 0.4, '#f9c0cc'],
-            [55.5, 48.5, 0.3, '#f7a0b2'],
-            [54.0, 48.0, 0.35, '#f9b4c2'],
-            [56.8, 47.5, 0.28, '#fcd0d8'],
-            [53.2, 47.0, 0.3, '#f9b4c2'],
-            [56.5, 46.5, 0.25, '#f7a0b2'],
-          ].map(([cx, cy, r, fill], i) => (
-            <circle
-              key={`blossom-xiangyang-${i}`}
-              cx={cx}
-              cy={cy}
-              r={r as number}
-              fill={fill as string}
-              opacity={0.55 + (i % 3) * 0.12}
-            />
-          ))}
-
-          {/* Scattered petals drifting across central plains */}
-          {[
-            [48, 24, 0.2], [51, 26, 0.18], [59, 25, 0.22],
-            [62, 28, 0.2], [50, 33, 0.18], [53, 36, 0.22],
-            [47, 40, 0.2], [60, 42, 0.18], [52, 44, 0.22],
-            [58, 34, 0.2], [64, 32, 0.18], [42, 30, 0.22],
-          ].map(([cx, cy, r], i) => (
-            <circle
-              key={`petal-${i}`}
-              cx={cx}
-              cy={cy}
-              r={r}
-              fill="#f9b4c2"
-              opacity={0.35 + (i % 3) * 0.1}
-            />
-          ))}
-        </g>
-      )}
-
-      {/* ── Autumn: Falling leaf dots across plains ── */}
-      {season === 'autumn' && (
-        <g className="autumn-overlay">
-          {/* Scattered leaves across Central Plains and North China */}
-          {[
-            // Central Plains
-            [52, 23, '#d4880a'], [56, 25, '#c87a0e'], [60, 22, '#e0a020'],
-            [64, 24, '#d49010'], [68, 26, '#c87a0e'], [72, 23, '#d4880a'],
-            [55, 28, '#e0a020'], [62, 30, '#c87a0e'], [58, 32, '#d49010'],
-            [66, 28, '#d4880a'], [70, 30, '#e0a020'], [74, 27, '#c87a0e'],
-
-            // North China Plain
-            [62, 13, '#d49010'], [66, 15, '#c87a0e'], [70, 12, '#d4880a'],
-            [74, 14, '#e0a020'], [78, 16, '#c87a0e'], [82, 13, '#d49010'],
-            [64, 18, '#d4880a'], [72, 20, '#e0a020'], [76, 18, '#c87a0e'],
-
-            // Jing Province plains
-            [48, 40, '#d49010'], [52, 42, '#c87a0e'], [56, 44, '#d4880a'],
-            [50, 46, '#e0a020'], [54, 48, '#c87a0e'], [58, 46, '#d49010'],
-            [46, 44, '#d4880a'], [60, 40, '#e0a020'], [52, 50, '#c87a0e'],
-
-            // Sichuan Basin
-            [24, 38, '#d49010'], [28, 40, '#c87a0e'], [32, 42, '#d4880a'],
-            [26, 44, '#e0a020'], [30, 46, '#c87a0e'], [34, 44, '#d49010'],
-
-            // Eastern plains
-            [74, 34, '#d4880a'], [78, 36, '#e0a020'], [76, 40, '#c87a0e'],
-            [80, 38, '#d49010'], [72, 42, '#d4880a'], [78, 44, '#e0a020'],
-
-            // Southern areas (fewer, warmer tones)
-            [50, 58, '#d49010'], [56, 60, '#c87a0e'], [62, 58, '#d4880a'],
-            [54, 62, '#e0a020'], [60, 64, '#c87a0e'], [48, 56, '#d49010'],
-          ].map(([cx, cy, fill], i) => (
-            <circle
-              key={`leaf-${i}`}
-              cx={cx as number}
-              cy={cy as number}
-              r={0.2 + (i % 4) * 0.08}
-              fill={fill as string}
-              opacity={0.4 + (i % 3) * 0.12}
-            />
-          ))}
-
-          {/* Larger leaf clusters in key areas */}
-          {[
-            [55, 24], [63, 26], [69, 22], [76, 25],
-            [50, 38], [56, 42], [48, 48], [62, 36],
-          ].map(([cx, cy], i) => (
-            <g key={`leaf-cluster-${i}`}>
-              <circle cx={cx - 0.3} cy={cy} r={0.22} fill="#c87a0e" opacity="0.5" />
-              <circle cx={cx + 0.3} cy={cy - 0.2} r={0.18} fill="#d4880a" opacity="0.45" />
-              <circle cx={cx} cy={cy + 0.3} r={0.2} fill="#e0a020" opacity="0.4" />
-            </g>
-          ))}
-        </g>
-      )}
+      {/* Seasonal overlays removed — terrain palette changes already convey seasons */}
     </g>
   );
 }

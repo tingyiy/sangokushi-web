@@ -6,6 +6,8 @@ import { getMoveRange } from '../../utils/pathfinding';
 import { getMovementRange, getAttackRange, getUnitTypeLabel } from '../../utils/unitTypes';
 import type { TerrainType } from '../../types/battle';
 import { localizedName } from '../../i18n/dataNames';
+import { useGameStore } from '../../store/gameStore';
+import { getWheelFactor } from './mapData';
 
 const HEX_SIZE = 32;
 
@@ -30,6 +32,7 @@ interface BattleMapProps {
 const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
   const { t } = useTranslation();
   const battle = useBattleStore();
+  const sensitivity = useGameStore(s => s.gameSettings.intelligenceSensitivity);
   const activeUnit = battle.units.find(u => u.id === battle.activeUnitId);
   const isPlayerUnit = activeUnit && activeUnit.factionId === playerFactionId;
 
@@ -128,12 +131,13 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
     if (!container) return;
     const handler = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      const factor = getWheelFactor(sensitivity);
+      const delta = e.deltaY > 0 ? -factor : factor;
       setZoom(z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z + delta)));
     };
     container.addEventListener('wheel', handler, { passive: false });
     return () => container.removeEventListener('wheel', handler);
-  }, []);
+  }, [sensitivity]);
 
   const zoomIn = useCallback(() => {
     setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP * 2));

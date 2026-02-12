@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
-import { getSeason, MAP_VIEWBOX, MAP_ZOOM } from './mapData';
+import { getSeason, MAP_VIEWBOX, MAP_ZOOM, getWheelFactor } from './mapData';
 import type { Season } from './mapData';
 import { MapTerrain } from './MapTerrain';
 import { MapRoads } from './MapRoads';
@@ -18,7 +18,8 @@ import { MapCities } from './MapCities';
  */
 export function GameMap() {
   const { t } = useTranslation();
-  const { cities, factions, officers, selectedCityId, selectCity, month, isCityRevealed } = useGameStore();
+  const { cities, factions, officers, selectedCityId, selectCity, month, isCityRevealed, gameSettings } = useGameStore();
+  const sensitivity = gameSettings.intelligenceSensitivity;
 
   const season: Season = useMemo(() => getSeason(month), [month]);
 
@@ -39,6 +40,19 @@ export function GameMap() {
     return `${vx} ${vy} ${vw} ${vh}`;
   }, [zoom, pan]);
 
+  // ── Clamp pan so the map edge never leaves the viewport ──
+  const clampPan = useCallback((px: number, py: number, z: number) => {
+    const vw = MAP_VIEWBOX.width / z;
+    const vh = MAP_VIEWBOX.height / z;
+    // Maximum pan: half of (full map - visible area) in each direction
+    const maxPanX = Math.max(0, (MAP_VIEWBOX.width - vw) / 2);
+    const maxPanY = Math.max(0, (MAP_VIEWBOX.height - vh) / 2);
+    return {
+      x: Math.min(maxPanX, Math.max(-maxPanX, px)),
+      y: Math.min(maxPanY, Math.max(-maxPanY, py)),
+    };
+  }, []);
+
   // ── Mouse wheel zoom ──
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,16 +62,19 @@ export function GameMap() {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -MAP_ZOOM.wheelFactor : MAP_ZOOM.wheelFactor;
+      const factor = getWheelFactor(sensitivity);
+      const delta = e.deltaY > 0 ? -factor : factor;
       setZoom(prev => {
-        const next = prev * (1 + delta);
-        return Math.min(MAP_ZOOM.max, Math.max(MAP_ZOOM.min, next));
+        const next = Math.min(MAP_ZOOM.max, Math.max(MAP_ZOOM.min, prev * (1 + delta)));
+        // Re-clamp pan for the new zoom level
+        setPan(p => clampPan(p.x, p.y, next));
+        return next;
       });
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, []);
+  }, [sensitivity, clampPan]);
 
   // ── Drag-to-pan ──
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -83,7 +100,7 @@ export function GameMap() {
     const dx = (e.clientX - lastMouseRef.current.x) * scaleX;
     const dy = (e.clientY - lastMouseRef.current.y) * scaleY;
 
-    setPan(prev => ({ x: prev.x - dx, y: prev.y - dy }));
+    setPan(prev => clampPan(prev.x - dx, prev.y - dy, zoom));
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
   }, [isDragging, zoom]);
 
@@ -93,12 +110,20 @@ export function GameMap() {
 
   // ── Zoom controls ──
   const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(MAP_ZOOM.max, prev + MAP_ZOOM.step));
-  }, []);
+    setZoom(prev => {
+      const next = Math.min(MAP_ZOOM.max, prev + MAP_ZOOM.step);
+      setPan(p => clampPan(p.x, p.y, next));
+      return next;
+    });
+  }, [clampPan]);
 
   const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(MAP_ZOOM.min, prev - MAP_ZOOM.step));
-  }, []);
+    setZoom(prev => {
+      const next = Math.max(MAP_ZOOM.min, prev - MAP_ZOOM.step);
+      setPan(p => clampPan(p.x, p.y, next));
+      return next;
+    });
+  }, [clampPan]);
 
   const handleZoomReset = useCallback(() => {
     setZoom(MAP_ZOOM.default);
@@ -110,12 +135,13 @@ export function GameMap() {
     if (selectedCityId === null) return;
     const city = cities.find(c => c.id === selectedCityId);
     if (!city) return;
-    // Pan so the city is centered in view
-    setPan({
-      x: city.x - MAP_VIEWBOX.width / 2,
-      y: city.y - MAP_VIEWBOX.height / 2,
-    });
-  }, [selectedCityId, cities]);
+    // Pan so the city is centered in view, clamped to bounds
+    setPan(clampPan(
+      city.x - MAP_VIEWBOX.width / 2,
+      city.y - MAP_VIEWBOX.height / 2,
+      zoom,
+    ));
+  }, [selectedCityId, cities, zoom, clampPan]);
 
   return (
     <div

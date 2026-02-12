@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
-import { getSeason, SEASON_FILTERS } from './mapData';
+import { getSeason } from './mapData';
+import { MapTerrain } from './MapTerrain';
 
 export function GameMinimap() {
   const { t } = useTranslation();
   const { cities, factions, selectedCityId, selectCity, month } = useGameStore();
 
   const season = useMemo(() => getSeason(month), [month]);
-  const terrainFilter = SEASON_FILTERS[season];
 
   const getFactionColor = (factionId: number | null): string => {
     if (factionId === null) return '#6b7280';
@@ -19,13 +19,10 @@ export function GameMinimap() {
   return (
     <div className="game-minimap">
       <svg viewBox="0 0 100 85" aria-label={t('minimap.ariaLabel')}>
-        <image
-          href="/terrain-map.svg"
-          width="100"
-          height="85"
-          opacity="0.6"
-          style={{ filter: terrainFilter }}
-        />
+        {/* Inline terrain (same as main map, seasonal) */}
+        <g opacity="0.6">
+          <MapTerrain season={season} />
+        </g>
         {cities.map(city => {
           const color = getFactionColor(city.factionId);
           const isSelected = city.id === selectedCityId;

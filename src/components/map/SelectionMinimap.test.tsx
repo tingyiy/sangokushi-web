@@ -94,7 +94,7 @@ describe('SelectionMinimap Component', () => {
     );
     const svg = container.querySelector('svg');
     expect(svg).toBeTruthy();
-    expect(svg).toHaveAttribute('viewBox', '0 0 1000 850');
+    expect(svg).toHaveAttribute('viewBox', '0 0 100 85');
   });
 
   test('renders city markers for all cities', () => {
@@ -105,7 +105,9 @@ describe('SelectionMinimap Component', () => {
         highlightFactionId={null}
       />
     );
-    const circles = container.querySelectorAll('circle');
+    // MapTerrain also renders circles (patterns, overlays), so count
+    // only the city-marker circles that sit at our mock city coordinates.
+    const circles = container.querySelectorAll('circle.city-marker');
     expect(circles.length).toBe(mockCities.length);
   });
 
