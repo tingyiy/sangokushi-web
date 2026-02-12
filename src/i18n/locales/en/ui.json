@@ -43,7 +43,13 @@
     "language": "Language"
   },
   "header": {
-    "dateLabel": "{{month}} / {{year}}"
+    "dateLabel": "{{month}} / {{year}}",
+    "season": {
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn",
+      "winter": "Winter"
+    }
   },
   "sidebar": {
     "cityCount": "Cities {{count}}",
@@ -293,5 +299,11 @@
   },
   "minimap": {
     "ariaLabel": "Minimap"
+  },
+  "map": {
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "zoomReset": "Reset View",
+    "centerCity": "Center on City"
   }
 }
