@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 
 export function GameLog() {
+  const { t } = useTranslation();
   const log = useGameStore(s => s.log);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -11,7 +13,7 @@ export function GameLog() {
 
   return (
     <div className="game-log">
-      <h4>戰報</h4>
+      <h4>{t('log.title')}</h4>
       <div className="log-entries">
         {log.map((msg, i) => (
           <div key={i} className="log-entry">{msg}</div>

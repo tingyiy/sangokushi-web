@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import { SelectionMinimap } from './map/SelectionMinimap';
 import { Portrait } from './Portrait';
 
@@ -10,6 +12,7 @@ import { Portrait } from './Portrait';
  * Supports pagination for >9 factions
  */
 export function FactionSelect() {
+  const { t } = useTranslation();
   const {
     scenario,
     factions,
@@ -53,33 +56,33 @@ export function FactionSelect() {
     <div className="faction-select-screen brocade-bg">
       {/* Header bar */}
       <div className="faction-header">
-        <span className="scenario-name">{scenario?.name}</span>
-        <span className="faction-count">選擇君主 {factions.length}人</span>
+        <span className="scenario-name">{scenario ? t(`data:scenario.${scenario.id}.name`) : ''}</span>
+        <span className="faction-count">{t('faction.selectRulerCount', { count: factions.length })}</span>
         <div className="header-buttons">
           <button
             className="btn btn-confirm"
             onClick={handleConfirm}
             disabled={selectedFactionId === null}
           >
-            決定
+            {t('common.confirm')}
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => setPhase('rulerCreation')}
             style={{ background: '#2a4a6a', color: '#fff', border: '1px solid #4a6a8a', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer' }}
           >
-            登錄新君主
+            {t('faction.registerNewRuler')}
           </button>
           {totalPages > 1 && (
             <button
               className="btn btn-page"
               onClick={() => setPage((p) => (p + 1) % totalPages)}
             >
-              下頁
+              {t('common.nextPage')}
             </button>
           )}
           <button className="btn btn-abort" onClick={() => setPhase('scenario')}>
-            中止
+            {t('common.abort')}
           </button>
         </div>
       </div>
@@ -123,7 +126,7 @@ export function FactionSelect() {
                     {ruler ? (
                       <Portrait
                         portraitId={ruler.portraitId}
-                        name={ruler.name}
+                        name={localizedName(ruler.name)}
                         size="large"
                       />
                     ) : (
@@ -131,7 +134,7 @@ export function FactionSelect() {
                     )}
                   </div>
                   <div className="faction-label">
-                    <span className="faction-name">{ruler?.name ?? faction.name}</span>
+                    <span className="faction-name">{localizedName(ruler?.name ?? faction.name)}</span>
                   </div>
                 </div>
               );

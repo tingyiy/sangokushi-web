@@ -1,0 +1,297 @@
+{
+  "title": {
+    "newGame": "New Game",
+    "loadGame": "Load Game",
+    "registerOfficer": "Create Officer"
+  },
+  "common": {
+    "abort": "Cancel",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close",
+    "return": "Back",
+    "returnToTitle": "Return to Title",
+    "nextPage": "Next",
+    "ok": "OK",
+    "none": "None"
+  },
+  "scenario": {
+    "selectPrompt": "Select a scenario.",
+    "yearLabel": "Year {{year}} AD"
+  },
+  "faction": {
+    "selectRulerCount": "Select Ruler ({{count}} available)",
+    "registerNewRuler": "Create New Ruler"
+  },
+  "settings": {
+    "title": "Game Settings",
+    "selectedScenario": "Scenario",
+    "selectedRuler": "Ruler",
+    "battleMode": "Battle Mode",
+    "battleModeWatch": "Watch",
+    "battleModeSkip": "Skip",
+    "gameMode": "Game Mode",
+    "gameModeHistorical": "Historical",
+    "gameModeFictional": "Fictional",
+    "customOfficers": "Custom Officers",
+    "customOfficersAll": "Include",
+    "customOfficersChoose": "Exclude",
+    "mouseSensitivity": "Mouse Sensitivity",
+    "music": "Music",
+    "musicOn": "On",
+    "musicOff": "Off",
+    "language": "Language"
+  },
+  "header": {
+    "dateLabel": "{{month}} / {{year}}"
+  },
+  "sidebar": {
+    "cityCount": "Cities {{count}}",
+    "officerCount": "Officers {{count}}",
+    "troopCount": "Troops {{value}}",
+    "goldCount": "Gold {{value}}",
+    "foodCount": "Food {{value}}"
+  },
+  "log": {
+    "title": "War Log"
+  },
+  "city": {
+    "closeAriaLabel": "Close city info",
+    "factionSuffix": " ({{name}})",
+    "emptyCity": " (Vacant)",
+    "population": "Pop.",
+    "troops": "Troops",
+    "gold": "Gold",
+    "food": "Food",
+    "commerce": "Commerce",
+    "agriculture": "Agriculture",
+    "defense": "Defense",
+    "floodControl": "Flood Ctrl",
+    "technology": "Technology",
+    "peopleLoyalty": "Loyalty",
+    "morale": "Morale",
+    "training": "Training",
+    "unknownStats": "Other stats unknown",
+    "weaponInventory": "Weapons",
+    "crossbows": "Crossbows",
+    "warHorses": "War Horses",
+    "batteringRams": "Rams",
+    "catapults": "Catapults",
+    "officers": "Officers",
+    "governorBadge": "Gov.",
+    "unaffiliatedOfficers": "Free Officers"
+  },
+  "stat": {
+    "leadership": "Ldr",
+    "war": "War",
+    "intelligence": "Int",
+    "politics": "Pol",
+    "charisma": "Cha",
+    "loyalty": "Loy",
+    "stamina": "Stm",
+    "leadershipFull": "Leadership",
+    "warFull": "War",
+    "intelligenceFull": "Intelligence",
+    "politicsFull": "Politics",
+    "charismaFull": "Charisma"
+  },
+  "status": {
+    "title": "Domestic Status",
+    "colCityName": "City",
+    "colPopulation": "Pop.",
+    "colGold": "Gold",
+    "colFood": "Food",
+    "colCommerce": "Commerce",
+    "colAgriculture": "Agriculture",
+    "colDefense": "Defense",
+    "colTroops": "Troops",
+    "colMorale": "Morale",
+    "colTraining": "Training"
+  },
+  "command": {
+    "category": {
+      "domestic": "Domestic",
+      "military": "Military",
+      "personnel": "Personnel",
+      "diplomacy": "Diplomacy",
+      "strategy": "Strategy",
+      "end": "End Turn"
+    },
+    "notYourCity": "This is not your city.",
+    "noOfficersAvailable": "No officers available in this city.",
+    "officerExecute": "{{name}} performed \"{{action}}\".",
+    "domestic": {
+      "developCommerce": "Develop Commerce (500g)",
+      "developAgriculture": "Develop Agriculture (500g)",
+      "reinforceDefense": "Reinforce Defense (300g)",
+      "floodControl": "Flood Control (500g)",
+      "developTechnology": "Develop Technology (800g)",
+      "trainTroops": "Train Troops (500 food)",
+      "taxRate": "Set Tax Rate",
+      "taxLow": "Low",
+      "taxMedium": "Med",
+      "taxHigh": "High",
+      "manufacture": "Manufacture (1000g)",
+      "manufactureCrossbows": "Crossbows",
+      "manufactureWarHorses": "War Horses",
+      "manufactureBatteringRams": "Rams",
+      "manufactureCatapults": "Catapults",
+      "disasterRelief": "Disaster Relief (500g+1000f)"
+    },
+    "action": {
+      "developCommerce": "Develop Commerce",
+      "developAgriculture": "Develop Agriculture",
+      "reinforceDefense": "Reinforce Defense",
+      "floodControl": "Flood Control",
+      "developTechnology": "Develop Technology",
+      "trainTroops": "Train Troops",
+      "manufactureCrossbows": "Mfg. Crossbows",
+      "manufactureWarHorses": "Mfg. War Horses",
+      "manufactureBatteringRams": "Mfg. Rams",
+      "manufactureCatapults": "Mfg. Catapults",
+      "disasterRelief": "Disaster Relief",
+      "draft1000": "Draft 1000",
+      "draft5000": "Draft 5000"
+    },
+    "military": {
+      "draft1000": "Draft 1000",
+      "draft5000": "Draft 5000",
+      "transport": "Transport",
+      "transportTo": "To {{cityName}}",
+      "attack": "Attack",
+      "attackCity": "Attack {{cityName}}"
+    },
+    "personnel": {
+      "search": "Search",
+      "recruit": "Recruit",
+      "handlePOW": "Handle POWs",
+      "recruitPOW": "Enlist {{name}}",
+      "execute": "Execute",
+      "reward": "Reward (1000g)",
+      "officerLoyalty": "{{name}} (Loy {{loyalty}})",
+      "appointTransfer": "Appoint / Transfer",
+      "appointGovernor": "Governor",
+      "appointAdvisor": "Advisor",
+      "transfer": "Transfer",
+      "dismiss": "Dismiss"
+    },
+    "diplomacy": {
+      "hostility": "Hostility: {{value}}",
+      "improveRelations": "Gift",
+      "formAlliance": "Alliance",
+      "breakAlliance": "Break Alliance",
+      "jointAttack": "Joint Attack",
+      "ceasefire": "Ceasefire",
+      "demandSurrender": "Demand Surrender",
+      "hostage": "Hostage"
+    },
+    "strategy": {
+      "rumor": "Rumor",
+      "arson": "Arson",
+      "incite": "Incite Rebellion",
+      "spy": "Spy",
+      "gatherIntel": "Gather Intel",
+      "counterEspionage": "Counter Espionage"
+    }
+  },
+  "formation": {
+    "title": "Battle Preparation: {{cityName}}",
+    "selectPrompt": "Select officers (max 5, stamina 30+)",
+    "officerStats": "Ldr {{leadership}} War {{war}} Int {{intelligence}}",
+    "noOfficers": "No officers available (insufficient stamina or none present).",
+    "garrisonTroops": "Garrison: {{count}}",
+    "allocatedRemaining": "Deployed: {{allocated}} / Remaining: {{remaining}}",
+    "weaponsHeld": "Weapons:",
+    "warHorseCount": "War Horses: {{count}}",
+    "crossbowCount": "Crossbows: {{count}}",
+    "confirmBattle": "March!"
+  },
+  "unitType": {
+    "infantry": "Infantry",
+    "cavalry": "Cavalry",
+    "archer": "Archer"
+  },
+  "transport": {
+    "title": "Transport to {{cityName}}",
+    "resourceType": "Resource Type",
+    "goldOption": "Gold (Current: {{amount}})",
+    "foodOption": "Food (Current: {{amount}})",
+    "troopsOption": "Troops (Current: {{amount}})",
+    "amount": "Amount",
+    "confirm": "Transport"
+  },
+  "officer": {
+    "colName": "Name",
+    "colLeadership": "Ldr",
+    "colWar": "War",
+    "colIntelligence": "Int",
+    "colPolitics": "Pol",
+    "colCharisma": "Cha"
+  },
+  "victory": {
+    "title": "Unification",
+    "congratulations": "Congratulations! {{factionName}} has unified the land!",
+    "dateAndCities": "{{month}}/{{year}} - Unified {{totalCities}} cities",
+    "flavorLine1": "After countless battles, peace has finally been restored.",
+    "flavorLine2": "Your brilliant leadership shall be recorded in history,",
+    "flavorLine3": "forever hailed as a great conqueror!"
+  },
+  "defeat": {
+    "title": "Defeat",
+    "noTerritory": "{{factionName}} has lost all territory",
+    "dateAndFailure": "{{month}}/{{year}} - Ambitions unfulfilled",
+    "flavorLine1": "War is merciless; victory and defeat are common in battle.",
+    "flavorLine2": "Though your ambitions were not realized, your fighting spirit",
+    "flavorLine3": "shall be remembered in history...",
+    "conqueror": "{{factionName}} ultimately unified the land"
+  },
+  "save": {
+    "title": "Save Game",
+    "loadTitle": "Load Game",
+    "saveSuccess": "Saved to slot {{slot}}",
+    "saveFailed": "Save failed!",
+    "loadFailed": "Load failed!",
+    "confirmDelete": "Delete save slot {{slot}}?",
+    "deleted": "Slot {{slot}} deleted",
+    "emptySlot": "Empty",
+    "slotLabel": "Slot {{slot}}",
+    "delete": "Delete",
+    "currentProgress": "Current: {{month}}/{{year}} - {{factionName}}"
+  },
+  "event": {
+    "officerRecruited": "{{name}} has accepted your invitation and joined your forces!",
+    "recruitButton": "Recruit",
+    "declineButton": "Decline"
+  },
+  "governor": {
+    "title": "Appoint Governor",
+    "prompt": "{{cityName}} has no governor. Please select an officer:"
+  },
+  "ruler": {
+    "defaultName": "New Ruler",
+    "pointsExceeded": "Total stat points cannot exceed {{max}}!",
+    "noScenarioError": "No scenario selected or data error!",
+    "factionNameSuffix": "{{name}}'s Forces",
+    "title": "Create New Ruler",
+    "nameLabel": "Name",
+    "leadershipLabel": "Leadership ({{value}})",
+    "warLabel": "War ({{value}})",
+    "intelligenceLabel": "Intelligence ({{value}})",
+    "politicsLabel": "Politics ({{value}})",
+    "charismaLabel": "Charisma ({{value}})",
+    "remainingPoints": "Remaining: {{points}}",
+    "startCity": "Starting City",
+    "factionColor": "Banner Color",
+    "create": "Create Ruler"
+  },
+  "toolbar": {
+    "viewStatus": "View All Factions",
+    "save": "Save",
+    "load": "Load",
+    "settings": "Settings",
+    "returnToTitle": "Return to Title"
+  },
+  "minimap": {
+    "ariaLabel": "Minimap"
+  }
+}

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import '../i18n';
 import { GovernorAssignmentModal } from './GovernorAssignmentModal';
 import { useGameStore } from '../store/gameStore';
 import type { City, Faction, Officer } from '../types';
@@ -17,7 +18,7 @@ describe('GovernorAssignmentModal', () => {
       pendingGovernorAssignmentCityId: 1,
       cities: [{ id: 1, name: '測試城' }] as unknown as City[],
       officers: [
-        { id: 10, name: '大將', cityId: 1, factionId: 1, leadership: 90, war: 80, intelligence: 70, politics: 60, charisma: 75, rank: '一般' } as unknown as Officer
+        { id: 10, name: '大將', cityId: 1, factionId: 1, leadership: 90, war: 80, intelligence: 70, politics: 60, charisma: 75, rank: 'common' } as unknown as Officer
       ]
     });
 

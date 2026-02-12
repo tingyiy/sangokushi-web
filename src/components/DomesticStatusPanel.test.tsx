@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import '../i18n';
 import { DomesticStatusPanel } from './DomesticStatusPanel';
 import { useGameStore } from '../store/gameStore';
 import type { City, Faction } from '../types';

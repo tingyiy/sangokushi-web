@@ -2,7 +2,7 @@
 
 **Guidelines for agentic coding assistants working in this repository.**
 
-This is a browser-based Romance of the Three Kingdoms (三國志) strategy game inspired by RTK IV, built with React + TypeScript + Vite. All in-game text uses Traditional Chinese (繁體中文).
+This is a browser-based Romance of the Three Kingdoms (三國志) strategy game inspired by RTK IV, built with React + TypeScript + Vite. UI supports Traditional Chinese (繁體中文) and English via i18next.
 
 ---
 
@@ -209,10 +209,19 @@ Phase determines which screen renders:
 - `battle` → `BattleScreen`
 
 ### Command Categories
-All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀略' | '結束'`
+English keys: `'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' | 'end'`
+Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / "Domestic" (en)
 
 ### Key Files
-- `src/store/gameStore.ts` - Core game state and logic (~2900 lines, 67 actions)
+- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~300 lines)
+- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~300 lines)
+- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~320 lines)
+- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~490 lines)
+- `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~330 lines)
+- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~310 lines)
+- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~400 lines)
+- `src/store/saveLoadActions.ts` - Save, load, slots, delete (~120 lines)
+- `src/store/storeHelpers.ts` - Shared helpers (autoAssignGovernor, getAttackDirection)
 - `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines, 16 actions)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
@@ -221,6 +230,69 @@ All use Traditional Chinese: `'內政' | '軍事' | '人事' | '外交' | '謀�
 - `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
 - `src/data/scenarios.ts` - Scenario definitions
 - `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
+- `src/i18n/index.ts` - i18next config, browser language detection
+- `src/i18n/dataNames.ts` - `localizedName()` helper for officer/city/faction name translation
+- `src/i18n/cli.ts` - CLI-specific i18n init (Node.js, no browser detector)
+- `src/i18n/locales/{zh-TW,en}/` - Translation files (ui.json, data.json, battle.json, logs.json, cli.json)
+- `src/store/i18n-logs.test.ts` - Regression tests ensuring no Chinese leaks into English UI
+
+### Internationalization (i18n)
+
+**Stack:** `react-i18next` + `i18next` + `i18next-browser-languagedetector`. Default locale: `zh-TW`.
+
+**Language Detection:** Browser language is auto-detected on first visit. Detection order: `localStorage` → `navigator` → fallback (`zh-TW`). Supported languages: `zh-TW`, `en`. User can override via the language switcher in `GameSettingsScreen.tsx`.
+
+**Type literals use English keys** (decoupled from display text):
+- `RTK4Skill`: `'firePlot' | 'confusion' | 'diplomacy' | ...` (27 skills)
+- `OfficerRank`: `'governor' | 'general' | 'advisor' | ...` (6 ranks)
+- `CommandCategory`: `'domestic' | 'military' | ...` (6 categories)
+
+**Namespaces (5):**
+- `ui` (default): General UI strings — titles, labels, commands, settings
+- `data`: Display names for skills, ranks, categories, weapons, officer/city/faction names
+- `battle`: Battle-specific strings — weather, terrain, status, duel, tactics
+- `logs`: Store log messages, AI descriptions, event messages, advisor suggestions
+- `cli`: CLI-specific strings (Phase 6 — not yet populated)
+
+**Locale files:** `src/i18n/locales/{zh-TW,en}/{ui,data,battle,logs,cli}.json`
+
+**Usage in components:**
+```typescript
+import { useTranslation } from 'react-i18next';
+const { t } = useTranslation();
+// Default namespace (ui)
+t('common.cancel')           // → "取消" / "Cancel"
+// Cross-namespace
+t('data:skill.firePlot')     // → "火計" / "Fire Plot"
+t('battle:weather.sunny')    // → "晴" / "Clear"
+// Interpolation
+t('header.dateLabel', { year: 189, month: 1 }) // → "189年 1月" / "1 / 189"
+```
+
+**Usage in stores/utilities (outside React):**
+```typescript
+import i18next from 'i18next';
+i18next.t('logs:battle.attack', { attacker: name, defender: target })
+i18next.t('battle:unitType.infantry') // → "步" / "Inf"
+```
+
+**Officer/City/Faction name localization:**
+```typescript
+import { localizedName } from '../i18n/dataNames';
+localizedName('曹操')    // → "Cao Cao" (en) / "曹操" (zh-TW)
+localizedName('鄴')      // → "Ye" (en) / "鄴" (zh-TW)
+```
+The `localizedName()` helper in `src/i18n/dataNames.ts` looks up English translations from the `data` namespace. Use it for ALL officer, city, and faction names displayed in UI or logs.
+
+**Language switcher:** In `GameSettingsScreen.tsx` — toggle between 繁體中文 and English.
+
+**i18n Conventions (IMPORTANT for new code):**
+- All new UI strings MUST use `t()` calls, never hardcoded Chinese
+- All new log messages MUST use `i18next.t('logs:...')`, never inline Chinese
+- All officer/city/faction names MUST use `localizedName()` for display
+- Add keys to BOTH `zh-TW` and `en` locale files when adding new strings
+- Test setup (`src/test/setup.ts`) forces `zh-TW` so existing tests expecting Chinese continue to pass
+- Regression tests in `src/store/i18n-logs.test.ts` scan source files for Chinese leaks — run `npm test` to catch violations
 
 ### Headless / CLI
 
@@ -303,9 +375,10 @@ The CLI (`src/cli/play.ts`, ~1470 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 316 tests across 27 test files
+- Current test suite: 329 tests across 28 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
+- i18n regression tests: `src/store/i18n-logs.test.ts` (13 tests scanning for Chinese leaks)
 
 ---
 
@@ -332,6 +405,91 @@ set({
   ),
 });
 ```
+
+---
+
+## Architecture Layers & Responsibilities
+
+The codebase has three distinct layers. Each layer has a single responsibility. **Never duplicate access-control or game-rule logic across layers.**
+
+```
+┌──────────────────────────────────────────────────┐
+│  Presentation Layer (React components, CLI)       │
+│  • Renders data returned by the Store layer       │
+│  • NEVER reads raw state to decide what to show   │
+│  • Calls store query functions for filtered views  │
+└────────────────────┬─────────────────────────────┘
+                     │ calls query functions
+┌────────────────────▼─────────────────────────────┐
+│  Store Layer (Zustand: gameStore, battleStore)     │
+│  • Single source of truth for ALL game state       │
+│  • Exposes query functions (fog-of-war, victory)   │
+│  • Exposes action functions (mutate state)          │
+│  • ALL access-control logic lives HERE              │
+└────────────────────┬─────────────────────────────┘
+                     │ imports types & scenario data
+┌────────────────────▼─────────────────────────────┐
+│  Data Layer (types, scenarios, base JSON)          │
+│  • Type definitions (Officer, City, Faction, etc.) │
+│  • Scenario templates and base data                │
+│  • Pure data — no game logic, no visibility rules  │
+└──────────────────────────────────────────────────┘
+```
+
+### Layer Rules
+
+| Rule | Description |
+|------|-------------|
+| **Access control in Store only** | Fog-of-war, visibility checks, permission checks — all live as store query functions. Components and CLI call these functions; they never re-implement the logic. |
+| **Presentation is dumb** | Components and CLI format/display whatever the store returns. If the store says "hidden", the presentation layer shows `????` or omits the field. It does NOT decide what to hide. |
+| **No raw state in presentation** | Components should NOT read `state.officers` and filter by faction to decide visibility. Instead, call a store query function that returns the correct view. |
+| **Single fix, all consumers benefit** | When a visibility bug is found, fix it ONCE in the store. All consumers (browser UI, CLI, debug API, tests) automatically get the fix. |
+
+### Fog of War / Visibility System (RTK IV Rules)
+
+Information visibility follows RTK IV's intelligence system. The store layer exposes query functions that enforce these rules:
+
+**City visibility — `isCityRevealed(cityId): boolean`**
+- Own cities: always revealed
+- Spied cities: revealed with TTL (stored in `revealedCities`)
+- Spectator mode (no player faction): all revealed
+- Everything else (adjacent, empty, enemy): **NOT revealed**
+
+**What each visibility level shows:**
+
+| Data | Own City | Revealed Enemy City | Unrevealed City |
+|------|----------|-------------------|-----------------|
+| City name & faction | Yes | Yes | Yes (map is public) |
+| Population, troops, gold, food | Yes | Yes | Hidden (`????`) |
+| Commerce, agriculture, defense, etc. | Yes | Yes | Hidden |
+| Weapons (crossbows, horses, etc.) | Yes | No (military secret) | Hidden |
+| Affiliated officers + base stats | Yes | Yes (no stamina/loyalty) | Hidden |
+| Unaffiliated officers, POWs | Yes | No (internal info) | Hidden |
+| Officer stamina & loyalty | Yes | No (internal info) | Hidden |
+
+**Officer visibility — `getOfficerView(officerId)`**
+- Base stats (L/W/I/P/C), skills, age, relationships: always visible (encyclopedia / public knowledge)
+- Current city location, rank: visible only if officer is own OR in a revealed city
+- Stamina, loyalty: visible only if officer is own
+
+**Faction overview visibility — `world` / `factions` commands**
+- Faction names, city ownership: always visible (political map is public)
+- Troop totals, officer counts: only aggregated from own + revealed cities
+- Hostility/alliance: always visible (diplomatic relations are known)
+
+**Neighbor summaries (in `status` / `city` commands)**
+- Neighbor city name + faction: always visible (map is public)
+- Neighbor troops + officer count: only if that neighbor city is revealed
+
+### Fog of War — Implementation Checklist for New Features
+
+When adding ANY feature that displays city or officer data:
+
+1. **Store layer:** Use `isCityRevealed(cityId)` before exposing city internals
+2. **Officer data:** Check if the officer's city is revealed or if officer is own-faction
+3. **Aggregates:** When computing faction totals (troops, officers), only sum over own + revealed cities
+4. **Never bypass:** Don't add "convenience" exceptions (e.g., "adjacent cities are close so show their troops"). If the player wants intel, they must spy.
+5. **Test:** Add a test case verifying the new feature respects fog-of-war
 
 ---
 

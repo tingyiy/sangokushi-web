@@ -18,29 +18,29 @@ export function officersWithSkill(officers: Officer[], skill: RTK4Skill): Office
 /** Skill requirements map: command -> required skill (null = no requirement) */
 export const SKILL_REQUIREMENTS: Record<string, RTK4Skill | null> = {
   // 內政 (Domestic)
-  '製造': '製造',
+  'manufacture': 'manufacture',
   // 謀略 (Strategy)
-  '反間': '做敵',
-  '煽動': '驅虎',
-  '放火': '燒討',
-  '諜報': '情報',
-  '密偵': '情報',
+  '反間': 'provoke',
+  '煽動': 'tigerTrap',
+  '放火': 'arson',
+  'espionage': 'intelligence',
+  '密偵': 'intelligence',
   // 外交 (Diplomacy)
-  '外交': '外交',
+  'diplomacy': 'diplomacy',
   // 戰鬥 (Battle Tactics)
-  '火計': '火計',
-  '落石': '落石',
-  '同討': '同討',
-  '天變': '天變',
-  '風變': '風變',
-  '混亂': '混亂',
-  '連環': '連環',
-  '落雷': '落雷',
-  '修復': '修復',
-  '罵聲': '罵聲',
-  '虛報': '虛報',
-  '鼓舞': '鼓舞',
-  '伏兵': '伏兵',
+  'firePlot': 'firePlot',
+  'rockfall': 'rockfall',
+  'jointAttack': 'jointAttack',
+  'weatherChange': 'weatherChange',
+  'windChange': 'windChange',
+  'confusion': 'confusion',
+  'chainLink': 'chainLink',
+  'lightning': 'lightning',
+  'repair': 'repair',
+  'taunt': 'taunt',
+  'falseReport': 'falseReport',
+  'inspire': 'inspire',
+  'ambush': 'ambush',
 };
 
 /** Check if an officer can use a specific command */
@@ -58,10 +58,10 @@ export function getAvailableCommands(officer: Officer): string[] {
 /** Check if an officer has any skills from a specific group */
 export function hasSkillGroup(officer: Officer, group: 'strategy' | 'military' | 'tactics' | 'special'): boolean {
   const groups: Record<typeof group, RTK4Skill[]> = {
-    strategy: ['外交', '情報', '人才', '製造', '做敵', '驅虎', '流言', '燒討'],
-    military: ['諜報', '步兵', '騎兵', '弓兵', '海戰'],
-    tactics: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷'],
-    special: ['修復', '罵聲', '虛報', '鼓舞', '伏兵'],
+    strategy: ['diplomacy', 'intelligence', 'talent', 'manufacture', 'provoke', 'tigerTrap', 'rumor', 'arson'],
+    military: ['espionage', 'infantry', 'cavalry', 'archery', 'naval'],
+    tactics: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning'],
+    special: ['repair', 'taunt', 'falseReport', 'inspire', 'ambush'],
   };
   
   return groups[group].some(skill => hasSkill(officer, skill));
@@ -70,10 +70,10 @@ export function hasSkillGroup(officer: Officer, group: 'strategy' | 'military' |
 /** Count skills in a specific group */
 export function countSkillsInGroup(officer: Officer, group: 'strategy' | 'military' | 'tactics' | 'special'): number {
   const groups: Record<typeof group, RTK4Skill[]> = {
-    strategy: ['外交', '情報', '人才', '製造', '做敵', '驅虎', '流言', '燒討'],
-    military: ['諜報', '步兵', '騎兵', '弓兵', '海戰'],
-    tactics: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷'],
-    special: ['修復', '罵聲', '虛報', '鼓舞', '伏兵'],
+    strategy: ['diplomacy', 'intelligence', 'talent', 'manufacture', 'provoke', 'tigerTrap', 'rumor', 'arson'],
+    military: ['espionage', 'infantry', 'cavalry', 'archery', 'naval'],
+    tactics: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning'],
+    special: ['repair', 'taunt', 'falseReport', 'inspire', 'ambush'],
   };
   
   return officer.skills.filter(skill => groups[group].includes(skill)).length;

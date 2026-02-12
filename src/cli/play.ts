@@ -22,6 +22,7 @@ import { getMovementRange, getAttackRange } from '../utils/unitTypes';
 import { hasSkill } from '../utils/skills';
 import { audioSystem } from '../systems/audio';
 import type { BattleUnit } from '../types/battle';
+import i18next from 'i18next';
 import type { City } from '../types';
 
 // Disable audio in CLI mode
@@ -291,7 +292,7 @@ function runBattle(): { winner: string; winnerFactionId: number | null; log: str
 
   if (result.isFinished && winnerFactionId !== null) {
     const loserFactionId = winnerFactionId === result.attackerId ? result.defenderId : result.attackerId;
-    game.getState().addLog(`戰鬥結束！勝利者：${winnerName}`);
+    game.getState().addLog(i18next.t('logs:ai.battleEnd', { winner: winnerName }));
 
     const battleUnitsData = result.units.map(u => ({
       officerId: u.officerId,
@@ -343,15 +344,12 @@ function showStatus(factionId: number) {
       log(`      POWs: ${pows.map(o => `${o.name}(L${o.leadership},W${o.war})`).join(', ')}`);
     }
 
-    // Show neighbors
-    const neighbors = city.adjacentCityIds
-      .map(id => state.cities.find(c => c.id === id))
-      .filter(Boolean);
+    // Show neighbors (fog-gated via store)
+    const neighbors = state.getNeighborSummary(city.id);
     for (const n of neighbors) {
-      const nFaction = state.factions.find(f => f.id === n!.factionId);
-      const nOfficers = state.officers.filter(o => o.cityId === n!.id && o.factionId === n!.factionId);
-      const label = n!.factionId === factionId ? '(ours)' : n!.factionId === null ? '(empty)' : `(${nFaction?.name || '?'})`;
-      log(`      → [${n!.id}] ${n!.name} ${label} 兵=${n!.troops} off=${nOfficers.length}`);
+      const label = n.factionId === factionId ? '(ours)' : n.factionId === null ? '(empty)' : `(${n.factionName || '?'})`;
+      const troopStr = n.troops !== null ? ` 兵=${n.troops} off=${n.officerCount}` : '';
+      log(`      → [${n.cityId}] ${n.cityName} ${label}${troopStr}`);
     }
   }
 
@@ -367,11 +365,11 @@ function showStatus(factionId: number) {
 function showWorld() {
   const state = game.getState();
   logSection('World Map');
-  for (const faction of state.factions) {
-    const cities = state.cities.filter(c => c.factionId === faction.id);
-    const officers = state.officers.filter(o => o.factionId === faction.id);
-    const totalTroops = cities.reduce((s, c) => s + c.troops, 0);
-    log(`  ${faction.name}: ${cities.length} cities, ${officers.length} off, ${totalTroops} troops — [${cities.map(c => c.name).join(', ')}]`);
+  const summaries = state.getFactionSummaries();
+  for (const f of summaries) {
+    const troopStr = f.totalTroops !== null ? `, ${f.totalTroops} troops` : '';
+    const offStr = f.officerCount !== null ? `, ${f.officerCount} off` : '';
+    log(`  ${f.name}: ${f.cityNames.length} cities${offStr}${troopStr} — [${f.cityNames.join(', ')}]`);
   }
   const emptyCities = state.cities.filter(c => c.factionId === null);
   if (emptyCities.length > 0) {
@@ -556,31 +554,43 @@ function handleCommand(input: string, factionId: number): boolean {
     case 'city': {
       const city = findCityByIdOrName(parts.slice(1).join(''));
       if (!city) { log('  City not found.'); return false; }
-      const officers = state.officers.filter(o => o.cityId === city.id);
-      const faction = state.factions.find(f => f.id === city.factionId);
-      log(`  ${city.name} [id=${city.id}] (${faction?.name || '空城'})`);
-      log(`    兵=${city.troops} 金=${city.gold} 糧=${city.food} 人口=${city.population}`);
-      log(`    商=${city.commerce} 農=${city.agriculture} 防=${city.defense} 訓=${city.training} 技=${city.technology}`);
-      log(`    治水=${city.floodControl} 民忠=${city.peopleLoyalty} 士氣=${city.morale} 稅=${city.taxRate}`);
-      log(`    弩=${city.crossbows} 馬=${city.warHorses} 車=${city.batteringRams} 石=${city.catapults}`);
-      const ours = officers.filter(o => o.factionId === city.factionId);
-      const pows = officers.filter(o => o.factionId === -1);
-      const unaffiliated = officers.filter(o => o.factionId === null);
-      if (ours.length > 0) {
+      const view = state.getCityView(city.id);
+      if (!view) { log('  City not found.'); return false; }
+      log(`  ${view.name} [id=${view.id}] (${view.factionName || '空城'})`);
+
+      // Fog of war: store returns null fields for unrevealed data
+      if (!view.isRevealed) {
+        log('    (Intelligence unavailable — spy on this city to reveal details)');
+        return false;
+      }
+
+      log(`    兵=${view.troops} 金=${view.gold} 糧=${view.food} 人口=${view.population}`);
+      log(`    商=${view.commerce} 農=${view.agriculture} 防=${view.defense} 訓=${view.training} 技=${view.technology}`);
+      log(`    治水=${view.floodControl} 民忠=${view.peopleLoyalty} 士氣=${view.morale} 稅=${view.taxRate}`);
+      // Weapons: store returns null for non-own cities
+      if (view.crossbows !== null) {
+        log(`    弩=${view.crossbows} 馬=${view.warHorses} 車=${view.batteringRams} 石=${view.catapults}`);
+      }
+      // Officers: store already filters by visibility
+      if (view.officers.length > 0) {
         log('    Officers:');
-        for (const o of ours) {
+        for (const o of view.officers) {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 體=${o.stamina} 忠=${o.loyalty} ${o.rank}${skills}`);
+          if (o.stamina !== null) {
+            log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 體=${o.stamina} 忠=${o.loyalty} ${o.rank}${skills}`);
+          } else {
+            // Revealed enemy city: no stamina/loyalty
+            log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma}${skills}`);
+          }
         }
       }
-      if (pows.length > 0) log(`    POWs: ${pows.map(o => `${o.name}(L${o.leadership},W${o.war})`).join(', ')}`);
-      if (unaffiliated.length > 0) log(`    在野: ${unaffiliated.map(o => `${o.name}(L${o.leadership},W${o.war},P${o.politics})`).join(', ')}`);
-      // Neighbors
-      const neighbors = city.adjacentCityIds.map(id => state.cities.find(c => c.id === id)).filter(Boolean);
+      if (view.pows.length > 0) log(`    POWs: ${view.pows.map(o => `${o.name}(L${o.leadership},W${o.war})`).join(', ')}`);
+      if (view.unaffiliated.length > 0) log(`    在野: ${view.unaffiliated.map(o => `${o.name}(L${o.leadership},W${o.war},P${o.politics})`).join(', ')}`);
+      // Neighbors (fog-gated via store)
+      const neighbors = state.getNeighborSummary(city.id);
       for (const n of neighbors) {
-        const nFaction = state.factions.find(f => f.id === n!.factionId);
-        const nOff = state.officers.filter(o => o.cityId === n!.id && o.factionId === n!.factionId);
-        log(`    → [${n!.id}] ${n!.name} (${nFaction?.name || '空城'}) 兵=${n!.troops} off=${nOff.length}`);
+        const troopStr = n.troops !== null ? ` 兵=${n.troops} off=${n.officerCount}` : '';
+        log(`    → [${n.cityId}] ${n.cityName} (${n.factionName || '空城'})${troopStr}`);
       }
       return false;
     }
@@ -589,16 +599,21 @@ function handleCommand(input: string, factionId: number): boolean {
       const name = parts.slice(1).join('');
       const officer = state.officers.find(o => o.name === name);
       if (!officer) { log(`  Officer "${name}" not found.`); return false; }
-      const city = state.cities.find(c => c.id === officer.cityId);
-      const faction = state.factions.find(f => f.id === officer.factionId);
-      const affil = officer.factionId === -1 ? 'POW' : officer.factionId === null ? '在野' : faction?.name || '?';
-      log(`  ${officer.name} [id=${officer.id}] — ${affil}`);
-      log(`    City: ${city?.name || '?'} | Rank: ${officer.rank} | ${officer.isGovernor ? 'Governor' : ''}`);
-      log(`    L=${officer.leadership} W=${officer.war} I=${officer.intelligence} P=${officer.politics} C=${officer.charisma}`);
-      log(`    Stamina=${officer.stamina} Loyalty=${officer.loyalty} Age=${state.year - officer.birthYear}`);
-      log(`    Skills: ${officer.skills.length > 0 ? officer.skills.join(', ') : 'none'}`);
-      if (officer.relationships.length > 0) {
-        const rels = officer.relationships.map(r => {
+      const view = state.getOfficerView(officer.id);
+      if (!view) { log(`  Officer "${name}" not found.`); return false; }
+      log(`  ${view.name} [id=${view.id}]${view.affiliation ? ` — ${view.affiliation}` : ''}`);
+      if (view.cityName !== null) {
+        log(`    City: ${view.cityName} | Rank: ${view.rank} | ${view.isGovernor ? 'Governor' : ''}`);
+      }
+      log(`    L=${view.leadership} W=${view.war} I=${view.intelligence} P=${view.politics} C=${view.charisma}`);
+      if (view.stamina !== null) {
+        log(`    Stamina=${view.stamina} Loyalty=${view.loyalty} Age=${view.age}`);
+      } else {
+        log(`    Age=${view.age}`);
+      }
+      log(`    Skills: ${view.skills.length > 0 ? view.skills.join(', ') : 'none'}`);
+      if (view.relationships.length > 0) {
+        const rels = view.relationships.map(r => {
           const target = state.officers.find(o => o.id === r.targetId);
           return `${r.type}:${target?.name || '?'}`;
         });
@@ -630,18 +645,14 @@ function handleCommand(input: string, factionId: number): boolean {
     }
 
     case 'factions': {
-      for (const f of state.factions) {
-        const cities = state.cities.filter(c => c.factionId === f.id);
-        const officers = state.officers.filter(o => o.factionId === f.id);
-        const ruler = state.officers.find(o => o.id === f.rulerId);
-        const totalTroops = cities.reduce((s, c) => s + c.troops, 0);
-        log(`  ${f.name} (ruler: ${ruler?.name || '?'})`);
-        log(`    Cities: ${cities.map(c => c.name).join(', ') || 'none'} | Officers: ${officers.length} | Troops: ${totalTroops}`);
-        // Relations with player
-        if (f.id !== factionId) {
-          const hostility = f.relations[factionId] ?? 60;
-          const isAlly = f.allies?.includes(factionId);
-          log(`    Hostility toward us: ${hostility} ${isAlly ? '(ALLIED)' : ''}`);
+      const summaries = state.getFactionSummaries();
+      for (const f of summaries) {
+        log(`  ${f.name} (ruler: ${f.rulerName || '?'})`);
+        const offStr = f.officerCount !== null ? `Officers: ${f.officerCount}` : 'Officers: ????';
+        const troopStr = f.totalTroops !== null ? `Troops: ${f.totalTroops}` : 'Troops: ????';
+        log(`    Cities: ${f.cityNames.join(', ') || 'none'} | ${offStr} | ${troopStr}`);
+        if (f.hostility !== null) {
+          log(`    Hostility toward us: ${f.hostility} ${f.isAlly ? '(ALLIED)' : ''}`);
         }
       }
       return false;
@@ -818,8 +829,8 @@ function handleCommand(input: string, factionId: number): boolean {
       const name = parts[1] || '';
       const officer = findOfficerByName(name, factionId);
       const rankMap: Record<string, string> = {
-        '一般': '一般', '侍中': '侍中', '軍師': '軍師', '將軍': '將軍', '都督': '都督', '太守': '太守',
-        general: '一般', attendant: '侍中', strategist: '軍師', commander: '將軍', viceroy: '都督', governor: '太守',
+        'common': 'common', 'attendant': 'attendant', 'advisor': 'advisor', 'general': 'general', 'viceroy': 'viceroy', 'governor': 'governor',
+        'strategist': 'advisor', 'commander': 'general',
       };
       const rank = rankMap[(parts[2] || '').toLowerCase()] || rankMap[parts[2] || ''];
       if (!officer || !rank) { log('  Usage: promote <officer> <一般|侍中|軍師|將軍|都督>'); return false; }
@@ -918,11 +929,11 @@ function handleCommand(input: string, factionId: number): boolean {
         let crossbowsAvail = sourceCity.crossbows;
         let horsesAvail = sourceCity.warHorses;
         unitTypes = selectedOfficers.map(o => {
-          if (hasSkill(o, '騎兵') && horsesAvail >= 1000) {
+          if (hasSkill(o, 'cavalry') && horsesAvail >= 1000) {
             horsesAvail -= 1000;
             return 'cavalry';
           }
-          if (hasSkill(o, '弓兵') && crossbowsAvail >= 1000) {
+          if (hasSkill(o, 'archery') && crossbowsAvail >= 1000) {
             crossbowsAvail -= 1000;
             return 'archer';
           }

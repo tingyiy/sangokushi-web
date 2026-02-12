@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import '../i18n';
 import { generateNavalMap, generateSiegeMap, getGatePositions, isSiegeBattle } from './siegeMap';
 import { getUnitTypeLabel, getMovementRange, getAttackRange, getAttackModifier, getDefenseModifier, calculateTacticSuccess } from './unitTypes';
 import type { Officer } from '../types';
@@ -57,11 +58,11 @@ describe('Unit Type Utils', () => {
 
   test('calculateTacticSuccess returns probability', () => {
     // Base 30 + 90/2 = 75
-    expect(calculateTacticSuccess('火計', 90)).toBeGreaterThan(50);
+    expect(calculateTacticSuccess('firePlot', 90)).toBeGreaterThan(50);
     // Base 30 + 10/2 = 35
-    expect(calculateTacticSuccess('火計', 10)).toBeLessThan(50);
+    expect(calculateTacticSuccess('firePlot', 10)).toBeLessThan(50);
     
     // With target int: Base 30 + 90/2 - 90/4 = 30 + 45 - 22.5 = 52.5
-    expect(calculateTacticSuccess('火計', 90, 90)).toBeCloseTo(52.5);
+    expect(calculateTacticSuccess('firePlot', 90, 90)).toBeCloseTo(52.5);
   });
 });

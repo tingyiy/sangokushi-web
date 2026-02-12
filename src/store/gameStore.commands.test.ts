@@ -37,14 +37,14 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       officers: [
         {
           id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, politics: 95, charisma: 90,
-          skills: ['製造', '人才', '做敵', '驅虎', '燒討', '情報', '外交'] as RTK4Skill[],
+          skills: ['manufacture', 'talent', 'provoke', 'tigerTrap', 'arson', 'intelligence', 'diplomacy'] as RTK4Skill[],
           portraitId: 1, birthYear: 160, deathYear: 220, treasureId: null, factionId: 1, cityId: 1,
-          stamina: 100, loyalty: 100, isGovernor: true, rank: '一般' as const, relationships: []
+          stamina: 100, loyalty: 100, isGovernor: true, rank: 'common' as const, relationships: []
         },
         {
           id: 2, name: '呂布', leadership: 95, war: 100, intelligence: 20, politics: 15, charisma: 40,
           skills: [] as RTK4Skill[], portraitId: 2, birthYear: 160, deathYear: 200, treasureId: null,
-          factionId: 2, cityId: 2, stamina: 100, loyalty: 50, isGovernor: true, rank: '一般' as const, relationships: []
+          factionId: 2, cityId: 2, stamina: 100, loyalty: 50, isGovernor: true, rank: 'common' as const, relationships: []
         }
       ],
       factions: [
@@ -106,7 +106,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         officers: [...useGameStore.getState().officers, {
           id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
           skills: [], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
-          factionId: null, cityId: 1, stamina: 100, loyalty: 0, isGovernor: false, rank: '一般' as const, relationships: []
+          factionId: null, cityId: 1, stamina: 100, loyalty: 0, isGovernor: false, rank: 'common' as const, relationships: []
         }]
       });
       // Mock random to succeed
@@ -147,7 +147,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         officers: [...useGameStore.getState().officers, {
           id: 4, name: '測試', leadership: 10, war: 10, intelligence: 10, politics: 10, charisma: 10,
           skills: [], portraitId: 1, birthYear: 160, deathYear: 220, treasureId: null,
-          factionId: 1, cityId: 1, stamina: 100, loyalty: 100, isGovernor: false, rank: '一般' as const, relationships: []
+          factionId: 1, cityId: 1, stamina: 100, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
         }]
       });
       useGameStore.getState().dismissOfficer(4);
@@ -275,7 +275,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
 
       // Add skill but low tech
       useGameStore.setState({
-        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, skills: ['製造'] } : o),
+        officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, skills: ['manufacture'] } : o),
         cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, technology: 20 } : c)
       });
       useGameStore.getState().manufacture(1, 'crossbows');
@@ -299,8 +299,8 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       useGameStore.setState({
         officers: [{
           id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, politics: 95, charisma: 90,
-          skills: ['人才'] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 220,
-          treasureId: null, factionId: 1, cityId: 1, stamina: 5, loyalty: 100, isGovernor: true, rank: '一般' as const, relationships: []
+          skills: ['talent'] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 220,
+          treasureId: null, factionId: 1, cityId: 1, stamina: 5, loyalty: 100, isGovernor: true, rank: 'common' as const, relationships: []
         }]
       });
       useGameStore.getState().searchOfficer(1);

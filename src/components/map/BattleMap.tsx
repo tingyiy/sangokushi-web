@@ -1,14 +1,17 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBattleStore } from '../../store/battleStore';
 import { hexToPixel, getDistance } from '../../utils/hex';
 import { getMoveRange } from '../../utils/pathfinding';
 import { getMovementRange, getAttackRange, getUnitTypeLabel } from '../../utils/unitTypes';
 import type { TerrainType } from '../../types/battle';
+import { localizedName } from '../../i18n/dataNames';
 
 const HEX_SIZE = 32;
 
-const TERRAIN_LABELS: Record<TerrainType, string> = {
-  plain: '平', forest: '林', mountain: '山', river: '川', city: '城', gate: '門', bridge: '橋',
+const TERRAIN_KEYS: Record<TerrainType, string> = {
+  plain: 'battle:terrain.plain', forest: 'battle:terrain.forest', mountain: 'battle:terrain.mountain',
+  river: 'battle:terrain.river', city: 'battle:terrain.city', gate: 'battle:terrain.gate', bridge: 'battle:terrain.bridge',
 };
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
@@ -25,6 +28,7 @@ interface BattleMapProps {
 }
 
 const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
+  const { t } = useTranslation();
   const battle = useBattleStore();
   const activeUnit = battle.units.find(u => u.id === battle.activeUnitId);
   const isPlayerUnit = activeUnit && activeUnit.factionId === playerFactionId;
@@ -266,7 +270,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         {/* Terrain label (when no unit) */}
         {!unit && !fire && !gate && (
           <text textAnchor="middle" dy=".35em" fill="rgba(255,255,255,0.25)" fontSize="10" pointerEvents="none">
-            {TERRAIN_LABELS[terrain]}
+            {t(TERRAIN_KEYS[terrain])}
           </text>
         )}
 
@@ -276,7 +280,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         {/* Gate */}
         {gate && (
           <g>
-            <text textAnchor="middle" dy=".3em" fill="white" fontSize="10" pointerEvents="none">門</text>
+            <text textAnchor="middle" dy=".3em" fill="white" fontSize="10" pointerEvents="none">{t('battle:terrain.gate')}</text>
             <rect x={-12} y={12} width={24} height={3} fill="#000" />
             <rect x={-12} y={12} width={24 * (gate.hp / gate.maxHp)} height={3} fill="#f00" />
           </g>
@@ -299,7 +303,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
               strokeWidth={unit.status === 'confused' ? 2 : 0}
             />
             <text textAnchor="middle" dy="-.2em" fill="white" fontSize="10" fontWeight="bold" pointerEvents="none">
-              {unit.officer.name.substring(0, 2)}
+              {localizedName(unit.officer.name).substring(0, 3)}
             </text>
             <text textAnchor="middle" dy="1em" fill="white" fontSize="8" pointerEvents="none">
               {getUnitTypeLabel(unit.type)}
@@ -344,10 +348,10 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         position: 'absolute', bottom: 8, right: 8,
         display: 'flex', flexDirection: 'column', gap: 4,
       }}>
-        <button onClick={zoomIn} style={zoomBtnStyle} title="放大">+</button>
-        <button onClick={zoomOut} style={zoomBtnStyle} title="縮小">-</button>
-        <button onClick={resetView} style={zoomBtnStyle} title="全覽">⊡</button>
-        <button onClick={centerOnActive} style={zoomBtnStyle} title="居中目前武將">◎</button>
+        <button onClick={zoomIn} style={zoomBtnStyle} title={t('battle:map.zoomIn')}>+</button>
+        <button onClick={zoomOut} style={zoomBtnStyle} title={t('battle:map.zoomOut')}>-</button>
+        <button onClick={resetView} style={zoomBtnStyle} title={t('battle:map.resetView')}>⊡</button>
+        <button onClick={centerOnActive} style={zoomBtnStyle} title={t('battle:map.centerOnActive')}>◎</button>
       </div>
 
       {/* Zoom level indicator */}

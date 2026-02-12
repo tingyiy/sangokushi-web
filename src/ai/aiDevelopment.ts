@@ -1,6 +1,8 @@
 import type { City, Officer } from '../types';
 import type { AIDecision, AIFactionContext } from './types';
 import { hasSkill } from '../utils/skills';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * AI Development Subsystem
@@ -22,7 +24,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'disasterRelief',
         params: [city.id],
-        description: `${city.name}：進行賑災以安撫民心。`
+        description: i18next.t('logs:ai.disasterRelief', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -32,7 +34,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'developFloodControl',
         params: [city.id],
-        description: `${city.name}：進行治水工程。`
+        description: i18next.t('logs:ai.developFlood', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -47,7 +49,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'reinforceDefense',
         params: [city.id],
-        description: `${city.name}：加強城防。`
+        description: i18next.t('logs:ai.reinforceDefense', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -59,13 +61,13 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
           decisions.push({
             action: 'developCommerce',
             params: [city.id],
-            description: `${city.name}：開發商業。`
+            description: i18next.t('logs:ai.developCommerce', { city: localizedName(city.name) })
           });
         } else {
           decisions.push({
             action: 'developAgriculture',
             params: [city.id],
-            description: `${city.name}：開發農業。`
+            description: i18next.t('logs:ai.developAgriculture', { city: localizedName(city.name) })
           });
         }
         continue;
@@ -77,18 +79,21 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'developTechnology',
         params: [city.id],
-        description: `${city.name}：提升技術水平。`
+        description: i18next.t('logs:ai.developTech', { city: localizedName(city.name) })
       });
       continue;
     }
     
     // Priority 6: Manufacture
-    if (city.gold >= 1500 && city.technology >= 50 && hasSkill(governor, '製造')) {
+    if (city.gold >= 1500 && city.technology >= 50 && hasSkill(governor, 'manufacture')) {
         const weapon = Math.random() > 0.5 ? 'crossbows' : 'warHorses';
+        const weaponLabel = weapon === 'crossbows'
+          ? i18next.t('logs:ai.weaponCrossbows')
+          : i18next.t('logs:ai.weaponWarHorses');
         decisions.push({
             action: 'manufacture',
             params: [city.id, weapon],
-            description: `${city.name}：製造${weapon === 'crossbows' ? '弩' : '軍馬'}。`
+            description: i18next.t('logs:ai.manufacture', { city: localizedName(city.name), weapon: weaponLabel })
         });
         continue;
     }

@@ -1,5 +1,7 @@
 import type { City, Officer } from '../types';
 import type { AIDecision, AIFactionContext } from './types';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * AI Military Subsystem
@@ -18,7 +20,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'draftTroops',
         params: [city.id, 2000],
-        description: `${city.name}：徵兵 2000 以加強防禦。`
+        description: i18next.t('logs:ai.draftTroops', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -28,7 +30,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'trainTroops',
         params: [city.id],
-        description: `${city.name}：進行軍事訓練。`
+        description: i18next.t('logs:ai.trainTroops', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -48,7 +50,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'aiStartBattle',
         params: [city.id, targetCity.id],
-        description: `${city.name} 向 ${targetCity.name} 發動了攻勢！`
+        description: i18next.t('logs:ai.attack', { city: localizedName(city.name), target: localizedName(targetCity.name) })
       });
       continue;
     }
@@ -72,7 +74,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
             decisions.push({
                 action: 'transport',
                 params: [city.id, targetBorderCity.id, 'troops', 5000],
-                description: `${city.name}：向 ${targetBorderCity.name} 輸送增援部隊。`
+                description: i18next.t('logs:ai.transport', { city: localizedName(city.name), target: localizedName(targetBorderCity.name) })
             });
         }
     }

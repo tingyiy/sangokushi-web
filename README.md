@@ -12,9 +12,9 @@ Romance of the Three Kingdoms IV (1994, Koei) remains one of the most beloved en
 
 三國志IV（1994年，光榮）至今仍是系列作中最受華人及日本策略遊戲玩家喜愛的作品之一。然而原版僅能在舊平台（超級任天堂、DOS、PS1）上執行，官方從未推出瀏覽器版本。
 
-This project aims to bring RTK IV's core gameplay -- its officer management, turn-based hex battles, diplomatic maneuvering, and strategic depth -- to the modern web, preserving the original game mechanics as faithfully as possible while making them accessible to anyone with a browser. All in-game text uses Traditional Chinese (繁體中文), matching the original release.
+This project aims to bring RTK IV's core gameplay -- its officer management, turn-based hex battles, diplomatic maneuvering, and strategic depth -- to the modern web, preserving the original game mechanics as faithfully as possible while making them accessible to anyone with a browser. The UI supports **Traditional Chinese (繁體中文)** and **English**, with automatic browser language detection.
 
-本專案旨在將三國志IV的核心玩法——武將管理、回合制六角格戰鬥、外交周旋、戰略縱深——帶到現代瀏覽器上，盡可能忠實保留原作的遊戲機制，讓任何人只要有瀏覽器就能遊玩。遊戲內所有文字採用繁體中文，與原版一致。
+本專案旨在將三國志IV的核心玩法——武將管理、回合制六角格戰鬥、外交周旋、戰略縱深——帶到現代瀏覽器上，盡可能忠實保留原作的遊戲機制，讓任何人只要有瀏覽器就能遊玩。介面支援**繁體中文**及**英文**，並可自動偵測瀏覽器語言。
 
 ---
 
@@ -64,7 +64,8 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (260+ tests across 26 test files)
+- **Vitest** -- unit and component tests (329 tests across 28 test files)
+- **i18next** + **react-i18next** -- internationalization (Traditional Chinese + English)
 
 ## Getting Started
 
@@ -89,13 +90,28 @@ npm run dev       # Start dev server at http://localhost:5173
 ```
 src/
   ai/              # AI decision engine (6 subsystem files)
+  cli/             # CLI runner (headless gameplay, exec mode)
   components/      # React components (screens, dialogs, map)
   data/            # Static game data (officers, cities, scenarios, treasures)
   game/            # Game systems (fire attacks, spying)
+  i18n/            # Internationalization (i18next config, locale files, helpers)
   store/           # Zustand stores (gameStore, battleStore)
   types/           # TypeScript type definitions
   utils/           # Utilities (skills, pathfinding, hex math, siege maps)
 ```
+
+## Language Support / 語言支援
+
+The game supports **Traditional Chinese (繁體中文)** and **English**.
+
+遊戲支援**繁體中文**及**英文**。
+
+- **Automatic detection / 自動偵測:** The browser's language setting is detected on first visit. Chinese browsers default to 繁體中文; English browsers default to English.
+  首次造訪時會自動偵測瀏覽器語言設定。中文瀏覽器預設為繁體中文，英文瀏覽器預設為英文。
+- **Manual override / 手動切換:** Use the language switcher in the Settings screen to toggle between languages. Your choice is saved in `localStorage`.
+  可在設定畫面中手動切換語言，選擇會儲存於 `localStorage`。
+- **All game content is translated / 所有遊戲內容皆已翻譯:** Officer names (e.g. 曹操 → Cao Cao), city names, faction names, UI labels, battle text, and game logs.
+  包含武將名稱、城市名稱、勢力名稱、介面文字、戰鬥文字及遊戲紀錄。
 
 ## Documentation
 

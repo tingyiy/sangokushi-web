@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import { scenarios } from '../data/scenarios';
 
@@ -7,15 +8,16 @@ import { scenarios } from '../data/scenarios';
  * Dark green patterned background with centered modal box
  */
 export function ScenarioSelect() {
+  const { t } = useTranslation();
   const { selectScenario, setPhase } = useGameStore();
 
   return (
     <div className="scenario-screen brocade-bg">
       <div className="scenario-box rtk-frame">
         <div className="scenario-header">
-          <h2>請選擇劇本。</h2>
+          <h2>{t('scenario.selectPrompt')}</h2>
           <button className="btn btn-abort" onClick={() => setPhase('title')}>
-            中止
+            {t('common.abort')}
           </button>
         </div>
         <div className="scenario-list">
@@ -32,8 +34,8 @@ export function ScenarioSelect() {
                 }
               }}
             >
-              <span className="scenario-year">西元 {sc.year}年</span>
-              <span className="scenario-name">{sc.name}・{sc.subtitle}</span>
+              <span className="scenario-year">{t('scenario.yearLabel', { year: sc.year })}</span>
+              <span className="scenario-name">{t(`data:scenario.${sc.id}.name`)}・{t(`data:scenario.${sc.id}.subtitle`)}</span>
             </div>
           ))}
         </div>

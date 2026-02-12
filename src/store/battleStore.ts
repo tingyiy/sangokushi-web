@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 import type { BattleState, BattleUnit, BattleMode, UnitType, TerrainType } from '../types/battle';
 import type { Officer } from '../types';
 import {
@@ -287,7 +289,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       mode: 'idle',
     });
 
-    get().addBattleLog(`${unit.officer.name} 移動至 (${q},${r})`);
+    get().addBattleLog(i18next.t('logs:battle.move', { name: localizedName(unit.officer.name), q, r }));
   },
 
   attackUnit: (attackerUnitId, targetUnitId) => {
@@ -344,20 +346,17 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
     set({ units: newUnits, mode: 'idle', activeUnitId: null });
 
-    get().addBattleLog(
-      `${attacker.officer.name} 攻擊 ${target.officer.name}，造成 ${damage} 傷害` +
-      (counterDamage > 0 ? `，受到反擊 ${counterDamage}` : '') + '。'
-    );
+    get().addBattleLog(counterDamage > 0 ? i18next.t('logs:battle.attackWithCounter', { attacker: localizedName(attacker.officer.name), target: localizedName(target.officer.name), damage, counter: counterDamage }) : i18next.t('logs:battle.attack', { attacker: localizedName(attacker.officer.name), target: localizedName(target.officer.name), damage }));
 
     // POW check
     const defeatedTarget = newUnits.find(u => u.id === targetUnitId);
     if (defeatedTarget && defeatedTarget.troops <= 0) {
-      get().addBattleLog(`${target.officer.name} 全軍覆沒！`);
+      get().addBattleLog(i18next.t('logs:battle.unitDestroyed', { name: localizedName(target.officer.name) }));
       const captureChance = 30 + (attacker.officer.war - defeatedTarget.officer.war) + (attacker.officer.charisma / 2);
       const rand = Math.random() * 100;
       if (rand < captureChance) {
         set(s => ({ capturedOfficerIds: [...s.capturedOfficerIds, defeatedTarget.officerId] }));
-        get().addBattleLog(`${target.officer.name} 被俘虜！`);
+        get().addBattleLog(i18next.t('logs:battle.unitCaptured', { name: localizedName(target.officer.name) }));
       }
 
       const isCommander = state.units.filter(u => u.factionId === defeatedTarget.factionId)[0].id === defeatedTarget.id;
@@ -376,7 +375,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
               .map(u => u.officerId),
           ],
         }));
-        get().addBattleLog(`主將敗陣，${target.officer.name} 方全軍崩潰！`);
+        get().addBattleLog(i18next.t('logs:battle.commanderDefeated', { name: localizedName(target.officer.name) }));
 
         // RTK IV: Commander defeat ends the battle immediately
         const loserFactionId = defeatedTarget.factionId;
@@ -387,7 +386,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     }
 
     if (defeatedTarget && defeatedTarget.status === 'routed') {
-      get().addBattleLog(`${target.officer.name} 潰走！`);
+      get().addBattleLog(i18next.t('logs:battle.unitRouted', { name: localizedName(target.officer.name) }));
       set(s => ({ routedOfficerIds: [...s.routedOfficerIds, defeatedTarget.officerId] }));
     }
 
@@ -415,9 +414,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       );
       newBattleMap = { ...state.battleMap, terrain: newTerrain };
       newGates.splice(gateIndex, 1);
-      get().addBattleLog(`城門被攻破！`);
+      get().addBattleLog(i18next.t('logs:battle.gateBroken'));
     } else {
-      get().addBattleLog(`${attacker.officer.name} 攻門，造成 ${damage} 傷害（殘 ${newGates[gateIndex].hp}）。`);
+      get().addBattleLog(i18next.t('logs:battle.gateAttack', { attacker: localizedName(attacker.officer.name), damage, remaining: newGates[gateIndex].hp }));
     }
 
     set({
@@ -454,10 +453,10 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     let nextUnits = [...state.units];
 
     if (success) {
-      get().addBattleLog(`${unit.officer.name} 施展「${tactic}」成功！`);
+      get().addBattleLog(i18next.t('logs:battle.tacticSuccess', { name: localizedName(unit.officer.name), tactic: i18next.t(`data:skill.${tactic}`) }));
 
       switch (tactic) {
-        case '火計':
+        case 'firePlot':
           if (targetHex) {
             set(s => ({ fireHexes: [...s.fireHexes, { q: targetHex.q, r: targetHex.r, turnsLeft: 3 }] }));
             if (targetUnit) {
@@ -465,26 +464,26 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '混亂':
+        case 'confusion':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, status: 'confused' as const, confusedTurns: 2 } : u);
           }
           break;
-        case '罵聲':
+        case 'taunt':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, morale: Math.max(0, u.morale - 10) } : u);
           }
           break;
-        case '鼓舞':
+        case 'inspire':
           nextUnits = nextUnits.map(u => u.id === unitId ? { ...u, morale: Math.min(100, u.morale + 15) } : u);
           break;
-        case '伏兵':
+        case 'ambush':
           if (targetUnit) {
             const dmg = Math.floor(unit.troops * 0.2);
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 10, status: 'confused' as const } : u);
           }
           break;
-        case '同討':
+        case 'jointAttack':
           if (targetUnit) {
             const friend = nextUnits.find(u => u.factionId === targetUnit!.factionId && u.id !== targetUnit!.id);
             if (friend) {
@@ -493,18 +492,18 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '天變': {
+        case 'weatherChange': {
           const weathers = ['sunny', 'rain', 'cloudy', 'storm'] as const;
           set({ weather: weathers[Math.floor(Math.random() * 4)] });
           break;
         }
-        case '風變':
+        case 'windChange':
           set({ windDirection: Math.floor(Math.random() * 6) });
           break;
-        case '修復':
+        case 'repair':
           set(s => ({ gates: s.gates.map(g => ({ ...g, hp: Math.min(g.maxHp, g.hp + 500) })) }));
           break;
-        case '落石':
+        case 'rockfall':
           if (targetUnit) {
             let terr: TerrainType = 'plain';
             if (targetUnit.x >= 0 && targetUnit.x < state.battleMap.width && targetUnit.y >= 0 && targetUnit.y < state.battleMap.height) {
@@ -516,25 +515,25 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
             }
           }
           break;
-        case '連環':
+        case 'chainLink':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, chained: true, status: 'confused' as const, confusedTurns: 3 } : u);
           }
           break;
-        case '落雷':
+        case 'lightning':
           if (targetHex && targetUnit) {
             const dmg = Math.floor(targetUnit.troops * 0.5);
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, troops: Math.max(0, u.troops - dmg), morale: u.morale - 30 } : u);
           }
           break;
-        case '虛報':
+        case 'falseReport':
           if (targetUnit) {
             nextUnits = nextUnits.map(u => u.id === targetId ? { ...u, status: 'confused' as const, confusedTurns: 3, morale: u.morale - 20 } : u);
           }
           break;
       }
     } else {
-      get().addBattleLog(`${unit.officer.name} 施展「${tactic}」失敗。`);
+      get().addBattleLog(i18next.t('logs:battle.tacticFail', { name: localizedName(unit.officer.name), tactic: i18next.t(`data:skill.${tactic}`) }));
     }
 
     set({
@@ -598,7 +597,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       turnPhase: 'enemy',
     });
 
-    get().addBattleLog('── 敵方行動 ──');
+    get().addBattleLog(i18next.t('logs:battle.enemyPhase'));
   },
 
   /** Process one enemy unit. Returns true if more enemy units remain to act. */
@@ -627,7 +626,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         ),
         activeUnitId: nextEnemy.id,
       }));
-      get().addBattleLog(`${nextEnemy.officer.name} 處於混亂狀態，無法行動。`);
+      get().addBattleLog(i18next.t('logs:battle.confused', { name: localizedName(nextEnemy.officer.name) }));
 
       const moreAfterConfused = get().units.some(u =>
         u.factionId !== pFactionId && u.troops > 0 && (u.status === 'active' || u.status === 'confused')
@@ -746,11 +745,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const newDay = state.day + 1;
     if (newDay > state.maxDays) {
       set({ isFinished: true, winnerFactionId: state.defenderId });
-      get().addBattleLog(`已到第 ${state.maxDays} 日，攻方撤退，守方勝利！`);
+      get().addBattleLog(i18next.t('logs:battle.dayLimitReached', { maxDays: state.maxDays }));
       return;
     }
 
-    get().addBattleLog(`── 第 ${newDay} 日 ──`);
+    get().addBattleLog(i18next.t('logs:battle.dayHeader', { day: newDay }));
 
     // Fire damage
     let newFireHexes = [...state.fireHexes];

@@ -1,10 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * EventDialog Component - Phase 6.4
  * Displays turn-based events and handles interactive events like officer visits.
  */
 export function EventDialog() {
+  const { t } = useTranslation();
   const { pendingEvents, popEvent, officers, playerFaction } = useGameStore();
 
   if (pendingEvents.length === 0) return null;
@@ -21,7 +24,7 @@ export function EventDialog() {
             : o
         )
       }));
-      useGameStore.getState().addLog(`【登庸】${officers.find(o => o.id === event.officerId)?.name} 答應了您的邀請，正式加入我軍！`);
+      useGameStore.getState().addLog(t('event.officerRecruited', { name: localizedName(officers.find(o => o.id === event.officerId)?.name ?? '') }));
     }
     popEvent();
   };
@@ -40,11 +43,11 @@ export function EventDialog() {
         <div className="event-footer">
           {isInteractive ? (
             <div className="button-group">
-              <button className="btn btn-primary" onClick={handleRecruit}>接見並招攬</button>
-              <button className="btn btn-secondary" onClick={popEvent}>婉拒</button>
+              <button className="btn btn-primary" onClick={handleRecruit}>{t('event.recruitButton')}</button>
+              <button className="btn btn-secondary" onClick={popEvent}>{t('event.declineButton')}</button>
             </div>
           ) : (
-            <button className="btn btn-primary" onClick={popEvent}>確認</button>
+            <button className="btn btn-primary" onClick={popEvent}>{t('common.ok')}</button>
           )}
         </div>
       </div>

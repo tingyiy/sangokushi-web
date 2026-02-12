@@ -56,7 +56,7 @@ function makeOfficer(
     isGovernor: overrides.isGovernor ?? false,
     treasureId: overrides.treasureId ?? null,
     // Phase 6.2: Rank
-    rank: overrides.rank ?? '一般',
+    rank: overrides.rank ?? 'common',
     // Phase 7.3: Relationships
     relationships: overrides.relationships ?? [],
   };

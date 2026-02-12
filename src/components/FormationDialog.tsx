@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { UnitType } from '../types/battle';
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export function FormationDialog({ targetCityId, onClose }: Props) {
+  const { t } = useTranslation();
   const { 
     selectedCityId, cities, officers, playerFaction, startBattle, setBattleFormation 
   } = useGameStore();
@@ -100,8 +103,8 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   return (
     <div className="modal-overlay">
       <div className="modal-content formation-dialog">
-        <h3>出征準備：{targetCity.name}</h3>
-        <p>選擇參戰武將（最多5人，體力需30以上）</p>
+        <h3>{t('formation.title', { cityName: localizedName(targetCity.name) })}</h3>
+        <p>{t('formation.selectPrompt')}</p>
         
         <div className="officer-selection-list">
           {cityOfficers.map(o => {
@@ -110,8 +113,8 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
             return (
               <div key={o.id} className={`officer-item ${isSelected ? 'selected' : ''}`} onClick={() => toggleOfficer(o.id)}>
                 <div className="officer-info">
-                  <span className="name">{o.name}</span>
-                  <span className="stats">統 {o.leadership} 武 {o.war} 智 {o.intelligence}</span>
+                  <span className="name">{localizedName(o.name)}</span>
+                  <span className="stats">{t('formation.officerStats', { leadership: o.leadership, war: o.war, intelligence: o.intelligence })}</span>
                 </div>
                 {isSelected && (
                   <div className="officer-controls" onClick={(e) => e.stopPropagation()}>
@@ -119,9 +122,9 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
                       value={unitTypes[o.id] || 'infantry'} 
                       onChange={(e) => handleUnitTypeChange(o.id, e.target.value as UnitType)}
                     >
-                      <option value="infantry">步兵</option>
-                      <option value="cavalry" disabled={city.warHorses < 1000}>騎兵</option>
-                      <option value="archer" disabled={city.crossbows < 1000}>弓兵</option>
+                      <option value="infantry">{t('unitType.infantry')}</option>
+                      <option value="cavalry" disabled={city.warHorses < 1000}>{t('unitType.cavalry')}</option>
+                      <option value="archer" disabled={city.crossbows < 1000}>{t('unitType.archer')}</option>
                     </select>
                     <div className="troop-input-group">
                       <input
@@ -140,29 +143,29 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
               </div>
             );
           })}
-          {cityOfficers.length === 0 && <p>城中無可用將領（體力不足或無人在城）。</p>}
+          {cityOfficers.length === 0 && <p>{t('formation.noOfficers')}</p>}
         </div>
 
         <div className="resource-info">
-          <span>城內駐兵：{city.troops.toLocaleString()}</span>
+          <span>{t('formation.garrisonTroops', { count: city.troops.toLocaleString() } as Record<string, unknown>)}</span>
           <span className={overAllocated ? 'over-allocated' : ''}>
-            出征：{totalAllocated.toLocaleString()} / 餘：{remaining.toLocaleString()}
+            {t('formation.allocatedRemaining', { allocated: totalAllocated.toLocaleString(), remaining: remaining.toLocaleString() } as Record<string, unknown>)}
           </span>
         </div>
         <div className="resource-info">
-          <span>持有武器：</span>
-          <span>軍馬: {city.warHorses}</span>
-          <span>弩: {city.crossbows}</span>
+          <span>{t('formation.weaponsHeld')}</span>
+          <span>{t('formation.warHorseCount', { count: city.warHorses })}</span>
+          <span>{t('formation.crossbowCount', { count: city.crossbows })}</span>
         </div>
 
         <div className="modal-actions">
-          <button className="btn btn-cancel" onClick={onClose}>取消</button>
+          <button className="btn btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
           <button
             className="btn btn-confirm"
             onClick={handleStart}
             disabled={selectedOfficerIds.length === 0 || overAllocated || totalAllocated <= 0}
           >
-            確認出陣
+            {t('formation.confirmBattle')}
           </button>
         </div>
       </div>

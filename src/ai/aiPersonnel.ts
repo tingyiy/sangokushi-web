@@ -1,5 +1,7 @@
 import type { City, Officer } from '../types';
 import type { AIDecision, AIFactionContext } from './types';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * AI Personnel Subsystem
@@ -16,7 +18,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'rewardOfficer',
         params: [officer.id, 'gold', 500],
-        description: `主公賜予 ${officer.name} 獎金以安撫其心。`
+        description: i18next.t('logs:ai.rewardOfficer', { officer: localizedName(officer.name) })
       });
     }
   }
@@ -32,7 +34,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'aiRecruitOfficer',
         params: [city.id, target.id],
-        description: `${city.name}：嘗試登庸在野武將 ${target.name}。`
+        description: i18next.t('logs:ai.recruitFree', { city: localizedName(city.name), officer: localizedName(target.name) })
       });
       continue;
     }
@@ -44,7 +46,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
         decisions.push({
             action: 'recruitPOW',
             params: [target.id],
-            description: `${city.name}：嘗試登庸戰俘 ${target.name}。`
+            description: i18next.t('logs:ai.recruitPOW', { city: localizedName(city.name), officer: localizedName(target.name) })
         });
         continue;
     }
@@ -54,7 +56,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'aiSearchOfficer',
         params: [city.id],
-        description: `${city.name}：派遣武將在城內搜索人才。`
+        description: i18next.t('logs:ai.searchOfficer', { city: localizedName(city.name) })
       });
       continue;
     }
@@ -66,7 +68,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
         decisions.push({
             action: 'appointGovernor',
             params: [city.id, candidate.id],
-            description: `${city.name}：任命 ${candidate.name} 為太守。`
+            description: i18next.t('logs:ai.appointGovernor', { city: localizedName(city.name), officer: localizedName(candidate.name) })
         });
     }
   }

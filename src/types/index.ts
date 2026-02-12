@@ -7,20 +7,20 @@
  */
 export const RTK4_SKILLS = [
   // Group 1: Strategy
-  '外交', '情報', '人才', '製造', '做敵', '驅虎', '流言', '燒討',
+  'diplomacy', 'intelligence', 'talent', 'manufacture', 'provoke', 'tigerTrap', 'rumor', 'arson',
   // Group 2: Military Types
-  '諜報', '步兵', '騎兵', '弓兵', '海戰',
+  'espionage', 'infantry', 'cavalry', 'archery', 'naval',
   // Group 3: Battle Tactics
-  '火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷',
+  'firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning',
   // Group 4: Special
-  '修復', '罵聲', '虛報', '鼓舞', '伏兵',
+  'repair', 'taunt', 'falseReport', 'inspire', 'ambush',
 ] as const;
 
 /** RTK IV Skill type */
 export type RTK4Skill = typeof RTK4_SKILLS[number];
 
 /** 武將官職 (Officer Rank) - Phase 6.2 */
-export type OfficerRank = '太守' | '將軍' | '都督' | '軍師' | '侍中' | '一般';
+export type OfficerRank = 'governor' | 'general' | 'viceroy' | 'advisor' | 'attendant' | 'common';
 
 /** 稅率 (Tax Rate) - Phase 6.7 */
 export type TaxRate = 'low' | 'medium' | 'high';
@@ -191,7 +191,7 @@ export type GamePhase =
   | 'defeat';      // 敗北畫面
 
 /** 指令分類 */
-export type CommandCategory = '內政' | '軍事' | '人事' | '外交' | '謀略' | '結束';
+export type CommandCategory = 'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' | 'end';
 
 /** 遊戲事件 (Game Event) - Phase 6.4 */
 export interface GameEvent {

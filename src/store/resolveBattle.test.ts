@@ -36,7 +36,7 @@ function makeOfficer(overrides: Partial<Officer> & { id: number; name: string; f
     loyalty: 100,
     isGovernor: false,
     treasureId: null,
-    rank: '一般',
+    rank: 'common',
     relationships: [],
     ...overrides,
   };

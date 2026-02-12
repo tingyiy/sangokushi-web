@@ -15,7 +15,7 @@ describe('AI Subsystems', () => {
       { id: 2, name: 'City 2', factionId: 2, gold: 10000, food: 10000, troops: 10000, adjacentCityIds: [1], peopleLoyalty: 100, floodControl: 100, defense: 100, x: 1, y: 1 },
     ],
     officers: [
-      { id: 1, name: 'Off 1', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['製造'], isGovernor: true, relationships: [] },
+      { id: 1, name: 'Off 1', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['manufacture'], isGovernor: true, relationships: [] },
     ],
     factions: [
       { id: 1, name: 'F1', relations: { 2: 50 }, allies: [] },

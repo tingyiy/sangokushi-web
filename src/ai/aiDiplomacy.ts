@@ -1,5 +1,7 @@
 import type { Faction } from '../types';
 import type { AIDecision, AIFactionContext } from './types';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * AI Diplomacy Subsystem
@@ -21,7 +23,7 @@ export function evaluateDiplomacy(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'aiImproveRelations',
         params: [richCity.id, other.id],
-        description: `${faction.name} 派遣使者向 ${other.name} 示好。`
+        description: i18next.t('logs:ai.improveRelations', { faction: localizedName(faction.name), other: localizedName(other.name) })
       });
       break; 
     }
@@ -31,7 +33,7 @@ export function evaluateDiplomacy(context: AIFactionContext): AIDecision[] {
         decisions.push({
             action: 'aiFormAlliance',
             params: [richCity.id, other.id],
-            description: `${faction.name} 提議與 ${other.name} 締結同盟。`
+            description: i18next.t('logs:ai.formAlliance', { faction: localizedName(faction.name), other: localizedName(other.name) })
         });
         break;
     }

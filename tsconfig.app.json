@@ -7,6 +7,7 @@
     "module": "ESNext",
     "types": ["vite/client", "vitest/globals"],
     "skipLibCheck": true,
+    "resolveJsonModule": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -25,5 +26,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/cli/**"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/cli/**", "src/i18n/cli.ts"]
 }

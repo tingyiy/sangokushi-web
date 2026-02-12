@@ -21,7 +21,7 @@ const mockOfficer: Officer = {
   intelligence: 70,
   politics: 65,
   charisma: 75,
-  skills: ['流言', '火計', '騎兵', '步兵'] as RTK4Skill[],
+  skills: ['rumor', 'firePlot', 'cavalry', 'infantry'] as RTK4Skill[],
   factionId: 1,
   cityId: 1,
   stamina: 100,
@@ -40,43 +40,43 @@ const mockOfficerNoSkills: Officer = {
 describe('skills', () => {
   describe('hasSkill', () => {
     test('returns true for officer with skill', () => {
-      expect(hasSkill(mockOfficer, '流言')).toBe(true);
-      expect(hasSkill(mockOfficer, '火計')).toBe(true);
-      expect(hasSkill(mockOfficer, '騎兵')).toBe(true);
+      expect(hasSkill(mockOfficer, 'rumor')).toBe(true);
+      expect(hasSkill(mockOfficer, 'firePlot')).toBe(true);
+      expect(hasSkill(mockOfficer, 'cavalry')).toBe(true);
     });
 
     test('returns false for officer without skill', () => {
-      expect(hasSkill(mockOfficer, '天變')).toBe(false);
-      expect(hasSkill(mockOfficer, '情報')).toBe(false);
+      expect(hasSkill(mockOfficer, 'weatherChange')).toBe(false);
+      expect(hasSkill(mockOfficer, 'intelligence')).toBe(false);
     });
 
     test('returns false for officer with no skills', () => {
-      expect(hasSkill(mockOfficerNoSkills, '流言')).toBe(false);
+      expect(hasSkill(mockOfficerNoSkills, 'rumor')).toBe(false);
     });
   });
 
   describe('officersWithSkill', () => {
     test('returns officers with specific skill', () => {
       const officers = [mockOfficer, mockOfficerNoSkills];
-      expect(officersWithSkill(officers, '流言')).toHaveLength(1);
-      expect(officersWithSkill(officers, '流言')[0].id).toBe(1);
+      expect(officersWithSkill(officers, 'rumor')).toHaveLength(1);
+      expect(officersWithSkill(officers, 'rumor')[0].id).toBe(1);
     });
 
     test('returns empty array when no officers have skill', () => {
       const officers = [mockOfficerNoSkills];
-      expect(officersWithSkill(officers, '流言')).toHaveLength(0);
+      expect(officersWithSkill(officers, 'rumor')).toHaveLength(0);
     });
 
     test('returns all officers with skill', () => {
-      const officer2 = { ...mockOfficer, id: 3, skills: ['流言'] as RTK4Skill[] };
+      const officer2 = { ...mockOfficer, id: 3, skills: ['rumor'] as RTK4Skill[] };
       const officers = [mockOfficer, officer2];
-      expect(officersWithSkill(officers, '流言')).toHaveLength(2);
+      expect(officersWithSkill(officers, 'rumor')).toHaveLength(2);
     });
   });
 
   describe('canUseCommand', () => {
     test('returns true when officer has required skill', () => {
-      expect(canUseCommand(mockOfficer, '火計')).toBe(true); // requires 火計
+      expect(canUseCommand(mockOfficer, 'firePlot')).toBe(true); // requires 火計
     });
 
     test('returns true when command has no requirement', () => {
@@ -86,7 +86,7 @@ describe('skills', () => {
 
     test('returns false when officer lacks required skill', () => {
       expect(canUseCommand(mockOfficerNoSkills, '放火')).toBe(false);
-      expect(canUseCommand(mockOfficerNoSkills, '天變')).toBe(false);
+      expect(canUseCommand(mockOfficerNoSkills, 'weatherChange')).toBe(false);
     });
 
     test('handles all skill requirements', () => {
@@ -107,7 +107,7 @@ describe('skills', () => {
     test('returns commands officer can use', () => {
       const commands = getAvailableCommands(mockOfficer);
       expect(commands.length).toBeGreaterThan(0);
-      expect(commands).toContain('火計');
+      expect(commands).toContain('firePlot');
     });
 
     test('returns empty array for officer with no applicable skills', () => {
@@ -149,7 +149,7 @@ describe('skills', () => {
     });
 
     test('counts tactics skills', () => {
-      const officerWithTactics = { ...mockOfficer, skills: ['火計', '天變', '風變'] as RTK4Skill[] };
+      const officerWithTactics = { ...mockOfficer, skills: ['firePlot', 'weatherChange', 'windChange'] as RTK4Skill[] };
       expect(countSkillsInGroup(officerWithTactics, 'tactics')).toBe(3);
     });
   });

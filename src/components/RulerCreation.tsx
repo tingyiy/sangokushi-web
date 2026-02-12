@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { Officer, RTK4Skill, Faction } from '../types';
 
 /**
@@ -7,9 +9,10 @@ import type { Officer, RTK4Skill, Faction } from '../types';
  * Allows player to create a custom ruler and faction.
  */
 export function RulerCreation() {
+  const { t } = useTranslation();
   const { setPhase, cities, officers, factions, scenario } = useGameStore();
   
-  const [name, setName] = useState('新君主');
+  const [name, setName] = useState(t('ruler.defaultName'));
   const [leadership, setLeadership] = useState(70);
   const [war, setWar] = useState(70);
   const [intelligence, setIntelligence] = useState(70);
@@ -28,12 +31,12 @@ export function RulerCreation() {
 
   const handleCreate = () => {
     if (totalPoints > maxPoints) {
-      alert(`能力點數總和不能超過 ${maxPoints}！`);
+      alert(t('ruler.pointsExceeded', { max: maxPoints }));
       return;
     }
 
     if (cities.length === 0) {
-      alert('未選擇劇本或劇本資料錯誤！');
+      alert(t('ruler.noScenarioError'));
       setPhase('scenario');
       return;
     }
@@ -54,20 +57,20 @@ export function RulerCreation() {
       intelligence,
       politics,
       charisma,
-      skills: ['步兵'] as RTK4Skill[],
+      skills: ['infantry'] as RTK4Skill[],
       factionId: newFactionId,
       cityId: startCityId,
       stamina: 100,
       loyalty: 100,
       isGovernor: true,
-      rank: '太守',
+      rank: 'governor',
       relationships: [],
       treasureId: null,
     };
 
     const newFaction: Faction = {
       id: newFactionId,
-      name: `${name}勢力`,
+      name: t('ruler.factionNameSuffix', { name }),
       rulerId: newRulerId,
       advisorId: null,
       color,
@@ -98,56 +101,56 @@ export function RulerCreation() {
   return (
     <div className="ruler-creation-screen">
       <div className="creation-card">
-        <h2>新君主登錄</h2>
+        <h2>{t('ruler.title')}</h2>
         
         <div className="form-group">
-          <label htmlFor="ruler-name">姓名</label>
+          <label htmlFor="ruler-name">{t('ruler.nameLabel')}</label>
           <input id="ruler-name" type="text" value={name} onChange={e => setName(e.target.value)} />
         </div>
 
         <div className="stats-group">
           <div className="stat-input">
-            <label htmlFor="stat-leadership">統率 ({leadership})</label>
+            <label htmlFor="stat-leadership">{t('ruler.leadershipLabel', { value: leadership })}</label>
             <input id="stat-leadership" type="range" min="1" max="100" value={leadership} onChange={e => setLeadership(Number(e.target.value))} />
           </div>
           <div className="stat-input">
-            <label htmlFor="stat-war">武力 ({war})</label>
+            <label htmlFor="stat-war">{t('ruler.warLabel', { value: war })}</label>
             <input id="stat-war" type="range" min="1" max="100" value={war} onChange={e => setWar(Number(e.target.value))} />
           </div>
           <div className="stat-input">
-            <label htmlFor="stat-intelligence">智力 ({intelligence})</label>
+            <label htmlFor="stat-intelligence">{t('ruler.intelligenceLabel', { value: intelligence })}</label>
             <input id="stat-intelligence" type="range" min="1" max="100" value={intelligence} onChange={e => setIntelligence(Number(e.target.value))} />
           </div>
           <div className="stat-input">
-            <label htmlFor="stat-politics">政治 ({politics})</label>
+            <label htmlFor="stat-politics">{t('ruler.politicsLabel', { value: politics })}</label>
             <input id="stat-politics" type="range" min="1" max="100" value={politics} onChange={e => setPolitics(Number(e.target.value))} />
           </div>
           <div className="stat-input">
-            <label htmlFor="stat-charisma">魅力 ({charisma})</label>
+            <label htmlFor="stat-charisma">{t('ruler.charismaLabel', { value: charisma })}</label>
             <input id="stat-charisma" type="range" min="1" max="100" value={charisma} onChange={e => setCharisma(Number(e.target.value))} />
           </div>
           <div className="points-total" style={{ color: totalPoints > maxPoints ? 'red' : 'white' }}>
-            剩餘點數: {maxPoints - totalPoints}
+            {t('ruler.remainingPoints', { points: maxPoints - totalPoints })}
           </div>
         </div>
 
         <div className="form-group">
-          <label htmlFor="start-city">根據地</label>
+          <label htmlFor="start-city">{t('ruler.startCity')}</label>
           <select id="start-city" value={startCityId} onChange={e => setStartCityId(Number(e.target.value))}>
             {cities.filter(c => c.factionId === null).map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>{localizedName(c.name)}</option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="faction-color">旗幟顏色</label>
+          <label htmlFor="faction-color">{t('ruler.factionColor')}</label>
           <input id="faction-color" type="color" value={color} onChange={e => setColor(e.target.value)} />
         </div>
 
         <div className="action-buttons">
-          <button className="btn btn-secondary" onClick={() => setPhase('scenario')}>返回</button>
-          <button className="btn btn-primary" onClick={handleCreate}>建立君主</button>
+          <button className="btn btn-secondary" onClick={() => setPhase('scenario')}>{t('common.return')}</button>
+          <button className="btn btn-primary" onClick={handleCreate}>{t('ruler.create')}</button>
         </div>
       </div>
 

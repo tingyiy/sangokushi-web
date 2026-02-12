@@ -14,14 +14,14 @@ const mockOfficer: Officer = {
   intelligence: 95,
   politics: 94,
   charisma: 98,
-  skills: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷', '修復', '罵聲', '虛報', '鼓舞', '伏兵'] as RTK4Skill[],
+  skills: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning', 'repair', 'taunt', 'falseReport', 'inspire', 'ambush'] as RTK4Skill[],
   factionId: 1,
   cityId: 1,
   stamina: 100,
   loyalty: 100,
   isGovernor: true,
   treasureId: null,
-  rank: '一般',
+  rank: 'common',
   relationships: [],
 };
 
@@ -36,14 +36,14 @@ const mockEnemy: Officer = {
   intelligence: 85,
   politics: 82,
   charisma: 99,
-  skills: ['火計', '落石', '同討', '天變', '風變', '混亂', '連環', '落雷', '修復', '罵聲', '虛報', '鼓舞', '伏兵'] as RTK4Skill[],
+  skills: ['firePlot', 'rockfall', 'jointAttack', 'weatherChange', 'windChange', 'confusion', 'chainLink', 'lightning', 'repair', 'taunt', 'falseReport', 'inspire', 'ambush'] as RTK4Skill[],
   factionId: 2,
   cityId: 2,
   stamina: 100,
   loyalty: 100,
   isGovernor: true,
   treasureId: null,
-  rank: '一般',
+  rank: 'common',
   relationships: [],
 };
 

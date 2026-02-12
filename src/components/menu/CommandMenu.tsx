@@ -1,14 +1,17 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
+import { localizedName } from '../../i18n/dataNames';
 import type { CommandCategory } from '../../types';
 import { FormationDialog } from '../FormationDialog';
 import { TransportDialog } from '../TransportDialog';
 import { OfficerSelectionOverlay } from '../OfficerSelectionOverlay';
 import { hasSkill } from '../../utils/skills';
 
-const categories: CommandCategory[] = ['內政', '軍事', '人事', '外交', '謀略', '結束'];
+const categories: CommandCategory[] = ['domestic', 'military', 'personnel', 'diplomacy', 'strategy', 'end'];
 
 export function CommandMenu() {
+  const { t } = useTranslation();
   const {
     selectedCityId, cities, officers, factions, playerFaction,
     activeCommandCategory, setActiveCommandCategory,
@@ -32,12 +35,12 @@ export function CommandMenu() {
   const governor = officers.find(o => o.cityId === selectedCityId && o.isGovernor);
 
   const handleCategory = (cat: CommandCategory) => {
-    if (cat === '結束') {
+    if (cat === 'end') {
       endTurn();
       return;
     }
     if (!isOwnCity) {
-      addLog('這不是你的城市。');
+      addLog(t('command.notYourCity'));
       return;
     }
     setActiveCommandCategory(cat === activeCommandCategory ? null : cat);
@@ -57,7 +60,7 @@ export function CommandMenu() {
 
   const openOfficerSelection = (title: string, action: (officerId: number) => void) => {
     if (ownOfficers.length === 0) {
-      addLog('本城無可用武將。');
+      addLog(t('command.noOfficersAvailable'));
       return;
     }
     setSelection({ title, onSelect: action });
@@ -67,7 +70,7 @@ export function CommandMenu() {
     openOfficerSelection(title, (officerId) => {
       const officer = officers.find(o => o.id === officerId);
       if (officer) {
-        addLog(`${officer.name} 執行「${title}」。`);
+        addLog(t('command.officerExecute', { name: localizedName(officer.name), action: title }));
       }
       action();
       setSelection(null);
@@ -83,69 +86,69 @@ export function CommandMenu() {
             className={`btn btn-cmd ${activeCommandCategory === cat ? 'active' : ''}`}
             onClick={() => handleCategory(cat)}
           >
-            {cat}
+            {t(`command.category.${cat}`)}
           </button>
         ))}
       </div>
 
       {activeCommandCategory && isOwnCity && city && (
         <div className="command-actions">
-          {activeCommandCategory === '內政' && (
+          {activeCommandCategory === 'domestic' && (
             <>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('商業開發', () => developCommerce(city.id))}>商業開發（500金）</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('農業開發', () => developAgriculture(city.id))}>農業開發（500金）</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('強化城防', () => reinforceDefense(city.id))}>強化城防（300金）</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('治水', () => developFloodControl(city.id))}>治水（500金）</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('技術開發', () => developTechnology(city.id))}>技術開發（800金）</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('訓練', () => trainTroops(city.id))}>訓練（500糧）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.developCommerce'), () => developCommerce(city.id))}>{t('command.domestic.developCommerce')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.developAgriculture'), () => developAgriculture(city.id))}>{t('command.domestic.developAgriculture')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.reinforceDefense'), () => reinforceDefense(city.id))}>{t('command.domestic.reinforceDefense')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.floodControl'), () => developFloodControl(city.id))}>{t('command.domestic.floodControl')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.developTechnology'), () => developTechnology(city.id))}>{t('command.domestic.developTechnology')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.trainTroops'), () => trainTroops(city.id))}>{t('command.domestic.trainTroops')}</button>
               
               <div className="sub-menu">
-                <h5>稅率設定</h5>
+                <h5>{t('command.domestic.taxRate')}</h5>
                 <div style={{ display: 'flex', gap: '4px' }}>
-                  <button className={`btn-tiny ${city.taxRate === 'low' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'low')}>低</button>
-                  <button className={`btn-tiny ${city.taxRate === 'medium' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'medium')}>中</button>
-                  <button className={`btn-tiny ${city.taxRate === 'high' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'high')}>高</button>
+                  <button className={`btn-tiny ${city.taxRate === 'low' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'low')}>{t('command.domestic.taxLow')}</button>
+                  <button className={`btn-tiny ${city.taxRate === 'medium' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'medium')}>{t('command.domestic.taxMedium')}</button>
+                  <button className={`btn-tiny ${city.taxRate === 'high' ? 'active-tax' : ''}`} onClick={() => setTaxRate(city.id, 'high')}>{t('command.domestic.taxHigh')}</button>
                 </div>
               </div>
 
               <div className="sub-menu">
-                <h5>製造 (1000金)</h5>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 30} onClick={() => executeWithOfficer('製造弩', () => manufacture(city.id, 'crossbows'))}>弩</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 40} onClick={() => executeWithOfficer('製造軍馬', () => manufacture(city.id, 'warHorses'))}>軍馬</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 60} onClick={() => executeWithOfficer('製造衝車', () => manufacture(city.id, 'batteringRams'))}>衝車</button>
-                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, '製造') || (city.technology || 0) < 80} onClick={() => executeWithOfficer('製造投石機', () => manufacture(city.id, 'catapults'))}>投石機</button>
+                <h5>{t('command.domestic.manufacture')}</h5>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, 'manufacture') || (city.technology || 0) < 30} onClick={() => executeWithOfficer(t('command.action.manufactureCrossbows'), () => manufacture(city.id, 'crossbows'))}>{t('command.domestic.manufactureCrossbows')}</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, 'manufacture') || (city.technology || 0) < 40} onClick={() => executeWithOfficer(t('command.action.manufactureWarHorses'), () => manufacture(city.id, 'warHorses'))}>{t('command.domestic.manufactureWarHorses')}</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, 'manufacture') || (city.technology || 0) < 60} onClick={() => executeWithOfficer(t('command.action.manufactureBatteringRams'), () => manufacture(city.id, 'batteringRams'))}>{t('command.domestic.manufactureBatteringRams')}</button>
+                <button className="btn btn-action btn-small" disabled={!governor || !hasSkill(governor, 'manufacture') || (city.technology || 0) < 80} onClick={() => executeWithOfficer(t('command.action.manufactureCatapults'), () => manufacture(city.id, 'catapults'))}>{t('command.domestic.manufactureCatapults')}</button>
               </div>
               
-              <button className="btn btn-action" onClick={() => executeWithOfficer('賑災', () => disasterRelief(city.id))}>賑災（500金+1000糧）</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.disasterRelief'), () => disasterRelief(city.id))}>{t('command.domestic.disasterRelief')}</button>
             </>
           )}
 
-          {activeCommandCategory === '軍事' && (
+          {activeCommandCategory === 'military' && (
             <>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('徵兵 1000', () => draftTroops(city.id, 1000))}>徵兵 1000</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer('徵兵 5000', () => draftTroops(city.id, 5000))}>徵兵 5000</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.draft1000'), () => draftTroops(city.id, 1000))}>{t('command.military.draft1000')}</button>
+              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.draft5000'), () => draftTroops(city.id, 5000))}>{t('command.military.draft5000')}</button>
               
               <div className="sub-menu">
-                <h5>輸送</h5>
+                <h5>{t('command.military.transport')}</h5>
                 {city.adjacentCityIds.map(adjId => {
                   const adjCity = cities.find(c => c.id === adjId);
                   if (!adjCity || adjCity.factionId !== playerFaction?.id) return null;
                   return (
                     <button key={adjId} className="btn btn-action btn-small" onClick={() => setDialog({ type: 'transport', targetCityId: adjId })}>
-                      至 {adjCity.name}
+                      {t('command.military.transportTo', { cityName: localizedName(adjCity.name) })}
                     </button>
                   );
                 })}
               </div>
 
               <div className="sub-menu">
-                <h5>出征</h5>
+                <h5>{t('command.military.attack')}</h5>
                 {city.adjacentCityIds.map(adjId => {
                   const adjCity = cities.find(c => c.id === adjId);
                   if (!adjCity || adjCity.factionId === playerFaction?.id) return null;
                   return (
                     <button key={adjId} className="btn btn-action" onClick={() => setDialog({ type: 'formation', targetCityId: adjId })}>
-                      出征 {adjCity.name}
+                      {t('command.military.attackCity', { cityName: localizedName(adjCity.name) })}
                     </button>
                   );
                 })}
@@ -153,70 +156,70 @@ export function CommandMenu() {
             </>
           )}
 
-          {activeCommandCategory === '人事' && (
+          {activeCommandCategory === 'personnel' && (
             <>
-              <button className="btn btn-action" onClick={() => searchOfficer(city.id)}>搜索</button>
+              <button className="btn btn-action" onClick={() => searchOfficer(city.id)}>{t('command.personnel.search')}</button>
               
               {unaffiliated.length > 0 && (
                 <div className="sub-menu">
-                  <h5>招攬</h5>
+                  <h5>{t('command.personnel.recruit')}</h5>
                   {unaffiliated.map(o => (
-                    <button key={o.id} className="btn btn-action btn-small" onClick={() => recruitOfficer(o.id)}>{o.name}</button>
+                    <button key={o.id} className="btn btn-action btn-small" onClick={() => recruitOfficer(o.id)}>{localizedName(o.name)}</button>
                   ))}
                 </div>
               )}
 
               {pows.length > 0 && (
                 <div className="sub-menu">
-                  <h5>處置俘虜</h5>
+                  <h5>{t('command.personnel.handlePOW')}</h5>
                   {pows.map(o => (
                     <div key={o.id} style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-action btn-small" onClick={() => recruitPOW(o.id)}>登用 {o.name}</button>
-                      <button className="btn btn-action btn-small btn-danger" onClick={() => executeOfficer(o.id)}>處斬</button>
+                      <button className="btn btn-action btn-small" onClick={() => recruitPOW(o.id)}>{t('command.personnel.recruitPOW', { name: localizedName(o.name) })}</button>
+                      <button className="btn btn-action btn-small btn-danger" onClick={() => executeOfficer(o.id)}>{t('command.personnel.execute')}</button>
                     </div>
                   ))}
                 </div>
               )}
 
               <div className="sub-menu">
-                <h5>褒賞 (1000金)</h5>
+                <h5>{t('command.personnel.reward')}</h5>
                 <div className="scroll-box">
                   {ownOfficers.filter(o => o.loyalty < 100).map(o => (
-                    <button key={o.id} className="btn btn-action btn-small" onClick={() => rewardOfficer(o.id, 'gold', 1000)}>{o.name} (忠{o.loyalty})</button>
+                    <button key={o.id} className="btn btn-action btn-small" onClick={() => rewardOfficer(o.id, 'gold', 1000)}>{t('command.personnel.officerLoyalty', { name: localizedName(o.name), loyalty: o.loyalty })}</button>
                   ))}
                 </div>
               </div>
 
               <div className="sub-menu">
-                <h5>任命 / 移動</h5>
+                <h5>{t('command.personnel.appointTransfer')}</h5>
                 <div className="scroll-box">
                   {ownOfficers.map(o => (
                     <div key={o.id} className="officer-row">
-                      <span>{o.name}</span>
+                      <span>{localizedName(o.name)}</span>
                       <div className="btn-group">
-                        {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>太守</button>}
-                        <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>軍師</button>
+                        {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>{t('command.personnel.appointGovernor')}</button>}
+                        <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>{t('command.personnel.appointAdvisor')}</button>
                         <select className="select-tiny" value={o.rank} onChange={(e) => promoteOfficer(o.id, e.target.value as import('../../types').OfficerRank)}>
-                           <option value="一般">一般</option>
-                           <option value="侍中">侍中</option>
-                           <option value="軍師">軍師</option>
-                           <option value="將軍">將軍</option>
-                           <option value="都督">都督</option>
+                           <option value="common">{t('data:rank.common')}</option>
+                           <option value="attendant">{t('data:rank.attendant')}</option>
+                           <option value="advisor">{t('data:rank.advisor')}</option>
+                           <option value="general">{t('data:rank.general')}</option>
+                           <option value="viceroy">{t('data:rank.viceroy')}</option>
                         </select>
                         <select className="select-tiny" onChange={(e) => {
                           if (!e.target.value) return;
                           transferOfficer(o.id, parseInt(e.target.value));
                         }}>
-                           <option value="">移動</option>
+                           <option value="">{t('command.personnel.transfer')}</option>
                            {city.adjacentCityIds.map(adjId => {
                               const adjCity = cities.find(c => c.id === adjId);
                               if (adjCity && adjCity.factionId === playerFaction?.id) {
-                                return <option key={adjId} value={adjId}>{adjCity.name}</option>;
+                                return <option key={adjId} value={adjId}>{localizedName(adjCity.name)}</option>;
                               }
                               return null;
                            })}
                         </select>
-                        {o.id !== playerFaction?.rulerId && <button className="btn-tiny btn-danger" onClick={() => dismissOfficer(o.id)}>追放</button>}
+                        {o.id !== playerFaction?.rulerId && <button className="btn-tiny btn-danger" onClick={() => dismissOfficer(o.id)}>{t('command.personnel.dismiss')}</button>}
                       </div>
                     </div>
                   ))}
@@ -225,7 +228,7 @@ export function CommandMenu() {
             </>
           )}
 
-          {activeCommandCategory === '外交' && (
+          {activeCommandCategory === 'diplomacy' && (
             <div className="diplomacy-list">
               {factions.filter(f => f.id !== playerFaction?.id).map(f => {
                 const hostility = playerFaction?.relations?.[f.id] ?? 60;
@@ -233,22 +236,22 @@ export function CommandMenu() {
                 return (
                   <div key={f.id} className="faction-item">
                      <div className="faction-header">
-                        <span style={{ color: f.color, fontWeight: 'bold' }}>{f.name}</span>
-                        <span className="hostility">敵對: {hostility} {isAlly && <span style={{color: '#ffd700'}}>★</span>}</span>
+                        <span style={{ color: f.color, fontWeight: 'bold' }}>{localizedName(f.name)}</span>
+                        <span className="hostility">{t('command.diplomacy.hostility', { value: hostility })} {isAlly && <span style={{color: '#ffd700'}}>★</span>}</span>
                      </div>
                      <div className="faction-actions">
-                        <button className="btn-tiny" onClick={() => improveRelations(f.id)}>贈呈</button>
+                        <button className="btn-tiny" onClick={() => improveRelations(f.id)}>{t('command.diplomacy.improveRelations')}</button>
                         {!isAlly ? (
-                          <button className="btn-tiny" onClick={() => formAlliance(f.id)}>結盟</button>
+                          <button className="btn-tiny" onClick={() => formAlliance(f.id)}>{t('command.diplomacy.formAlliance')}</button>
                         ) : (
-                          <button className="btn-tiny btn-danger" onClick={() => breakAlliance(f.id)}>破棄</button>
+                          <button className="btn-tiny btn-danger" onClick={() => breakAlliance(f.id)}>{t('command.diplomacy.breakAlliance')}</button>
                         )}
                         {isAlly && (
-                          <button className="btn-tiny" onClick={() => requestJointAttack(f.id, city.adjacentCityIds[0])}>共同</button>
+                          <button className="btn-tiny" onClick={() => requestJointAttack(f.id, city.adjacentCityIds[0])}>{t('command.diplomacy.jointAttack')}</button>
                         )}
-                        <button className="btn-tiny" onClick={() => proposeCeasefire(f.id)}>停戰</button>
-                        <button className="btn-tiny" onClick={() => demandSurrender(f.id)}>勸降</button>
-                        <button className="btn-tiny" onClick={() => exchangeHostage(ownOfficers[0]?.id, f.id)} disabled={ownOfficers.length === 0}>人質</button>
+                        <button className="btn-tiny" onClick={() => proposeCeasefire(f.id)}>{t('command.diplomacy.ceasefire')}</button>
+                        <button className="btn-tiny" onClick={() => demandSurrender(f.id)}>{t('command.diplomacy.demandSurrender')}</button>
+                        <button className="btn-tiny" onClick={() => exchangeHostage(ownOfficers[0]?.id, f.id)} disabled={ownOfficers.length === 0}>{t('command.diplomacy.hostage')}</button>
                      </div>
                   </div>
                 );
@@ -256,7 +259,7 @@ export function CommandMenu() {
             </div>
           )}
 
-          {activeCommandCategory === '謀略' && (
+          {activeCommandCategory === 'strategy' && (
             <div className="strategy-list">
               {city.adjacentCityIds.map(adjId => {
                 const adjCity = cities.find(c => c.id === adjId);
@@ -267,17 +270,17 @@ export function CommandMenu() {
                 return (
                   <div key={adjCity.id} className="strategy-city-item">
                     <div className="strategy-city-header">
-                       <span className="city-name">{adjCity.name}</span>
-                       <span className="faction-name" style={{ color: targetFaction?.color }}>{targetFaction?.name}</span>
+                       <span className="city-name">{localizedName(adjCity.name)}</span>
+                       <span className="faction-name" style={{ color: targetFaction?.color }}>{localizedName(targetFaction?.name ?? '')}</span>
                     </div>
                     <div className="strategy-actions">
-                       <button className="btn-tiny" onClick={() => rumor(adjCity.id)} title="流言">流言</button>
-                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, '燒討')} onClick={() => arson(adjCity.id)} title="放火">放火</button>
-                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, '驅虎')} onClick={() => inciteRebellion(adjCity.id)} title="煽動">煽動</button>
-                       <button className="btn-tiny" disabled={!governor || (!hasSkill(governor, '情報') && !hasSkill(governor, '諜報'))} onClick={() => spy(adjCity.id)} title="諜報">諜報</button>
-                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, '情報')} onClick={() => gatherIntelligence(adjCity.id)} title="密偵">密偵</button>
+                       <button className="btn-tiny" onClick={() => rumor(adjCity.id)} title="rumor">{t('command.strategy.rumor')}</button>
+                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, 'arson')} onClick={() => arson(adjCity.id)} title="arson">{t('command.strategy.arson')}</button>
+                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, 'tigerTrap')} onClick={() => inciteRebellion(adjCity.id)} title="incite">{t('command.strategy.incite')}</button>
+                       <button className="btn-tiny" disabled={!governor || (!hasSkill(governor, 'intelligence') && !hasSkill(governor, 'espionage'))} onClick={() => spy(adjCity.id)} title="espionage">{t('command.strategy.spy')}</button>
+                       <button className="btn-tiny" disabled={!governor || !hasSkill(governor, 'intelligence')} onClick={() => gatherIntelligence(adjCity.id)} title="gatherIntel">{t('command.strategy.gatherIntel')}</button>
                        {targetOfficers.length > 0 && (
-                         <button className="btn-tiny" disabled={!governor || !hasSkill(governor, '做敵')} onClick={() => counterEspionage(adjCity.id, targetOfficers[0].id)} title="反間">反間</button>
+                         <button className="btn-tiny" disabled={!governor || !hasSkill(governor, 'provoke')} onClick={() => counterEspionage(adjCity.id, targetOfficers[0].id)} title="counterEspionage">{t('command.strategy.counterEspionage')}</button>
                        )}
                     </div>
                   </div>

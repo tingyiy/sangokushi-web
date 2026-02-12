@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import { GameHeader } from './GameHeader';
 import { GameMap } from './map/GameMap';
@@ -13,6 +14,7 @@ import { EventDialog } from './EventDialog';
 import SaveLoadMenu from './SaveLoadMenu';
 
 export function GameScreen() {
+  const { t } = useTranslation();
   const { cities, officers, playerFaction } = useGameStore();
   const [showStatusPanel, setShowStatusPanel] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
@@ -40,11 +42,11 @@ export function GameScreen() {
         </div>
         <div className="game-right">
           <div className="sidebar-summary">
-            <span>城{ownCities.length}</span>
-            <span>將{officerCount}</span>
-            <span>兵{totalTroops.toLocaleString()}</span>
-            <span>金{totalGold.toLocaleString()}</span>
-            <span>糧{totalFood.toLocaleString()}</span>
+            <span>{t('sidebar.cityCount', { count: ownCities.length })}</span>
+            <span>{t('sidebar.officerCount', { count: officerCount })}</span>
+            <span>{t('sidebar.troopCount', { value: totalTroops.toLocaleString() })}</span>
+            <span>{t('sidebar.goldCount', { value: totalGold.toLocaleString() })}</span>
+            <span>{t('sidebar.foodCount', { value: totalFood.toLocaleString() })}</span>
           </div>
           <CommandMenu />
           <GameLog />

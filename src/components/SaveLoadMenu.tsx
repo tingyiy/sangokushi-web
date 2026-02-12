@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 interface SaveLoadMenuProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ interface SaveLoadMenuProps {
  * Phase 0.2: Save/Load system implementation.
  */
 const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) => {
+  const { t } = useTranslation();
   const { saveGame, loadGame, getSaveSlots, deleteSave, year, month, playerFaction } = useGameStore();
   const [saveSlots, setSaveSlots] = useState<{ slot: number; date: string | null; version: string | null }[]>([]);
   const [message, setMessage] = useState<string>('');
@@ -32,32 +35,32 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
     if (mode === 'save') {
       const success = saveGame(slot);
       if (success) {
-        setMessage(`已儲存至存檔 ${slot}`);
+        setMessage(t('save.saveSuccess', { slot }));
         setSaveSlots(getSaveSlots());
       } else {
-        setMessage('儲存失敗！');
+        setMessage(t('save.saveFailed'));
       }
     } else {
       const success = loadGame(slot);
       if (success) {
         onClose();
       } else {
-        setMessage('載入失敗！');
+        setMessage(t('save.loadFailed'));
       }
     }
   };
 
   const handleDelete = (slot: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`確定要刪除存檔 ${slot} 嗎？`)) {
+    if (window.confirm(t('save.confirmDelete', { slot }))) {
       deleteSave(slot);
       setSaveSlots(getSaveSlots());
-      setMessage(`存檔 ${slot} 已刪除`);
+      setMessage(t('save.deleted', { slot }));
     }
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '空存檔';
+    if (!dateStr) return t('save.emptySlot');
     const date = new Date(dateStr);
     return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
@@ -90,7 +93,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
         }}
       >
         <h2 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px' }}>
-          {mode === 'save' ? '儲存遊戲' : '載入遊戲'}
+          {mode === 'save' ? t('save.title') : t('save.loadTitle')}
         </h2>
 
         {message && (
@@ -98,7 +101,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
             style={{
               padding: '10px',
               marginBottom: '15px',
-              background: message.includes('失敗') ? '#4a0000' : '#004a00',
+              background: message === t('save.saveFailed') || message === t('save.loadFailed') ? '#4a0000' : '#004a00',
               color: '#fff',
               borderRadius: '4px',
               textAlign: 'center',
@@ -130,7 +133,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
             >
               <div>
                 <div style={{ color: '#fff', fontWeight: 'bold' }}>
-                  存檔 {slot.slot}
+                  {t('save.slotLabel', { slot: slot.slot })}
                 </div>
                 <div style={{ color: '#888', fontSize: '0.9rem' }}>
                   {formatDate(slot.date)}
@@ -149,7 +152,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
                     cursor: 'pointer',
                   }}
                 >
-                  刪除
+                  {t('save.delete')}
                 </button>
               )}
             </div>
@@ -168,13 +171,13 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
               cursor: 'pointer',
             }}
           >
-            取消
+            {t('common.cancel')}
           </button>
         </div>
 
         {mode === 'save' && (
           <div style={{ marginTop: '15px', color: '#888', fontSize: '0.85rem', textAlign: 'center' }}>
-            目前進度: {year}年{month}月 · {playerFaction?.name}
+            {t('save.currentProgress', { year, month, factionName: localizedName(playerFaction?.name ?? '') })}
           </div>
         )}
       </div>

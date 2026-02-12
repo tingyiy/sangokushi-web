@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 
 /**
@@ -6,6 +8,7 @@ import type { Officer } from '../types';
  * Forced modal at turn start if a city lacks a governor.
  */
 export function GovernorAssignmentModal() {
+  const { t } = useTranslation();
   const { cities, officers, playerFaction, pendingGovernorAssignmentCityId, appointGovernor } = useGameStore();
 
   if (pendingGovernorAssignmentCityId === null) return null;
@@ -31,14 +34,14 @@ export function GovernorAssignmentModal() {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h3>任命太守</h3>
-        <p>{city?.name} 目前沒有太守，請從以下武將中挑選一位擔任：</p>
+        <h3>{t('governor.title')}</h3>
+        <p>{t('governor.prompt', { cityName: localizedName(city?.name ?? '') })}</p>
         
         <div className="officer-selection-list">
           {eligibleOfficers.map((o: Officer) => (
             <div key={o.id} className="officer-selection-row" onClick={() => handleAppoint(o.id)}>
-              <span className="name">{o.name}</span>
-              <span className="stats">統{o.leadership} 武{o.war} 智{o.intelligence} 政{o.politics} 魅{o.charisma}</span>
+              <span className="name">{localizedName(o.name)}</span>
+              <span className="stats">{t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}</span>
             </div>
           ))}
         </div>

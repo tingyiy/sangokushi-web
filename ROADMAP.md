@@ -10,11 +10,20 @@ See [plans/rtk4-gap-analysis.md](plans/rtk4-gap-analysis.md) for the full compar
 
 ---
 
-## Internationalization (i18n)
+## Internationalization (i18n) — ✅ Complete (Phases 1-5)
 
-Currently all text is hardcoded in Traditional Chinese (繁體中文). Target: support English and Japanese. ~1,100 translatable strings across UI components, store logs, CLI text, and game data. Key challenge: type literals (`'內政' | '軍事'`) used as both discriminators and display text must be decoupled into English keys. Officer/city English names already exist in data files (`name_en` fields).
+Full i18n support is implemented. The UI supports **Traditional Chinese (繁體中文)** and **English** with automatic browser language detection.
 
-See [plans/i18n.md](plans/i18n.md) for scope audit, 6 implementation phases, stack recommendation (`react-i18next`), and before/after code examples.
+**What was done:**
+- **Phase 1:** Installed `i18next` + `react-i18next`, created 5 locale namespaces (`ui`, `data`, `battle`, `logs`, `cli`)
+- **Phase 2:** Decoupled 554 Chinese type literal strings across 24 files to English keys
+- **Phase 3:** Replaced ~220 hardcoded Chinese strings across 22 components with `t()` calls
+- **Phase 4:** Replaced 189 `addLog()`/`addBattleLog()` calls in stores with `i18next.t('logs:...')` calls
+- **Phase 5:** Added browser language detection, `localizedName()` helper for officer/city/faction names, full English translations for all game data
+- **Bug fixes:** Fixed Chinese leaks in battle map, events, AI logs, advisor suggestions, and SVG terrain labels
+- **Regression tests:** 13 tests scanning source files for Chinese character leaks
+
+**Remaining:** Phase 6 — CLI text (`src/cli/play.ts`, ~150 strings). CLI will default to English with `--lang zh-TW` override. Skeleton exists in `src/i18n/cli.ts` and empty `cli.json` locale files.
 
 ---
 

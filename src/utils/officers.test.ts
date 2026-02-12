@@ -21,7 +21,7 @@ const baseOfficer: Officer = {
   intelligence: 70,
   politics: 65,
   charisma: 75,
-  skills: ['流言'] as RTK4Skill[],
+  skills: ['rumor'] as RTK4Skill[],
   factionId: 1,
   cityId: 1,
   stamina: 100,

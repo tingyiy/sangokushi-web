@@ -14,7 +14,7 @@ describe('AI Engine', () => {
     ],
     officers: [
       { id: 1, name: 'Player Ruler', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 1, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
-      { id: 2, name: 'AI Ruler', factionId: 2, cityId: 2, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['製造'], portraitId: 2, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
+      { id: 2, name: 'AI Ruler', factionId: 2, cityId: 2, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['manufacture'], portraitId: 2, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
     ],
     year: 190,
     month: 1,

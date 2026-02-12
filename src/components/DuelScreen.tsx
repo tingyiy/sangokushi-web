@@ -1,8 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 import './DuelScreen.css';
 
 export const DuelScreen: React.FC = () => {
+  const { t } = useTranslation('battle');
   const { duelState, duelAction, endDuel } = useGameStore();
 
   if (!duelState) return null;
@@ -17,13 +20,13 @@ export const DuelScreen: React.FC = () => {
   return (
     <div className="duel-screen">
       <div className="duel-header">
-        <h2>單挑 - 第 {round} 回合</h2>
+        <h2>{t('duel.title', { round })}</h2>
       </div>
 
       <div className="duel-arena">
         <div className="duel-fighter player">
-          <h3>{p1.name} (我方)</h3>
-          <div className="stat">武力: {p1.war}</div>
+          <h3>{t('duel.playerFighter', { name: localizedName(p1.name) })}</h3>
+          <div className="stat">{t('duel.warStat', { value: p1.war })}</div>
           <div className="hp-bar">
             <div className="hp-fill" style={{ width: `${p1Hp}%`, backgroundColor: p1Hp > 30 ? 'green' : 'red' }}></div>
             <span className="hp-text">{p1Hp}/100</span>
@@ -35,8 +38,8 @@ export const DuelScreen: React.FC = () => {
         </div>
 
         <div className="duel-fighter enemy">
-          <h3>{p2.name} (敵方)</h3>
-          <div className="stat">武力: {p2.war}</div>
+          <h3>{t('duel.enemyFighter', { name: localizedName(p2.name) })}</h3>
+          <div className="stat">{t('duel.warStat', { value: p2.war })}</div>
           <div className="hp-bar">
             <div className="hp-fill" style={{ width: `${p2Hp}%`, backgroundColor: p2Hp > 30 ? 'green' : 'red' }}></div>
             <span className="hp-text">{p2Hp}/100</span>
@@ -53,13 +56,13 @@ export const DuelScreen: React.FC = () => {
       <div className="duel-controls">
         {isPlayerTurn ? (
           <>
-            <button onClick={() => handleAction('attack')}>普通攻擊</button>
-            <button onClick={() => handleAction('heavy')}>全力一擊</button>
-            <button onClick={() => handleAction('defend')}>防禦</button>
-            <button onClick={() => handleAction('flee')}>逃跑</button>
+            <button onClick={() => handleAction('attack')}>{t('duel.attack')}</button>
+            <button onClick={() => handleAction('heavy')}>{t('duel.heavyAttack')}</button>
+            <button onClick={() => handleAction('defend')}>{t('duel.defend')}</button>
+            <button onClick={() => handleAction('flee')}>{t('duel.flee')}</button>
           </>
         ) : (
-          <div className="waiting-message">敵方行動中...</div>
+          <div className="waiting-message">{t('duel.enemyTurn')}</div>
         )}
       </div>
 
@@ -67,12 +70,12 @@ export const DuelScreen: React.FC = () => {
         <div className="duel-result-overlay">
           <div className="result-box">
             <h2>
-              {duelState.result === 'win' && '勝利！'}
-              {duelState.result === 'lose' && '敗北...'}
-              {duelState.result === 'draw' && '平局'}
-              {duelState.result === 'flee' && '戰鬥結束'}
+              {duelState.result === 'win' && t('duel.resultWin')}
+              {duelState.result === 'lose' && t('duel.resultLose')}
+              {duelState.result === 'draw' && t('duel.resultDraw')}
+              {duelState.result === 'flee' && t('duel.resultFlee')}
             </h2>
-            <button onClick={endDuel}>返回</button>
+            <button onClick={endDuel}>{t('ui:common.return')}</button>
           </div>
         </div>
       )}

@@ -1,5 +1,7 @@
 import type { City } from '../types';
 import type { AIDecision, AIFactionContext } from './types';
+import i18next from 'i18next';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * AI Strategy Subsystem
@@ -24,7 +26,7 @@ export function evaluateStrategy(context: AIFactionContext): AIDecision[] {
       decisions.push({
         action: 'aiSpy',
         params: [city.id, target.id],
-        description: `${city.name}：派人潛入 ${target.name} 刺探情報。`
+        description: i18next.t('logs:ai.spy', { city: localizedName(city.name), target: localizedName(target.name) })
       });
       
       // 2. Rumor
@@ -32,7 +34,7 @@ export function evaluateStrategy(context: AIFactionContext): AIDecision[] {
           decisions.push({
               action: 'aiRumor',
               params: [city.id, target.id],
-              description: `${city.name}：在 ${target.name} 散布流言以動搖民心。`
+              description: i18next.t('logs:ai.rumor', { city: localizedName(city.name), target: localizedName(target.name) })
           });
       }
     }

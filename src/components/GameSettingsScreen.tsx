@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import { localizedName } from '../i18n/dataNames';
 
 /**
  * ToggleButton Component
@@ -35,6 +37,7 @@ function ToggleButton({ options, value, onChange }: ToggleButtonProps) {
  * - 滑鼠靈敏度 (Mouse Sensitivity)
  */
 export function GameSettingsScreen() {
+  const { t, i18n } = useTranslation();
   const {
     gameSettings,
     setGameSettings,
@@ -44,17 +47,26 @@ export function GameSettingsScreen() {
     playerFaction,
   } = useGameStore();
 
+  const watchLabel = t('settings.battleModeWatch');
+  const skipLabel = t('settings.battleModeSkip');
+  const historicalLabel = t('settings.gameModeHistorical');
+  const fictionalLabel = t('settings.gameModeFictional');
+  const allLabel = t('settings.customOfficersAll');
+  const chooseLabel = t('settings.customOfficersChoose');
+  const onLabel = t('settings.musicOn');
+  const offLabel = t('settings.musicOff');
+
   return (
     <div className="settings-screen brocade-bg">
       <div className="settings-box rtk-frame">
         <div className="settings-top-bar">
-          <h2 className="settings-title">遊戲設定</h2>
+          <h2 className="settings-title">{t('settings.title')}</h2>
           <div className="settings-buttons">
             <button className="btn btn-confirm" onClick={confirmSettings}>
-              決定
+              {t('common.confirm')}
             </button>
             <button className="btn btn-abort" onClick={() => setPhase('faction')}>
-              中止
+              {t('common.abort')}
             </button>
           </div>
         </div>
@@ -62,14 +74,14 @@ export function GameSettingsScreen() {
         {/* Read-only summary */}
         <div className="settings-section">
           <div className="settings-row readonly">
-            <span className="settings-label">選擇劇本</span>
+            <span className="settings-label">{t('settings.selectedScenario')}</span>
             <span className="settings-value">
-              {scenario?.name}・{scenario?.subtitle}
+              {scenario ? t(`data:scenario.${scenario.id}.name`) : ''}・{scenario ? t(`data:scenario.${scenario.id}.subtitle`) : ''}
             </span>
           </div>
           <div className="settings-row readonly">
-            <span className="settings-label">選擇君主</span>
-            <span className="settings-value">{playerFaction?.name}</span>
+            <span className="settings-label">{t('settings.selectedRuler')}</span>
+            <span className="settings-value">{localizedName(playerFaction?.name ?? '')}</span>
           </div>
         </div>
 
@@ -77,43 +89,43 @@ export function GameSettingsScreen() {
         <div className="settings-section">
           {/* Battle Mode */}
           <div className="settings-row">
-            <span className="settings-label">戰爭方式</span>
+            <span className="settings-label">{t('settings.battleMode')}</span>
             <ToggleButton
-              options={['看', '不看']}
-              value={gameSettings.battleMode === 'watch' ? '看' : '不看'}
+              options={[watchLabel, skipLabel]}
+              value={gameSettings.battleMode === 'watch' ? watchLabel : skipLabel}
               onChange={(v) =>
-                setGameSettings({ battleMode: v === '看' ? 'watch' : 'skip' })
+                setGameSettings({ battleMode: v === watchLabel ? 'watch' : 'skip' })
               }
             />
           </div>
 
           {/* Game Mode */}
           <div className="settings-row">
-            <span className="settings-label">遊戲方式</span>
+            <span className="settings-label">{t('settings.gameMode')}</span>
             <ToggleButton
-              options={['史實', '虛構']}
-              value={gameSettings.gameMode === 'historical' ? '史實' : '虛構'}
+              options={[historicalLabel, fictionalLabel]}
+              value={gameSettings.gameMode === 'historical' ? historicalLabel : fictionalLabel}
               onChange={(v) =>
-                setGameSettings({ gameMode: v === '史實' ? 'historical' : 'fictional' })
+                setGameSettings({ gameMode: v === historicalLabel ? 'historical' : 'fictional' })
               }
             />
           </div>
 
           {/* Custom Officers */}
           <div className="settings-row">
-            <span className="settings-label">登錄武將出場</span>
+            <span className="settings-label">{t('settings.customOfficers')}</span>
             <ToggleButton
-              options={['出場', '退場']}
-              value={gameSettings.customOfficers === 'all' ? '出場' : '退場'}
+              options={[allLabel, chooseLabel]}
+              value={gameSettings.customOfficers === 'all' ? allLabel : chooseLabel}
               onChange={(v) =>
-                setGameSettings({ customOfficers: v === '出場' ? 'all' : 'choose' })
+                setGameSettings({ customOfficers: v === allLabel ? 'all' : 'choose' })
               }
             />
           </div>
 
           {/* Intelligence Sensitivity */}
           <div className="settings-row">
-            <span className="settings-label">滑鼠靈敏度</span>
+            <span className="settings-label">{t('settings.mouseSensitivity')}</span>
             <div className="sensitivity-slider">
               {[1, 2, 3, 4, 5].map((level) => (
                 <button
@@ -135,13 +147,23 @@ export function GameSettingsScreen() {
 
           {/* Music Toggle */}
           <div className="settings-row">
-            <span className="settings-label">音樂</span>
+            <span className="settings-label">{t('settings.music')}</span>
             <ToggleButton
-              options={['開', '關']}
-              value={gameSettings.musicEnabled ? '開' : '關'}
+              options={[onLabel, offLabel]}
+              value={gameSettings.musicEnabled ? onLabel : offLabel}
               onChange={(v) =>
-                setGameSettings({ musicEnabled: v === '開' })
+                setGameSettings({ musicEnabled: v === onLabel })
               }
+            />
+          </div>
+
+          {/* Language */}
+          <div className="settings-row">
+            <span className="settings-label">{t('settings.language')}</span>
+            <ToggleButton
+              options={['繁體中文', 'English']}
+              value={i18n.language === 'en' ? 'English' : '繁體中文'}
+              onChange={(v) => i18n.changeLanguage(v === 'English' ? 'en' : 'zh-TW')}
             />
           </div>
         </div>

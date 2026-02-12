@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '../i18n';
 import { FormationDialog } from './FormationDialog';
 import { useGameStore } from '../store/gameStore';
 
