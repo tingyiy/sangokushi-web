@@ -132,6 +132,7 @@ export function GameMap() {
         viewBox={viewBox}
         className="map-svg"
         preserveAspectRatio="xMidYMid meet"
+        shapeRendering="crispEdges"
       >
         <MapTerrain season={season} />
         <MapRoads cities={cities} season={season} />

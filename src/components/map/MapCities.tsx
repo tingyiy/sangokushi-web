@@ -130,6 +130,7 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       />
       {/* Flag banner */}
       <rect
+        className="city-flag-banner"
         x={city.x}
         y={city.y - flagHeight - 2.5}
         width={flagWidth}

@@ -1,5 +1,6 @@
 import type { Season } from './mapData';
 import { TERRAIN_PALETTES } from './mapData';
+import { MapPatterns } from './MapPatterns';
 
 interface MapTerrainProps {
   season: Season;
@@ -13,6 +14,10 @@ const T: React.CSSProperties = { transition: 'fill 1.5s, stroke 1.5s' };
  *
  * All coordinates are derived from the terrain-map.svg (viewBox 0 0 1000 850)
  * divided by 10 to fit the GameMap viewBox (0 0 100 85).
+ *
+ * Phase 4 pixel-art: Terrain polygons now use repeating SVG <pattern> fills
+ * from MapPatterns.tsx to create a stippled/textured look reminiscent of
+ * RTK IV's hand-drawn map style.
  *
  * Rendering order matches the SVG layer structure:
  * 1. Ocean background + wave texture
@@ -30,22 +35,11 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
   return (
     <g className="map-terrain">
-      {/* ==================== 1. OCEAN BACKGROUND ==================== */}
-      <rect x="0" y="0" width="100" height="85" fill={p.ocean1} style={T} />
+      {/* SVG pattern definitions (seasonal colors baked in) */}
+      <MapPatterns palette={p} />
 
-      {/* Subtle wave texture overlay */}
-      <g opacity="0.18">
-        {Array.from({ length: 17 }, (_, i) => (
-          <path
-            key={`wave-${i}`}
-            d={`M 70,${i * 5 + 1} Q 75,${i * 5 - 0.5} 80,${i * 5 + 1} Q 85,${i * 5 + 2.5} 90,${i * 5 + 1} Q 95,${i * 5 - 0.5} 100,${i * 5 + 1}`}
-            stroke={p.waveColor}
-            strokeWidth="0.15"
-            fill="none"
-            style={T}
-          />
-        ))}
-      </g>
+      {/* ==================== 1. OCEAN BACKGROUND ==================== */}
+      <rect x="0" y="0" width="100" height="85" fill="url(#pat-water)" style={T} />
 
       {/* Deep ocean areas (further from coast) */}
       <ellipse cx="95" cy="30" rx="12" ry="25" fill={p.ocean2} opacity="0.5" style={T} />
@@ -90,7 +84,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 62,39 L 58,37 L 54,35 L 51,32
           L 49,28 L 49,24 Z
         `}
-        fill={p.plains}
+        fill="url(#pat-grass)"
         stroke="none"
         style={T}
       />
@@ -103,7 +97,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 80,25 L 75,24 L 70,23 L 65,22
           L 61,20 L 59,17 L 59,14 Z
         `}
-        fill={p.plains}
+        fill="url(#pat-grass)"
         stroke="none"
         style={T}
       />
@@ -116,7 +110,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 60,56 L 56,57 L 52,56 L 48,54
           L 45,51 L 43,47 L 43,43 Z
         `}
-        fill={p.plains}
+        fill="url(#pat-grass2)"
         stroke="none"
         style={T}
       />
@@ -129,7 +123,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 76,48 L 73,47 L 71,44 L 70,41
           L 70,37 L 71,34 Z
         `}
-        fill={p.plains}
+        fill="url(#pat-grass)"
         stroke="none"
         style={T}
       />
@@ -142,7 +136,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 32,53 L 27,53 L 23,51 L 20,48
           L 18,44 L 18,39 Z
         `}
-        fill={p.plains}
+        fill="url(#pat-grass2)"
         stroke="none"
         style={T}
       />
@@ -155,7 +149,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 62,73 L 57,74 L 52,73 L 47,71
           L 43,68 L 41,64 L 40,60 L 41,57 Z
         `}
-        fill={p.southLand}
+        fill="url(#pat-forest)"
         stroke="none"
         style={T}
       />
@@ -168,7 +162,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 62,79.5 L 53,81 L 44,81.5 L 35,82
           L 27,82.5 L 20,82 L 25,78 L 30,74 Z
         `}
-        fill={p.lingnan}
+        fill="url(#pat-lingnan)"
         stroke="none"
         style={T}
       />
@@ -184,9 +178,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 58.5,26 L 57.5,23 L 57,20 L 56.5,17
           L 55.5,14 L 54.5,11 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.85"
         style={T}
       />
@@ -203,9 +197,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           M 62,5 L 68,4 L 74,5 L 80,5.5 L 85,7
           L 84,9.5 L 80,9 L 75,8.5 L 70,8 L 65,7.5 L 62,7 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.8"
         style={T}
       />
@@ -221,9 +215,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 54,35 L 51,34 L 47,33
           L 43,32 L 39,31 L 36,30 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.85"
         style={T}
       />
@@ -239,9 +233,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 39,34 L 38,37 L 35,36
           L 31,35.5 L 27,35 L 25,34.5 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.8"
         style={T}
       />
@@ -255,9 +249,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 46,52 L 44,53 L 42,52
           L 40,50 L 39,48.5 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.75"
         style={T}
       />
@@ -273,9 +267,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 12,74 L 10,72 L 9,68 L 9.5,64
           L 10,60 L 10.5,56 L 10,52 L 9.5,48 L 9.5,44 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.8"
         style={T}
       />
@@ -292,9 +286,9 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 70,72 L 66,71.5 L 60,71
           L 54,70.5 L 48,70 L 43,69.5 L 41,68 Z
         `}
-        fill={p.mountain}
+        fill="url(#pat-mountain)"
         stroke={p.mountainStroke}
-        strokeWidth="0.1"
+        strokeWidth="0.15"
         opacity="0.7"
         style={T}
       />
@@ -309,7 +303,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 87,56 L 85,59 L 82,60 L 79,61
           L 76,62 L 73,61 L 71,58 L 70,55 L 71,52 Z
         `}
-        fill={p.seHills}
+        fill="url(#pat-hills)"
         stroke="none"
         opacity="0.6"
         style={T}
@@ -326,7 +320,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 44,13.5 L 38,13 L 30,12
           L 22,11 L 15,10 L 10,9 Z
         `}
-        fill={p.plateau}
+        fill="url(#pat-plateau)"
         stroke="none"
         opacity="0.5"
         style={T}
@@ -346,7 +340,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 20,17.5 L 15,16 L 10,15
           L 6,13 L 5,10 Z
         `}
-        fill={p.desert}
+        fill="url(#pat-sand)"
         stroke="none"
         opacity="0.7"
         style={T}
@@ -365,7 +359,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
           L 40,24 L 36,25 L 31,24
           L 27,22 L 26,19.5 Z
         `}
-        fill={p.aridZone}
+        fill="url(#pat-arid)"
         stroke="none"
         opacity="0.5"
         style={T}
@@ -376,6 +370,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* 黃河 Yellow River - upper course */}
       <path
+        className="river-animated"
         d={`
           M 5,20
           Q 10,18 15,16
@@ -395,6 +390,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* Yellow River middle course (flows east through 中原) */}
       <path
+        className="river-animated"
         d={`
           M 53,18
           Q 56,19 58,20
@@ -435,6 +431,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* 長江 Yangtze River - upper (from Sichuan through Three Gorges) */}
       <path
+        className="river-animated"
         d={`
           M 15,53
           Q 20,52 25,51
@@ -452,6 +449,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* Middle Yangtze (through 江陵/江夏/柴桑) */}
       <path
+        className="river-animated"
         d={`
           M 43,52
           Q 46,52.5 49,52
@@ -471,6 +469,7 @@ export function MapTerrain({ season }: MapTerrainProps) {
 
       {/* Lower Yangtze (through 廬江/建業 to sea) */}
       <path
+        className="river-animated"
         d={`
           M 74,52
           Q 76,51 78,49
@@ -557,15 +556,15 @@ export function MapTerrain({ season }: MapTerrainProps) {
       {/* ==================== 7. LAKES ==================== */}
 
       {/* 洞庭湖 Dongting Lake (near 江陵/長沙) */}
-      <ellipse cx="55.5" cy="53" rx="2.5" ry="1.8" fill={p.lake} opacity="0.7" style={T} />
-      <ellipse cx="55.5" cy="53" rx="2" ry="1.4" fill={p.lakeHighlight} opacity="0.4" style={T} />
+      <ellipse cx="55.5" cy="53" rx="2.5" ry="1.8" fill="url(#pat-lake)" opacity="0.7" style={T} />
+      <ellipse cx="55.5" cy="53" rx="2" ry="1.4" fill={p.lakeHighlight} opacity="0.3" style={T} />
 
       {/* 鄱陽湖 Poyang Lake (near 柴桑) */}
-      <ellipse cx="71" cy="53" rx="2" ry="2.2" fill={p.lake} opacity="0.7" style={T} />
-      <ellipse cx="71" cy="53" rx="1.5" ry="1.7" fill={p.lakeHighlight} opacity="0.4" style={T} />
+      <ellipse cx="71" cy="53" rx="2" ry="2.2" fill="url(#pat-lake)" opacity="0.7" style={T} />
+      <ellipse cx="71" cy="53" rx="1.5" ry="1.7" fill={p.lakeHighlight} opacity="0.3" style={T} />
 
       {/* 太湖 Tai Lake (near 建業/會稽) */}
-      <ellipse cx="83" cy="48" rx="1.5" ry="1.2" fill={p.lake} opacity="0.6" style={T} />
+      <ellipse cx="83" cy="48" rx="1.5" ry="1.2" fill="url(#pat-lake)" opacity="0.6" style={T} />
 
 
       {/* ==================== 8. COAST FOAM ==================== */}
