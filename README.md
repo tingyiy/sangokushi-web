@@ -64,7 +64,7 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (329 tests across 28 test files)
+- **Vitest** -- unit and component tests (352 tests across 29 test files)
 - **i18next** + **react-i18next** -- internationalization (Traditional Chinese + English)
 
 ## Getting Started
@@ -95,7 +95,7 @@ src/
   data/            # Static game data (officers, cities, scenarios, treasures)
   game/            # Game systems (fire attacks, spying)
   i18n/            # Internationalization (i18next config, locale files, helpers)
-  store/           # Zustand stores (gameStore, battleStore)
+  store/           # Zustand stores (gameStore + 7 domain slices, battleStore)
   types/           # TypeScript type definitions
   utils/           # Utilities (skills, pathfinding, hex math, siege maps)
 ```

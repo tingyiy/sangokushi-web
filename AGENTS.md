@@ -134,7 +134,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 ```
 
 **Key Principles:**
-- Main store in `src/store/gameStore.ts` (~2900 lines) for strategic layer
+- Main store split into domain slices under `src/store/` (see Key Files below)
 - Battle store in `src/store/battleStore.ts` (~850 lines) for tactical combat
 - All game logic lives as store actions
 - Components consume via `useGameStore()` / `useBattleStore()` hooks
@@ -213,7 +213,7 @@ English keys: `'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' 
 Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / "Domestic" (en)
 
 ### Key Files
-- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~300 lines)
+- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~580 lines)
 - `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~300 lines)
 - `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~320 lines)
 - `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~490 lines)
@@ -312,7 +312,7 @@ npx tsx src/cli/play.ts --scenario 0 --faction 袁紹 --savefile /tmp/g.json --e
 npx tsx src/cli/play.ts --savefile /tmp/g.json --exec "draft 鄴 2000; end; status"
 ```
 
-The CLI (`src/cli/play.ts`, ~1470 lines):
+The CLI (`src/cli/play.ts`, ~1520 lines):
 - **Interactive mode:** Full readline-based campaign with all command categories
 - **Exec mode (`--exec`):** Non-interactive, loads/saves state via `--savefile` JSON, runs semicolon-delimited commands
 - **Single-battle mode (`--attack`):** Auto-plays one battle and exits
@@ -321,7 +321,7 @@ The CLI (`src/cli/play.ts`, ~1470 lines):
 - Handles siege maps (gate attacks, breach, then combat)
 - Calls `resolveBattle` after battle ends (capture, flee, city transfer, ruler succession)
 
-**Browser-only dependency:** `localStorage` in 4 save/load functions in `gameStore.ts`. The CLI uses its own filesystem-based `saveState`/`loadState` instead. These are not yet unified behind a common interface (low priority).
+**Browser-only dependency:** `localStorage` in save/load functions in `src/store/saveLoadActions.ts`. The CLI uses its own filesystem-based `saveState`/`loadState` instead. These are not yet unified behind a common interface (low priority).
 
 ---
 
@@ -375,9 +375,10 @@ The CLI (`src/cli/play.ts`, ~1470 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 329 tests across 28 test files
+- Current test suite: 352 tests across 29 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
+- Fog-of-war tests: `src/store/fogOfWar.test.ts` (23 tests covering isCityRevealed, getCityView, getOfficerView, getNeighborSummary, getFactionSummaries)
 - i18n regression tests: `src/store/i18n-logs.test.ts` (13 tests scanning for Chinese leaks)
 
 ---
@@ -497,7 +498,7 @@ When adding ANY feature that displays city or officer data:
 
 These are potential improvements that are not blocking any features:
 
-- **StorageAdapter interface:** Unify browser `localStorage` (4 functions in `gameStore.ts`) and CLI filesystem-based `saveState`/`loadState` behind a common `StorageAdapter` interface. Would allow tests to use an in-memory adapter.
+- **StorageAdapter interface:** Unify browser `localStorage` (in `src/store/saveLoadActions.ts`) and CLI filesystem-based `saveState`/`loadState` behind a common `StorageAdapter` interface. Would allow tests to use an in-memory adapter.
 - **Rule engine extraction:** Extract duplicated game rules (combat formulas, economy rules, capture chance) into `src/engine/rules/` for a single source of truth.
 - **Core engine extraction:** Convert stores to thin wrappers over pure `apply(state, action) → newState` functions for deterministic replay and time-travel debugging. Large effort (3-5 days).
 
