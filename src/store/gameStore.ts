@@ -5,6 +5,112 @@ import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, Game
 import type { UnitType } from '../types/battle';
 import type { AIDecision } from '../ai/types';
 
+// ── Fog-of-War View Types ──
+// These are the shapes returned by store query functions.
+// Null fields mean "hidden by fog of war."
+
+/** Fog-gated city view. Null numeric fields = unrevealed. */
+export interface CityView {
+  id: number;
+  name: string;
+  factionId: number | null;
+  factionName: string | null;
+  factionColor: string | null;
+  isOwn: boolean;
+  isRevealed: boolean;
+  /** Null when unrevealed */
+  population: number | null;
+  troops: number | null;
+  gold: number | null;
+  food: number | null;
+  commerce: number | null;
+  agriculture: number | null;
+  defense: number | null;
+  floodControl: number | null;
+  technology: number | null;
+  peopleLoyalty: number | null;
+  morale: number | null;
+  training: number | null;
+  taxRate: string | null;
+  /** Weapons: only for own cities */
+  crossbows: number | null;
+  warHorses: number | null;
+  batteringRams: number | null;
+  catapults: number | null;
+  /** Affiliated officers (empty array if unrevealed) */
+  officers: OfficerView[];
+  /** Unaffiliated officers: only for own cities */
+  unaffiliated: OfficerView[];
+  /** POWs: only for own cities */
+  pows: OfficerView[];
+}
+
+/** Fog-gated officer view. Null fields = hidden by fog of war. */
+export interface OfficerView {
+  id: number;
+  name: string;
+  portraitId: number;
+  /** Base stats: always visible (encyclopedia / public knowledge) */
+  leadership: number;
+  war: number;
+  intelligence: number;
+  politics: number;
+  charisma: number;
+  /** Skills: always visible */
+  skills: string[];
+  /** Age: always visible */
+  age: number;
+  /** Relationships: always visible */
+  relationships: Officer['relationships'];
+  /** Birth year: always visible */
+  birthYear: number;
+  /** Governor flag: visible if own or revealed */
+  isGovernor: boolean | null;
+  /** Rank: visible if own or in a revealed city */
+  rank: string | null;
+  /** City name: visible if own or in a revealed city */
+  cityName: string | null;
+  /** City id: visible if own or in a revealed city */
+  cityId: number | null;
+  /** Faction affiliation description: visible if own or in a revealed city */
+  affiliation: string | null;
+  /** Stamina: only for own faction officers */
+  stamina: number | null;
+  /** Loyalty: only for own faction officers */
+  loyalty: number | null;
+  /** Treasure: visible if own or in a revealed city */
+  treasureId: number | null;
+}
+
+/** Fog-gated neighbor summary. */
+export interface NeighborSummaryEntry {
+  cityId: number;
+  cityName: string;
+  factionId: number | null;
+  factionName: string | null;
+  /** Troops: null if not revealed */
+  troops: number | null;
+  /** Officer count: null if not revealed */
+  officerCount: number | null;
+}
+
+/** Fog-gated faction summary. */
+export interface FactionSummary {
+  id: number;
+  name: string;
+  rulerName: string | null;
+  color: string;
+  cityNames: string[];
+  /** Officer count: only from own + revealed cities; null if none revealed */
+  officerCount: number | null;
+  /** Total troops: only from own + revealed cities; null if none revealed */
+  totalTroops: number | null;
+  /** Hostility toward player: always visible */
+  hostility: number | null;
+  /** Alliance with player */
+  isAlly: boolean;
+}
+
 // Domain action slices
 import { createDomesticActions } from './domesticActions';
 import { createPersonnelActions } from './personnelActions';
@@ -80,6 +186,14 @@ export interface GameState {
   addLog: (message: string) => void;
   popEvent: () => void;
   isCityRevealed: (cityId: number) => boolean;
+  /** Returns a fog-gated view of a city. Unrevealed cities have numeric fields set to null. */
+  getCityView: (cityId: number) => CityView | null;
+  /** Returns a fog-gated view of an officer. Hidden fields are null. */
+  getOfficerView: (officerId: number) => OfficerView | null;
+  /** Returns fog-gated neighbor summaries for a city's adjacent cities. */
+  getNeighborSummary: (cityId: number) => NeighborSummaryEntry[];
+  /** Returns fog-gated faction overviews (only aggregating from own + revealed cities). */
+  getFactionSummaries: () => FactionSummary[];
   checkVictoryCondition: () => { type: 'victory' | 'defeat' | 'ongoing'; message: string } | null;
 
   // ── Domestic Actions ──
@@ -269,17 +383,168 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return false;
-    if (!state.playerFaction) return true;
+    if (!state.playerFaction) return true; // Spectator mode: show all
+    // Rule 1: Own cities are always revealed
     if (city.factionId === state.playerFaction.id) return true;
-    const playerCities = state.cities.filter(c => c.factionId === state.playerFaction?.id);
-    const isAdjacent = playerCities.some(pc => pc.adjacentCityIds.includes(cityId));
-    if (isAdjacent) return true;
+    // Rule 2: Spied/Revealed cities (with TTL)
     const revealInfo = state.revealedCities[cityId];
     if (revealInfo) {
       if (state.year < revealInfo.untilYear) return true;
       if (state.year === revealInfo.untilYear && state.month <= revealInfo.untilMonth) return true;
     }
+    // RTK IV: adjacent cities are NOT revealed without spying
     return false;
+  },
+
+  getOfficerView: (officerId) => {
+    const state = get();
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer) return null;
+    const playerFactionId = state.playerFaction?.id ?? null;
+    const isOwn = officer.factionId === playerFactionId;
+    const city = state.cities.find(c => c.id === officer.cityId);
+    const cityRevealed = city ? state.isCityRevealed(city.id) : false;
+    const locationVisible = isOwn || cityRevealed;
+    const faction = officer.factionId !== null && officer.factionId !== -1
+      ? state.factions.find(f => f.id === officer.factionId) : null;
+    const affiliation = officer.factionId === -1 ? 'POW'
+      : officer.factionId === null ? '在野'
+        : faction?.name ?? '?';
+
+    return {
+      id: officer.id,
+      name: officer.name,
+      portraitId: officer.portraitId,
+      leadership: officer.leadership,
+      war: officer.war,
+      intelligence: officer.intelligence,
+      politics: officer.politics,
+      charisma: officer.charisma,
+      skills: [...officer.skills],
+      age: state.year - officer.birthYear,
+      relationships: [...officer.relationships],
+      birthYear: officer.birthYear,
+      isGovernor: locationVisible ? officer.isGovernor : null,
+      rank: locationVisible ? officer.rank : null,
+      cityName: locationVisible ? (city?.name ?? null) : null,
+      cityId: locationVisible ? officer.cityId : null,
+      affiliation: locationVisible ? affiliation : null,
+      stamina: isOwn ? officer.stamina : null,
+      loyalty: isOwn ? officer.loyalty : null,
+      treasureId: locationVisible ? (officer.treasureId ?? null) : null,
+    };
+  },
+
+  getCityView: (cityId) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === cityId);
+    if (!city) return null;
+    const playerFactionId = state.playerFaction?.id ?? null;
+    const isOwn = city.factionId !== null && city.factionId === playerFactionId;
+    const isRevealed = state.isCityRevealed(cityId);
+    const faction = city.factionId !== null
+      ? state.factions.find(f => f.id === city.factionId) : null;
+
+    // Officers visible in this city
+    const cityOfficers = state.officers.filter(o => o.cityId === city.id);
+    const affiliated = cityOfficers.filter(o => o.factionId === city.factionId);
+    const unaffiliated = cityOfficers.filter(o => o.factionId === null);
+    const pows = cityOfficers.filter(o => o.factionId === -1);
+
+    return {
+      id: city.id,
+      name: city.name,
+      factionId: city.factionId,
+      factionName: faction?.name ?? null,
+      factionColor: faction?.color ?? null,
+      isOwn,
+      isRevealed,
+      // Stats: shown if revealed, null otherwise
+      population: isRevealed ? city.population : null,
+      troops: isRevealed ? city.troops : null,
+      gold: isRevealed ? city.gold : null,
+      food: isRevealed ? city.food : null,
+      commerce: isRevealed ? city.commerce : null,
+      agriculture: isRevealed ? city.agriculture : null,
+      defense: isRevealed ? city.defense : null,
+      floodControl: isRevealed ? city.floodControl : null,
+      technology: isRevealed ? city.technology : null,
+      peopleLoyalty: isRevealed ? city.peopleLoyalty : null,
+      morale: isRevealed ? city.morale : null,
+      training: isRevealed ? city.training : null,
+      taxRate: isRevealed ? city.taxRate : null,
+      // Weapons: own cities only
+      crossbows: isOwn ? city.crossbows : null,
+      warHorses: isOwn ? city.warHorses : null,
+      batteringRams: isOwn ? city.batteringRams : null,
+      catapults: isOwn ? city.catapults : null,
+      // Officers: affiliated visible if revealed, others only if own
+      officers: isRevealed
+        ? affiliated.map(o => state.getOfficerView(o.id)!).filter(Boolean)
+        : [],
+      unaffiliated: isOwn
+        ? unaffiliated.map(o => state.getOfficerView(o.id)!).filter(Boolean)
+        : [],
+      pows: isOwn
+        ? pows.map(o => state.getOfficerView(o.id)!).filter(Boolean)
+        : [],
+    };
+  },
+
+  getNeighborSummary: (cityId) => {
+    const state = get();
+    const city = state.cities.find(c => c.id === cityId);
+    if (!city) return [];
+    return city.adjacentCityIds.map(adjId => {
+      const neighbor = state.cities.find(c => c.id === adjId);
+      if (!neighbor) return null;
+      const nFaction = neighbor.factionId !== null
+        ? state.factions.find(f => f.id === neighbor.factionId) : null;
+      const nRevealed = state.isCityRevealed(adjId);
+      const nOfficerCount = nRevealed
+        ? state.officers.filter(o => o.cityId === adjId && o.factionId === neighbor.factionId).length
+        : null;
+      return {
+        cityId: adjId,
+        cityName: neighbor.name,
+        factionId: neighbor.factionId,
+        factionName: nFaction?.name ?? null,
+        troops: nRevealed ? neighbor.troops : null,
+        officerCount: nRevealed ? nOfficerCount : null,
+      };
+    }).filter(Boolean) as NeighborSummaryEntry[];
+  },
+
+  getFactionSummaries: () => {
+    const state = get();
+    const playerFactionId = state.playerFaction?.id ?? null;
+    return state.factions.map(f => {
+      const factionCities = state.cities.filter(c => c.factionId === f.id);
+      const ruler = state.officers.find(o => o.id === f.rulerId);
+      // Only aggregate from own + revealed cities
+      const revealedCities = factionCities.filter(c => state.isCityRevealed(c.id));
+      const hasRevealedData = revealedCities.length > 0;
+      const totalTroops = hasRevealedData
+        ? revealedCities.reduce((s, c) => s + c.troops, 0) : null;
+      const officerCount = hasRevealedData
+        ? state.officers.filter(o => o.factionId === f.id && revealedCities.some(c => c.id === o.cityId)).length
+        : null;
+      const hostility = (playerFactionId !== null && f.id !== playerFactionId)
+        ? (f.relations[playerFactionId] ?? 60) : null;
+      const isAlly = playerFactionId !== null
+        ? (f.allies?.includes(playerFactionId) ?? false) : false;
+      return {
+        id: f.id,
+        name: f.name,
+        rulerName: ruler?.name ?? null,
+        color: f.color,
+        cityNames: factionCities.map(c => c.name),
+        officerCount,
+        totalTroops,
+        hostility,
+        isAlly,
+      };
+    });
   },
 
   checkVictoryCondition: () => {

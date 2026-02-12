@@ -213,7 +213,15 @@ English keys: `'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' 
 Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / "Domestic" (en)
 
 ### Key Files
-- `src/store/gameStore.ts` - Core game state and logic (~2900 lines, 67 actions)
+- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~300 lines)
+- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~300 lines)
+- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~320 lines)
+- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~490 lines)
+- `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~330 lines)
+- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~310 lines)
+- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~400 lines)
+- `src/store/saveLoadActions.ts` - Save, load, slots, delete (~120 lines)
+- `src/store/storeHelpers.ts` - Shared helpers (autoAssignGovernor, getAttackDirection)
 - `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines, 16 actions)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
@@ -397,6 +405,91 @@ set({
   ),
 });
 ```
+
+---
+
+## Architecture Layers & Responsibilities
+
+The codebase has three distinct layers. Each layer has a single responsibility. **Never duplicate access-control or game-rule logic across layers.**
+
+```
+┌──────────────────────────────────────────────────┐
+│  Presentation Layer (React components, CLI)       │
+│  • Renders data returned by the Store layer       │
+│  • NEVER reads raw state to decide what to show   │
+│  • Calls store query functions for filtered views  │
+└────────────────────┬─────────────────────────────┘
+                     │ calls query functions
+┌────────────────────▼─────────────────────────────┐
+│  Store Layer (Zustand: gameStore, battleStore)     │
+│  • Single source of truth for ALL game state       │
+│  • Exposes query functions (fog-of-war, victory)   │
+│  • Exposes action functions (mutate state)          │
+│  • ALL access-control logic lives HERE              │
+└────────────────────┬─────────────────────────────┘
+                     │ imports types & scenario data
+┌────────────────────▼─────────────────────────────┐
+│  Data Layer (types, scenarios, base JSON)          │
+│  • Type definitions (Officer, City, Faction, etc.) │
+│  • Scenario templates and base data                │
+│  • Pure data — no game logic, no visibility rules  │
+└──────────────────────────────────────────────────┘
+```
+
+### Layer Rules
+
+| Rule | Description |
+|------|-------------|
+| **Access control in Store only** | Fog-of-war, visibility checks, permission checks — all live as store query functions. Components and CLI call these functions; they never re-implement the logic. |
+| **Presentation is dumb** | Components and CLI format/display whatever the store returns. If the store says "hidden", the presentation layer shows `????` or omits the field. It does NOT decide what to hide. |
+| **No raw state in presentation** | Components should NOT read `state.officers` and filter by faction to decide visibility. Instead, call a store query function that returns the correct view. |
+| **Single fix, all consumers benefit** | When a visibility bug is found, fix it ONCE in the store. All consumers (browser UI, CLI, debug API, tests) automatically get the fix. |
+
+### Fog of War / Visibility System (RTK IV Rules)
+
+Information visibility follows RTK IV's intelligence system. The store layer exposes query functions that enforce these rules:
+
+**City visibility — `isCityRevealed(cityId): boolean`**
+- Own cities: always revealed
+- Spied cities: revealed with TTL (stored in `revealedCities`)
+- Spectator mode (no player faction): all revealed
+- Everything else (adjacent, empty, enemy): **NOT revealed**
+
+**What each visibility level shows:**
+
+| Data | Own City | Revealed Enemy City | Unrevealed City |
+|------|----------|-------------------|-----------------|
+| City name & faction | Yes | Yes | Yes (map is public) |
+| Population, troops, gold, food | Yes | Yes | Hidden (`????`) |
+| Commerce, agriculture, defense, etc. | Yes | Yes | Hidden |
+| Weapons (crossbows, horses, etc.) | Yes | No (military secret) | Hidden |
+| Affiliated officers + base stats | Yes | Yes (no stamina/loyalty) | Hidden |
+| Unaffiliated officers, POWs | Yes | No (internal info) | Hidden |
+| Officer stamina & loyalty | Yes | No (internal info) | Hidden |
+
+**Officer visibility — `getOfficerView(officerId)`**
+- Base stats (L/W/I/P/C), skills, age, relationships: always visible (encyclopedia / public knowledge)
+- Current city location, rank: visible only if officer is own OR in a revealed city
+- Stamina, loyalty: visible only if officer is own
+
+**Faction overview visibility — `world` / `factions` commands**
+- Faction names, city ownership: always visible (political map is public)
+- Troop totals, officer counts: only aggregated from own + revealed cities
+- Hostility/alliance: always visible (diplomatic relations are known)
+
+**Neighbor summaries (in `status` / `city` commands)**
+- Neighbor city name + faction: always visible (map is public)
+- Neighbor troops + officer count: only if that neighbor city is revealed
+
+### Fog of War — Implementation Checklist for New Features
+
+When adding ANY feature that displays city or officer data:
+
+1. **Store layer:** Use `isCityRevealed(cityId)` before exposing city internals
+2. **Officer data:** Check if the officer's city is revealed or if officer is own-faction
+3. **Aggregates:** When computing faction totals (troops, officers), only sum over own + revealed cities
+4. **Never bypass:** Don't add "convenience" exceptions (e.g., "adjacent cities are close so show their troops"). If the player wants intel, they must spy.
+5. **Test:** Add a test case verifying the new feature respects fog-of-war
 
 ---
 

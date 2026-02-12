@@ -1,46 +1,30 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
+import type { OfficerView } from '../store/gameStore';
 import { localizedName } from '../i18n/dataNames';
 import { Portrait } from './Portrait';
 import { CityIllustration } from './CityIllustration';
 import { treasures } from '../data/treasures';
 
 /**
- * CityPanel Component - Updated Phase 1
- * Displays city information with:
- * - City illustration (procedural SVG based on city stats)
- * - All 14 city attributes (Phase 1.2)
- * - Officer portraits, skills, and treasures (Phase 1.1, 1.4)
- * - Weapon inventory (Phase 1.2)
+ * CityPanel Component
+ * Uses store-level getCityView() for fog-of-war gating.
+ * This component is "dumb" — it renders whatever the store returns.
+ * Null fields mean "hidden by fog of war."
  */
 export function CityPanel() {
   const { t } = useTranslation();
-  const {
-    cities,
-    officers,
-    factions,
-    selectedCityId,
-    playerFaction,
-    isCityRevealed,
-    selectCity,
-  } = useGameStore();
+  const { cities, selectedCityId, getCityView, selectCity } = useGameStore();
 
   if (selectedCityId === null) {
     return null;
   }
 
-  const city = cities.find(c => c.id === selectedCityId);
-  if (!city) return null;
+  const rawCity = cities.find(c => c.id === selectedCityId);
+  if (!rawCity) return null;
 
-  const faction = city.factionId !== null
-    ? factions.find(f => f.id === city.factionId)
-    : null;
-
-  const cityOfficers = officers.filter(o => o.cityId === city.id);
-  const affiliated = cityOfficers.filter(o => o.factionId !== null);
-  const unaffiliated = cityOfficers.filter(o => o.factionId === null);
-  const isOwnCity = city.factionId === playerFaction?.id;
-  const isRevealed = isCityRevealed(city.id);
+  const view = getCityView(selectedCityId);
+  if (!view) return null;
 
   return (
     <div className="city-panel city-panel-overlay">
@@ -49,57 +33,57 @@ export function CityPanel() {
         onClick={() => selectCity(null)}
         aria-label={t('city.closeAriaLabel')}
       >
-        ×
+        &times;
       </button>
-      {/* City name with faction color */}
-      <h3 className="city-name" style={{ color: faction?.color ?? '#9ca3af' }}>
-        {localizedName(city.name)}
-        {faction && <span className="city-faction">{t('city.factionSuffix', { name: localizedName(faction.name) })}</span>}
-        {!faction && <span className="city-faction">{t('city.emptyCity')}</span>}
+      {/* City name with faction color — always visible (map is public) */}
+      <h3 className="city-name" style={{ color: view.factionColor ?? '#9ca3af' }}>
+        {localizedName(view.name)}
+        {view.factionName && <span className="city-faction">{t('city.factionSuffix', { name: localizedName(view.factionName) })}</span>}
+        {!view.factionName && <span className="city-faction">{t('city.emptyCity')}</span>}
       </h3>
 
-      {/* City illustration - Phase 0.5 */}
-      <CityIllustration city={city} />
+      {/* City illustration — only for revealed cities */}
+      {view.isRevealed && <CityIllustration city={rawCity} />}
 
-      {/* City stats - Phase 1.2: All 14 attributes */}
+      {/* City stats — null fields shown as ???? */}
       <div className="city-stats">
         <div className="stat-row">
-          <span>{t('city.population')}</span><span>{isRevealed ? city.population.toLocaleString() : '????'}</span>
+          <span>{t('city.population')}</span><span>{view.population !== null ? view.population.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>{t('city.troops')}</span><span>{isRevealed ? city.troops.toLocaleString() : '????'}</span>
+          <span>{t('city.troops')}</span><span>{view.troops !== null ? view.troops.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>{t('city.gold')}</span><span>{isRevealed ? city.gold.toLocaleString() : '????'}</span>
+          <span>{t('city.gold')}</span><span>{view.gold !== null ? view.gold.toLocaleString() : '????'}</span>
         </div>
         <div className="stat-row">
-          <span>{t('city.food')}</span><span>{isRevealed ? city.food.toLocaleString() : '????'}</span>
+          <span>{t('city.food')}</span><span>{view.food !== null ? view.food.toLocaleString() : '????'}</span>
         </div>
-        {isRevealed ? (
+        {view.commerce !== null ? (
           <>
             <div className="stat-row">
-              <span>{t('city.commerce')}</span><span>{city.commerce}</span>
+              <span>{t('city.commerce')}</span><span>{view.commerce}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.agriculture')}</span><span>{city.agriculture}</span>
+              <span>{t('city.agriculture')}</span><span>{view.agriculture}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.defense')}</span><span>{city.defense}</span>
+              <span>{t('city.defense')}</span><span>{view.defense}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.floodControl')}</span><span>{city.floodControl}</span>
+              <span>{t('city.floodControl')}</span><span>{view.floodControl}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.technology')}</span><span>{city.technology}</span>
+              <span>{t('city.technology')}</span><span>{view.technology}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.peopleLoyalty')}</span><span>{city.peopleLoyalty}</span>
+              <span>{t('city.peopleLoyalty')}</span><span>{view.peopleLoyalty}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.morale')}</span><span>{city.morale}</span>
+              <span>{t('city.morale')}</span><span>{view.morale}</span>
             </div>
             <div className="stat-row">
-              <span>{t('city.training')}</span><span>{city.training}</span>
+              <span>{t('city.training')}</span><span>{view.training}</span>
             </div>
           </>
         ) : (
@@ -109,88 +93,80 @@ export function CityPanel() {
         )}
       </div>
 
-      {/* Phase 1.2: Weapon inventory - only show for own cities */}
-      {isOwnCity && (
+      {/* Weapon inventory — store returns null for non-own cities */}
+      {view.crossbows !== null && (
         <div className="weapon-section">
           <h5>{t('city.weaponInventory')}</h5>
-          <div className="stat-row"><span>{t('city.crossbows')}</span><span>{city.crossbows}</span></div>
-          <div className="stat-row"><span>{t('city.warHorses')}</span><span>{city.warHorses}</span></div>
-          <div className="stat-row"><span>{t('city.batteringRams')}</span><span>{city.batteringRams}</span></div>
-          <div className="stat-row"><span>{t('city.catapults')}</span><span>{city.catapults}</span></div>
+          <div className="stat-row"><span>{t('city.crossbows')}</span><span>{view.crossbows}</span></div>
+          <div className="stat-row"><span>{t('city.warHorses')}</span><span>{view.warHorses}</span></div>
+          <div className="stat-row"><span>{t('city.batteringRams')}</span><span>{view.batteringRams}</span></div>
+          <div className="stat-row"><span>{t('city.catapults')}</span><span>{view.catapults}</span></div>
         </div>
       )}
 
-      {/* Affiliated officers with portraits, skills, and treasures - Phase 0.5, 1.1, 1.4 */}
-      {isRevealed && affiliated.length > 0 && (
+      {/* Affiliated officers — store already filters by visibility */}
+      {view.officers.length > 0 && (
         <div className="officer-section">
           <h4>{t('city.officers')}</h4>
           <div className="officer-list">
-            {affiliated.map(o => (
-              <div key={o.id} className="officer-row">
-                {/* Portrait - Phase 0.5 */}
-                <Portrait
-                  portraitId={o.portraitId}
-                  name={localizedName(o.name)}
-                  size="small"
-                  className="officer-portrait"
-                />
-                <span className="officer-name">
-                  {o.isGovernor && <span className="governor-badge">{t('city.governorBadge')}</span>}
-                  {localizedName(o.name)}
-                </span>
-                <span className="officer-stats">
-                  {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
-                </span>
-                {/* Phase 1.1: Officer skills */}
-                <span className="officer-skills">
-                  {o.skills.slice(0, 3).join('·')}
-                  {o.skills.length > 3 && `+${o.skills.length - 3}`}
-                </span>
-                {/* Phase 1.4: Treasure display */}
-                {o.treasureId && (
-                  <span className="officer-treasure">
-                    {treasures.find(t => t.id === o.treasureId)?.name}
-                  </span>
-                )}
-                {isOwnCity && (
-                  <>
-                    <span className="officer-loyalty">{t('stat.loyalty')}{o.loyalty}</span>
-                    <span className="officer-stamina" style={{ color: o.stamina < 20 ? '#ff6b6b' : '#4ade80' }}>{t('stat.stamina')}{o.stamina}</span>
-                  </>
-                )}
-              </div>
+            {view.officers.map(o => (
+              <OfficerRow key={o.id} officer={o} isOwn={view.isOwn} t={t} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Unaffiliated officers with portraits - Phase 0.5 */}
-      {isOwnCity && unaffiliated.length > 0 && (
+      {/* Unaffiliated officers — store only returns for own cities */}
+      {view.unaffiliated.length > 0 && (
         <div className="officer-section">
           <h4>{t('city.unaffiliatedOfficers')}</h4>
           <div className="officer-list">
-            {unaffiliated.map(o => (
-              <div key={o.id} className="officer-row unaffiliated">
-                {/* Portrait - Phase 0.5 */}
-                <Portrait
-                  portraitId={o.portraitId}
-                  name={localizedName(o.name)}
-                  size="small"
-                  className="officer-portrait"
-                />
-                <span className="officer-name">{localizedName(o.name)}</span>
-                <span className="officer-stats">
-                  {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
-                </span>
-                {/* Phase 1.1: Officer skills for unaffiliated */}
-                <span className="officer-skills">
-                  {o.skills.slice(0, 3).join('·')}
-                  {o.skills.length > 3 && `+${o.skills.length - 3}`}
-                </span>
-              </div>
+            {view.unaffiliated.map(o => (
+              <OfficerRow key={o.id} officer={o} isOwn={view.isOwn} t={t} unaffiliated />
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Renders a single officer row from a fog-gated OfficerView. */
+function OfficerRow({ officer: o, isOwn, t, unaffiliated }: {
+  officer: OfficerView;
+  isOwn: boolean;
+  t: (key: string) => string;
+  unaffiliated?: boolean;
+}) {
+  return (
+    <div className={`officer-row${unaffiliated ? ' unaffiliated' : ''}`}>
+      <Portrait
+        portraitId={o.portraitId}
+        name={localizedName(o.name)}
+        size="small"
+        className="officer-portrait"
+      />
+      <span className="officer-name">
+        {o.isGovernor && <span className="governor-badge">{t('city.governorBadge')}</span>}
+        {localizedName(o.name)}
+      </span>
+      <span className="officer-stats">
+        {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
+      </span>
+      <span className="officer-skills">
+        {o.skills.slice(0, 3).join('\u00B7')}
+        {o.skills.length > 3 && `+${o.skills.length - 3}`}
+      </span>
+      {o.treasureId !== null && (
+        <span className="officer-treasure">
+          {treasures.find(t => t.id === o.treasureId)?.name}
+        </span>
+      )}
+      {isOwn && o.stamina !== null && (
+        <>
+          <span className="officer-loyalty">{t('stat.loyalty')}{o.loyalty}</span>
+          <span className="officer-stamina" style={{ color: o.stamina < 20 ? '#ff6b6b' : '#4ade80' }}>{t('stat.stamina')}{o.stamina}</span>
+        </>
       )}
     </div>
   );

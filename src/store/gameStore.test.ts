@@ -1304,7 +1304,7 @@ describe('gameStore - Stamina Consumption System', () => {
 
       const store = useGameStore.getState();
       expect(store.isCityRevealed(1)).toBe(true); // Own city
-      expect(store.isCityRevealed(2)).toBe(true); // Adjacent
+      expect(store.isCityRevealed(2)).toBe(false); // Adjacent enemy — NOT revealed (RTK IV)
       expect(store.isCityRevealed(3)).toBe(true); // Revealed by spy
       
       // Test expired reveal

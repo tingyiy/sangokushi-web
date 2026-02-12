@@ -10,6 +10,7 @@
     "factionCollapse": "【滅亡】{{dead}} 逝世，該勢力因無繼承人而土崩瓦解。",
     "obituary": "【訃告】{{name}} 病逝了。",
     "savedToSlot": "遊戲已儲存至存檔 {{slot}}",
+    "loadedFromSlot": "遊戲已從存檔 {{slot}} 載入。",
     "saveFailed": "儲存失敗！",
     "slotNotFound": "存檔 {{slot}} 不存在！",
     "loadFailed": "載入失敗！",

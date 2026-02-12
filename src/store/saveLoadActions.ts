@@ -23,6 +23,7 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
           month: state.month,
           selectedCityId: state.selectedCityId,
           log: state.log,
+          revealedCities: state.revealedCities,
         };
 
         localStorage.setItem(`rtk4_save_${slot}`, JSON.stringify(saveData));
@@ -63,9 +64,10 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
           year: saveData.year,
           month: saveData.month,
           selectedCityId: saveData.selectedCityId,
-          log: [...saveData.log, `遊戲已從存檔 ${slot} 載入。`],
+          log: [...saveData.log, i18next.t('logs:game.loadedFromSlot', { slot })],
           activeCommandCategory: null,
           duelState: null,
+          revealedCities: saveData.revealedCities || {},
         });
 
         return true;

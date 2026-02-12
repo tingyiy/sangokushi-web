@@ -10,6 +10,7 @@
     "factionCollapse": "[Collapse] {{dead}} has passed away. The faction collapses with no successor.",
     "obituary": "[Obituary] {{name}} has passed away.",
     "savedToSlot": "Game saved to slot {{slot}}.",
+    "loadedFromSlot": "Game loaded from slot {{slot}}.",
     "saveFailed": "Save failed!",
     "slotNotFound": "Slot {{slot}} does not exist!",
     "loadFailed": "Load failed!",
