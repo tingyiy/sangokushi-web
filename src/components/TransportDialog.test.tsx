@@ -23,21 +23,26 @@ describe('TransportDialog', () => {
     });
   });
 
-  it('renders correctly', () => {
+  it('renders correctly with all three resource inputs', () => {
     render(<TransportDialog toCityId={2} onClose={() => {}} />);
     expect(screen.getByText(/資源輸送/)).toBeDefined();
     expect(screen.getByText(/洛陽/)).toBeDefined();
+    // Should have 3 number inputs for gold, food, troops
+    const inputs = screen.getAllByRole('spinbutton');
+    expect(inputs.length).toBe(3);
   });
 
-  it('allows transporting resources', () => {
+  it('allows transporting multiple resources at once', () => {
     render(<TransportDialog toCityId={2} onClose={() => {}} />);
     
-    const amountInput = screen.getByRole('spinbutton');
-    fireEvent.change(amountInput, { target: { value: '1000' } });
+    const inputs = screen.getAllByRole('spinbutton');
+    // First input is gold, second is food
+    fireEvent.change(inputs[0], { target: { value: '1000' } });
+    fireEvent.change(inputs[1], { target: { value: '2000' } });
     
     const confirmBtn = screen.getByText('輸送');
     fireEvent.click(confirmBtn);
     
-    expect(mockTransport).toHaveBeenCalledWith(1, 2, 'gold', 1000);
+    expect(mockTransport).toHaveBeenCalledWith(1, 2, { gold: 1000, food: 2000 });
   });
 });

@@ -419,7 +419,7 @@ function showHelp() {
   log('    officers: "all" or 1,2,3 (index from status) | types: i,c,a or "auto" | troops: 5000 or 5000,3000');
   log('    e.g. attack 平原                              — auto everything');
   log('    e.g. attack 平原 1,2 i,c 5000,4000           — officers 1&2, infantry+cavalry, 5000+4000 troops');
-  log('  transport <from> <to> <gold|food|troops> <amt> — Transport resources between cities');
+  log('  transport <from> <to> [gold=N] [food=N] [troops=N] — Transport resources between cities');
   log('  retreat                                         — Retreat from current battle');
   log('');
   log('  --- 外交 (Diplomacy) ---');
@@ -998,18 +998,36 @@ function handleCommand(input: string, factionId: number): boolean {
     case 'transport': {
       const from = findCityByIdOrName(parts[1] || '');
       const to = findCityByIdOrName(parts[2] || '');
+      if (!from || !to) {
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N]');
+        log('  e.g. transport 鄴 濮陽 gold=5000 food=3000');
+        return false;
+      }
+      // Parse resource specs from remaining parts: gold=N, food=N, troops=N
+      // Also support old format: transport <from> <to> <resource> <amount>
+      const resources: { gold?: number; food?: number; troops?: number } = {};
       const resMap: Record<string, 'gold' | 'food' | 'troops'> = {
         gold: 'gold', '金': 'gold',
         food: 'food', '糧': 'food',
         troops: 'troops', '兵': 'troops',
       };
-      const resource = resMap[(parts[3] || '').toLowerCase()];
-      const amount = parseInt(parts[4] || '1000', 10);
-      if (!from || !to || !resource) {
-        log('  Usage: transport <from city> <to city> <gold|food|troops> <amount>');
+      const remaining = parts.slice(3);
+      if (remaining.length === 2 && resMap[remaining[0].toLowerCase()]) {
+        // Old format: transport <from> <to> gold 5000
+        resources[resMap[remaining[0].toLowerCase()]] = parseInt(remaining[1], 10);
+      } else {
+        // New format: transport <from> <to> gold=5000 food=3000
+        for (const spec of remaining) {
+          const [key, val] = spec.split('=');
+          const res = resMap[(key || '').toLowerCase()];
+          if (res && val) resources[res] = parseInt(val, 10);
+        }
+      }
+      if (Object.keys(resources).length === 0) {
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N]');
         return false;
       }
-      game.getState().transport(from.id, to.id, resource, amount);
+      game.getState().transport(from.id, to.id, resources);
       return false;
     }
 

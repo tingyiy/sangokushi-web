@@ -636,14 +636,14 @@ export const rtkApi = {
     return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: 'Draft failed unexpectedly in logic' });
   },
 
-  transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result {
+  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }): Result {
     const state = useGameStore.getState();
-    const label = `transport(${cityName(fromCityId)} → ${cityName(toCityId)}, ${resource} ${amount})`;
+    const details = Object.entries(resources).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ');
+    const label = `transport(${cityName(fromCityId)} → ${cityName(toCityId)}, ${details})`;
     if (state.phase !== 'playing') return logCmd('⚔', label, { ok: false, error: 'Not in playing phase' });
     const fromCity = state.cities.find(c => c.id === fromCityId);
     if (!fromCity) return logCmd('⚔', label, { ok: false, error: 'Origin city not found' });
-    if (fromCity[resource] < amount) return logCmd('⚔', label, { ok: false, error: `Insufficient ${resource}` });
-    state.transport(fromCityId, toCityId, resource, amount);
+    state.transport(fromCityId, toCityId, resources);
     return logCmd('⚔', label, { ok: true });
   },
 

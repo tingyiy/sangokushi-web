@@ -14,18 +14,24 @@ export function TransportDialog({ toCityId, onClose }: Props) {
   const fromCity = cities.find(c => c.id === selectedCityId);
   const toCity = cities.find(c => c.id === toCityId);
   
-  const [resource, setResource] = useState<'gold' | 'food' | 'troops'>('gold');
-  const [amount, setAmount] = useState<number>(0);
+  const [gold, setGold] = useState<number>(0);
+  const [food, setFood] = useState<number>(0);
+  const [troops, setTroops] = useState<number>(0);
 
   const handleTransport = () => {
-    if (!fromCity || !toCity || amount <= 0) return;
-    transport(fromCity.id, toCity.id, resource, amount);
+    if (!fromCity || !toCity) return;
+    const resources: { gold?: number; food?: number; troops?: number } = {};
+    if (gold > 0) resources.gold = gold;
+    if (food > 0) resources.food = food;
+    if (troops > 0) resources.troops = troops;
+    if (Object.keys(resources).length === 0) return;
+    transport(fromCity.id, toCity.id, resources);
     onClose();
   };
 
   if (!fromCity || !toCity) return null;
 
-  const maxAmount = fromCity[resource];
+  const hasAny = gold > 0 || food > 0 || troops > 0;
 
   return (
     <div className="modal-overlay">
@@ -33,40 +39,50 @@ export function TransportDialog({ toCityId, onClose }: Props) {
         <h3>{t('transport.title', { cityName: localizedName(toCity.name) })}</h3>
         
         <div className="input-group">
-          <label>{t('transport.resourceType')}</label>
-          <select value={resource} onChange={(e) => {
-            setResource(e.target.value as 'gold' | 'food' | 'troops');
-            setAmount(0);
-          }}>
-            <option value="gold">{t('transport.goldOption', { amount: fromCity.gold })}</option>
-            <option value="food">{t('transport.foodOption', { amount: fromCity.food })}</option>
-            <option value="troops">{t('transport.troopsOption', { amount: fromCity.troops })}</option>
-          </select>
-        </div>
-
-        <div className="input-group">
-          <label>{t('transport.amount')}</label>
+          <label>{t('transport.goldOption', { amount: fromCity.gold })}</label>
           <input 
             type="number" 
-            value={amount} 
-            onChange={(e) => setAmount(Math.min(maxAmount, Math.max(0, parseInt(e.target.value) || 0)))}
-            max={maxAmount}
+            value={gold} 
+            onChange={(e) => setGold(Math.min(fromCity.gold, Math.max(0, parseInt(e.target.value) || 0)))}
+            max={fromCity.gold}
             min={0}
           />
           <div className="slider">
-             <input 
-                type="range" 
-                min="0" 
-                max={maxAmount} 
-                value={amount} 
-                onChange={(e) => setAmount(parseInt(e.target.value))} 
-             />
+            <input type="range" min="0" max={fromCity.gold} value={gold} onChange={(e) => setGold(parseInt(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="input-group">
+          <label>{t('transport.foodOption', { amount: fromCity.food })}</label>
+          <input 
+            type="number" 
+            value={food} 
+            onChange={(e) => setFood(Math.min(fromCity.food, Math.max(0, parseInt(e.target.value) || 0)))}
+            max={fromCity.food}
+            min={0}
+          />
+          <div className="slider">
+            <input type="range" min="0" max={fromCity.food} value={food} onChange={(e) => setFood(parseInt(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="input-group">
+          <label>{t('transport.troopsOption', { amount: fromCity.troops })}</label>
+          <input 
+            type="number" 
+            value={troops} 
+            onChange={(e) => setTroops(Math.min(fromCity.troops, Math.max(0, parseInt(e.target.value) || 0)))}
+            max={fromCity.troops}
+            min={0}
+          />
+          <div className="slider">
+            <input type="range" min="0" max={fromCity.troops} value={troops} onChange={(e) => setTroops(parseInt(e.target.value))} />
           </div>
         </div>
 
         <div className="modal-actions">
           <button className="btn btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="btn btn-confirm" onClick={handleTransport} disabled={amount <= 0}>
+          <button className="btn btn-confirm" onClick={handleTransport} disabled={!hasAny}>
             {t('transport.confirm')}
           </button>
         </div>

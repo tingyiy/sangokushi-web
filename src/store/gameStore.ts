@@ -218,7 +218,7 @@ export interface GameState {
   appointGovernor: (cityId: number, officerId: number) => void;
   appointAdvisor: (officerId: number) => void;
   draftTroops: (cityId: number, amount: number, officerId?: number) => void;
-  transport: (fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number) => void;
+  transport: (fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }) => void;
   transferOfficer: (officerId: number, targetCityId: number) => void;
 
   // ── Military Actions ──
