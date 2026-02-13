@@ -21,8 +21,8 @@ describe('FormationDialog', () => {
         { id: 2, name: '洛陽', warHorses: 0, crossbows: 0, troops: 10000 }
       ],
       officers: [
-        { id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, cityId: 1, factionId: 1, stamina: 100 },
-        { id: 2, name: '夏侯惇', leadership: 90, war: 95, intelligence: 70, cityId: 1, factionId: 1, stamina: 100 },
+        { id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, cityId: 1, factionId: 1, acted: false },
+        { id: 2, name: '夏侯惇', leadership: 90, war: 95, intelligence: 70, cityId: 1, factionId: 1, acted: false },
       ],
       playerFaction: { id: 1 },
       startBattle: mockStartBattle,

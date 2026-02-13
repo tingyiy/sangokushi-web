@@ -71,10 +71,9 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       });
 
       // 2. Phase 6.6: Officer Lifecycle & Phase 7.3: Relationships
+      // Reset acted flag for all officers at start of new turn
       const deadOfficerIds: number[] = [];
       const updatedOfficersPreDeath = state.officers.map(o => {
-        const age = newYear - o.birthYear;
-        let newStamina = Math.min(100, o.stamina + 20);
         let newLoyalty = o.loyalty;
 
         // Rule: Related officers in same faction get +10 loyalty
@@ -88,15 +87,12 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
           }
         }
 
-        if (age > 50 && Math.random() < (age - 50) * 0.01) {
-          newStamina = Math.max(0, newStamina - 30);
-        }
-
         if (newYear >= o.deathYear && newMonth === 1 && Math.random() < 0.3) {
           deadOfficerIds.push(o.id);
         }
 
-        return { ...o, stamina: newStamina, loyalty: newLoyalty };
+        // Reset acted flag and check aging death
+        return { ...o, acted: false, loyalty: newLoyalty };
       });
 
       const updatedOfficers = updatedOfficersPreDeath.filter(o => !deadOfficerIds.includes(o.id));
@@ -241,14 +237,14 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === faction.id);
       if (officersInCity.length === 0) return;
       const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
-      if (messenger.stamina < 20) return;
+      if (messenger.acted) return;
 
       const chance = (messenger.politics / 2) + (100 - (faction.relations[targetFactionId] ?? 60)) / 2;
       const success = Math.random() * 100 < chance;
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 2000 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 20 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         factions: state.factions.map(f => {
           if (f.id === faction.id && success) {
             return { ...f, allies: [...(f.allies || []), targetFactionId] };
@@ -272,13 +268,13 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === faction.id);
       if (officersInCity.length === 0) return;
       const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
-      if (messenger.stamina < 15) return;
+      if (messenger.acted) return;
 
       const reduction = Math.floor(messenger.politics / 4) + 10;
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         factions: state.factions.map(f => {
           if (f.id === faction.id) {
             const currentHostility = f.relations[targetFactionId] ?? 60;
@@ -305,14 +301,14 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       if (recruiters.length === 0) return;
       const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
 
-      if (recruiter.stamina < 15) return;
+      if (recruiter.acted) return;
 
       const chance = Math.min(90, 30 + recruiter.charisma - officer.politics);
       const success = Math.random() * 100 < chance;
 
       set({
         officers: state.officers.map(o => {
-          if (o.id === recruiter.id) return { ...o, stamina: o.stamina - 15 };
+          if (o.id === recruiter.id) return { ...o, acted: true };
           if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 60 };
           return o;
         }),
@@ -332,14 +328,14 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       if (recruiters.length === 0) return;
       const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
 
-      if (recruiter.stamina < 15) return;
+      if (recruiter.acted) return;
 
       const chance = 40 + recruiter.charisma - officer.loyalty / 2;
       const success = Math.random() * 100 < chance;
 
       set({
         officers: state.officers.map(o => {
-          if (o.id === recruiter.id) return { ...o, stamina: o.stamina - 15 };
+          if (o.id === recruiter.id) return { ...o, acted: true };
           if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 50, cityId: city.id };
           return o;
         })
@@ -354,7 +350,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === city.factionId);
       if (recruiters.length === 0) return;
       const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
-      if (recruiter.stamina < 15) return;
+      if (recruiter.acted) return;
 
       const unaffiliated = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
       let found = false;
@@ -371,7 +367,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       }
 
       set({
-        officers: state.officers.map(o => o.id === recruiter.id ? { ...o, stamina: o.stamina - 15 } : o)
+        officers: state.officers.map(o => o.id === recruiter.id ? { ...o, acted: true } : o)
       });
 
       if (found && foundOfficer) {
@@ -388,7 +384,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
       if (!hasSkill(messenger, 'intelligence') && !hasSkill(messenger, 'espionage')) return;
-      if (messenger.stamina < 15) return;
+      if (messenger.acted) return;
 
       const targetCity = state.cities.find(c => c.id === targetCityId);
       const result = spyingSystem.spy(
@@ -400,7 +396,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         // Update revealedCities if player city is spying
         revealedCities: (city.factionId === state.playerFaction?.id && result.success)
           ? {
@@ -426,7 +422,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
 
       if (!hasSkill(messenger, 'rumor')) return;
-      if (messenger.stamina < 15) return;
+      if (messenger.acted) return;
 
       const targetCity = state.cities.find(c => c.id === targetCityId);
       if (!targetCity) return;
@@ -435,7 +431,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         // Rumor success also reveals city info briefly
         revealedCities: (city.factionId === state.playerFaction?.id && success)
           ? {

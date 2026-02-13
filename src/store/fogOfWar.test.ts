@@ -41,7 +41,7 @@ const createOfficer = (overrides: Partial<Officer> = {}): Officer => ({
   skills: ['intelligence', 'diplomacy'],
   factionId: null,
   cityId: 1,
-  stamina: 100,
+  acted: false,
   loyalty: 100,
   isGovernor: false,
   rank: 'common',
@@ -155,10 +155,10 @@ describe('Fog of War — getCityView', () => {
         createCity({ id: 2, factionId: 2, name: '平原', adjacentCityIds: [1], troops: 15000, gold: 3000 }),
       ],
       officers: [
-        createOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true, stamina: 80, loyalty: 100 }),
-        createOfficer({ id: 2, name: '夏侯惇', factionId: 1, cityId: 1, stamina: 60, loyalty: 85 }),
-        createOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 2, isGovernor: true, stamina: 90, loyalty: 100 }),
-        createOfficer({ id: 11, name: '張飛', factionId: 2, cityId: 2, stamina: 75, loyalty: 95 }),
+        createOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true, acted: false, loyalty: 100 }),
+        createOfficer({ id: 2, name: '夏侯惇', factionId: 1, cityId: 1, acted: false, loyalty: 85 }),
+        createOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 2, isGovernor: true, acted: false, loyalty: 100 }),
+        createOfficer({ id: 11, name: '張飛', factionId: 2, cityId: 2, acted: false, loyalty: 95 }),
         createOfficer({ id: 20, name: '司馬徽', factionId: null, cityId: 1 }), // unaffiliated in own city
         createOfficer({ id: 21, name: '管寧', factionId: null, cityId: 2 }), // unaffiliated in enemy city
         createOfficer({ id: 30, name: '呂布', factionId: -1, cityId: 1 }), // POW in own city
@@ -182,7 +182,7 @@ describe('Fog of War — getCityView', () => {
     expect(view!.warHorses).toBe(5);
     // Officers with full data
     expect(view!.officers.length).toBe(2);
-    expect(view!.officers[0].stamina).toBe(80);
+    expect(view!.officers[0].acted).toBe(false);
     expect(view!.officers[0].loyalty).toBe(100);
     // Unaffiliated visible
     expect(view!.unaffiliated.length).toBe(1);
@@ -230,10 +230,10 @@ describe('Fog of War — getCityView', () => {
     // Weapons still hidden (not own city)
     expect(view!.crossbows).toBeNull();
     expect(view!.warHorses).toBeNull();
-    // Officers visible but without stamina/loyalty
+    // Officers visible but without acted/loyalty
     expect(view!.officers.length).toBe(2);
     expect(view!.officers[0].name).toBe('劉備');
-    expect(view!.officers[0].stamina).toBeNull();
+    expect(view!.officers[0].acted).toBe(false);
     expect(view!.officers[0].loyalty).toBeNull();
     // Unaffiliated hidden (internal info)
     expect(view!.unaffiliated.length).toBe(0);
@@ -260,8 +260,8 @@ describe('Fog of War — getOfficerView', () => {
         createCity({ id: 2, factionId: 2, name: '平原' }),
       ],
       officers: [
-        createOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, stamina: 80, loyalty: 100, rank: 'governor', isGovernor: true }),
-        createOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 2, stamina: 90, loyalty: 100, rank: 'governor', isGovernor: true }),
+        createOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, acted: false, loyalty: 100, rank: 'governor', isGovernor: true }),
+        createOfficer({ id: 10, name: '劉備', factionId: 2, cityId: 2, acted: false, loyalty: 100, rank: 'governor', isGovernor: true }),
       ],
       year: 190,
       month: 1,
@@ -282,7 +282,7 @@ describe('Fog of War — getOfficerView', () => {
     expect(view!.rank).toBe('governor');
     expect(view!.isGovernor).toBe(true);
     // Internal stats visible
-    expect(view!.stamina).toBe(80);
+    expect(view!.acted).toBe(false);
     expect(view!.loyalty).toBe(100);
   });
 
@@ -301,7 +301,7 @@ describe('Fog of War — getOfficerView', () => {
     expect(view!.isGovernor).toBeNull();
     expect(view!.affiliation).toBeNull();
     // Internal stats hidden
-    expect(view!.stamina).toBeNull();
+    expect(view!.acted).toBeNull();
     expect(view!.loyalty).toBeNull();
   });
 
@@ -317,7 +317,7 @@ describe('Fog of War — getOfficerView', () => {
     expect(view!.isGovernor).toBe(true);
     expect(view!.affiliation).toBe('劉備');
     // Internal stats still hidden
-    expect(view!.stamina).toBeNull();
+    expect(view!.acted).toBe(false);
     expect(view!.loyalty).toBeNull();
   });
 

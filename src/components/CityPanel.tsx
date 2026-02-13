@@ -162,10 +162,10 @@ function OfficerRow({ officer: o, isOwn, t, unaffiliated }: {
           {treasures.find(t => t.id === o.treasureId)?.name}
         </span>
       )}
-      {isOwn && o.stamina !== null && (
+      {isOwn && o.acted !== null && (
         <>
           <span className="officer-loyalty">{t('stat.loyalty')}{o.loyalty}</span>
-          <span className="officer-stamina" style={{ color: o.stamina < 20 ? '#ff6b6b' : '#4ade80' }}>{t('stat.stamina')}{o.stamina}</span>
+          <span className="officer-stamina" style={{ color: o.acted ? '#ff6b6b' : '#4ade80' }}>{o.acted ? '行×' : '行未'}</span>
         </>
       )}
     </div>

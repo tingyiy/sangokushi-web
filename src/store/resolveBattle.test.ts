@@ -32,7 +32,7 @@ function makeOfficer(overrides: Partial<Officer> & { id: number; name: string; f
     politics: 80,
     charisma: 80,
     skills: [] as RTK4Skill[],
-    stamina: 100,
+    acted: false,
     loyalty: 100,
     isGovernor: false,
     treasureId: null,

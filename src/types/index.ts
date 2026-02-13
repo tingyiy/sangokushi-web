@@ -68,8 +68,8 @@ export interface Officer {
   factionId: number | null;
   /** 所在城市 id */
   cityId: number;
-  /** 體力 (stamina) 0-100 */
-  stamina: number;
+  /** 行動済み — true if the officer has already acted this turn (RTK IV: one action per turn) */
+  acted: boolean;
   /** 忠誠 (loyalty) 0-100, rulers always 100 */
   loyalty: number;
   /** 是否為太守 (governor of current city) */
@@ -82,7 +82,7 @@ export interface Officer {
   treasureId: number | null;
 }
 
-export type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'stamina' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank' | 'relationships'>;
+export type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'acted' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank' | 'relationships'>;
 
 /** 城市（City / Province） */
 export interface City {

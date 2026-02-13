@@ -22,6 +22,7 @@
     "noTroops": "城中無兵，無法訓練。",
     "officerNotInCity": "指派武將不在該城，無法執行指令。",
     "noOfficerInCity": "城中無武將，無法執行指令。",
+    "officerActed": "{{name}} 本月已行動，無法再執行指令。",
     "staminaInsufficient": "{{name}} 體力不足（需 {{required}}），無法執行指令。",
     "staminaInsufficientShort": "{{name}} 體力不足（需 {{required}}）。",
     "staminaInsufficientGeneric": "體力不足。",

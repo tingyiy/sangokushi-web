@@ -24,7 +24,7 @@ const baseOfficer: Officer = {
   skills: ['rumor'] as RTK4Skill[],
   factionId: 1,
   cityId: 1,
-  stamina: 100,
+  acted: false,
   loyalty: 80,
   isGovernor: false,
   treasureId: null,

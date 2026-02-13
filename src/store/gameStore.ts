@@ -74,8 +74,8 @@ export interface OfficerView {
   cityId: number | null;
   /** Faction affiliation description: visible if own or in a revealed city */
   affiliation: string | null;
-  /** Stamina: only for own faction officers */
-  stamina: number | null;
+  /** Acted this turn: visible if own or in a revealed city */
+  acted: boolean | null;
   /** Loyalty: only for own faction officers */
   loyalty: number | null;
   /** Treasure: visible if own or in a revealed city */
@@ -429,7 +429,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       cityName: locationVisible ? (city?.name ?? null) : null,
       cityId: locationVisible ? officer.cityId : null,
       affiliation: locationVisible ? affiliation : null,
-      stamina: isOwn ? officer.stamina : null,
+      acted: locationVisible ? officer.acted : null,
       loyalty: isOwn ? officer.loyalty : null,
       treasureId: locationVisible ? (officer.treasureId ?? null) : null,
     };

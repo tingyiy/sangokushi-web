@@ -13,11 +13,11 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
   const { ownedCities, factionOfficers } = context;
 
   for (const city of ownedCities) {
-    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && o.stamina >= 30);
+    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && !o.acted);
     if (officersInCity.length === 0) continue;
 
     const governor = officersInCity.find((o: Officer) => o.isGovernor) || officersInCity[0];
-    if (governor.stamina < 25) continue;
+    if (governor.acted) continue;
 
     // Priority 1: Disaster relief if people loyalty is low
     if (city.peopleLoyalty < 50 && city.gold >= 500) {

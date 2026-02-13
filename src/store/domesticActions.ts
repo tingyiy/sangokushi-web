@@ -38,15 +38,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       const bonus = Math.floor(executor.politics / 10);
@@ -58,7 +58,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -74,15 +74,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       const bonus = Math.floor(executor.politics / 10);
@@ -94,7 +94,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -110,15 +110,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       set({
@@ -129,7 +129,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -145,15 +145,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       const bonus = Math.floor(executor.politics / 15);
@@ -165,7 +165,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -181,15 +181,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 25) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 25 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       const bonus = Math.floor(executor.intelligence / 20);
@@ -201,7 +201,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 25 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -221,15 +221,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 20 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
       const trainingBonus = Math.floor(executor.leadership / 15);
@@ -246,7 +246,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -262,8 +262,8 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
@@ -273,8 +273,8 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         get().addLog(i18next.t('logs:error.noManufactureSkill', { name: localizedName(executor.name) }));
         return;
       }
-      if (executor.stamina < 30) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 30 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
 
@@ -295,7 +295,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 30 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -316,15 +316,15 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
       }
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 15 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
 
@@ -342,7 +342,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 15 }
+            ? { ...o, acted: true }
             : o
         ),
       });

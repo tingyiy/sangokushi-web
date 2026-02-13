@@ -12,7 +12,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
   const { ownedCities, factionOfficers } = context;
 
   for (const city of ownedCities) {
-    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && o.stamina >= 30);
+    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && !o.acted);
     if (officersInCity.length === 0) continue;
 
     // 1. Draft troops if city is under-defended

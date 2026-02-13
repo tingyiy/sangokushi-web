@@ -13,8 +13,8 @@ describe('AI Engine', () => {
       { id: 2, name: 'City 2', factionId: 2, population: 100000, gold: 5000, food: 10000, commerce: 500, agriculture: 500, defense: 100, troops: 10000, adjacentCityIds: [1], floodControl: 50, technology: 30, peopleLoyalty: 70, morale: 60, training: 40, crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, x: 1, y: 1 },
     ],
     officers: [
-      { id: 1, name: 'Player Ruler', factionId: 1, cityId: 1, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 1, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
-      { id: 2, name: 'AI Ruler', factionId: 2, cityId: 2, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['manufacture'], portraitId: 2, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
+      { id: 1, name: 'Player Ruler', factionId: 1, cityId: 1, acted: false, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 1, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
+      { id: 2, name: 'AI Ruler', factionId: 2, cityId: 2, acted: false, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: ['manufacture'], portraitId: 2, birthYear: 160, deathYear: 230, isGovernor: true, treasureId: null, relationships: [] },
     ],
     year: 190,
     month: 1,
@@ -102,7 +102,7 @@ describe('AI Engine', () => {
       ...mockState,
       officers: [
         ...mockState.officers,
-        { id: 3, name: 'Free Agent', factionId: null, cityId: 2, stamina: 100, loyalty: 0, leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50, skills: [], portraitId: 3, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
+        { id: 3, name: 'Free Agent', factionId: null, cityId: 2, acted: false, loyalty: 0, leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50, skills: [], portraitId: 3, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
       ]
     };
     const decisions = runAI(stateWithFreeOfficer);
@@ -126,7 +126,7 @@ describe('AI Engine', () => {
       ),
       officers: [
           ...mockState.officers,
-          { id: 4, name: 'General', factionId: 2, cityId: 2, stamina: 100, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 4, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
+          { id: 4, name: 'General', factionId: 2, cityId: 2, acted: false, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 4, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
       ]
     };
     const decisions = runAI(offensiveState);

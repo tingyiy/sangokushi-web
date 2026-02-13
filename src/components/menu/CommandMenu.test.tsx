@@ -50,7 +50,7 @@ describe('CommandMenu', () => {
         { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1], taxRate: 'medium' },
       ],
       officers: [
-        { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, stamina: 100, loyalty: 100, skills: ['manufacture'] },
+        { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: false, loyalty: 100, skills: ['manufacture'] },
       ],
       factions: [
         { id: 1, name: '曹操', color: '#ff0000', relations: { 2: 60 }, allies: [] },
