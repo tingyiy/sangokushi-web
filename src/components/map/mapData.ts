@@ -266,3 +266,73 @@ export function getWheelFactor(sensitivity: number): number {
   const scale = SENSITIVITY_SCALE[sensitivity] ?? 1.0;
   return MAP_ZOOM.wheelFactor * scale;
 }
+
+/* ─── Battle Map Seasonal Terrain Palette ─── */
+
+import type { TerrainType } from '../../types/battle';
+
+/**
+ * Per-terrain color set used by the battle hex map.
+ * `fill` is the base hex fill, `stroke` is the hex border,
+ * `pattern` provides detail colors for SVG texture patterns.
+ */
+export interface BattleTerrainColors {
+  fill: string;
+  stroke: string;
+  pattern: {
+    detail1: string;
+    detail2: string;
+  };
+}
+
+/**
+ * Battle hex terrain colors per season, derived from the strategic map palettes
+ * so the battle map visually matches the strategic map's current season.
+ *
+ * Mapping rationale:
+ * - plain  → strategic `plains` / `plains2`
+ * - forest → strategic `southLand` / `lingnan` (deep vegetation)
+ * - mountain → strategic `mountain` / `mountainStroke` / `mountainPeak`
+ * - river  → strategic `riverMajor` / `lake`
+ * - city   → warm gold/stone (built structures, constant across seasons)
+ * - gate   → darker structural brown/grey
+ * - bridge → neutral stone grey, slight seasonal tint
+ */
+export const BATTLE_TERRAIN_PALETTES: Record<Season, Record<TerrainType, BattleTerrainColors>> = {
+  spring: {
+    plain:    { fill: '#72a84e', stroke: '#5a8838', pattern: { detail1: '#5e9438', detail2: '#68a048' } },
+    forest:   { fill: '#4a8838', stroke: '#3a7028', pattern: { detail1: '#3a7020', detail2: '#5a9040' } },
+    mountain: { fill: '#8a7048', stroke: '#6e5838', pattern: { detail1: '#a89060', detail2: '#6e5838' } },
+    river:    { fill: '#4898cc', stroke: '#3a82b4', pattern: { detail1: '#60b0d8', detail2: '#3a82b4' } },
+    city:     { fill: '#d4a848', stroke: '#b08830', pattern: { detail1: '#e8c060', detail2: '#c09838' } },
+    gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
+    bridge:   { fill: '#90a098', stroke: '#708078', pattern: { detail1: '#a8b0a8', detail2: '#708078' } },
+  },
+  summer: {
+    plain:    { fill: '#488a28', stroke: '#3a7018', pattern: { detail1: '#3a7818', detail2: '#448824' } },
+    forest:   { fill: '#2d6a18', stroke: '#1e5810', pattern: { detail1: '#2c6810', detail2: '#3a7818' } },
+    mountain: { fill: '#7a5830', stroke: '#604428', pattern: { detail1: '#8e6e40', detail2: '#604428' } },
+    river:    { fill: '#3a90c0', stroke: '#30789c', pattern: { detail1: '#50a4cc', detail2: '#30789c' } },
+    city:     { fill: '#d4a848', stroke: '#b08830', pattern: { detail1: '#e8c060', detail2: '#c09838' } },
+    gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
+    bridge:   { fill: '#88988e', stroke: '#687868', pattern: { detail1: '#98a898', detail2: '#687868' } },
+  },
+  autumn: {
+    plain:    { fill: '#aa9830', stroke: '#8a7820', pattern: { detail1: '#9a8828', detail2: '#988828' } },
+    forest:   { fill: '#887828', stroke: '#6a5c18', pattern: { detail1: '#786820', detail2: '#9a8828' } },
+    mountain: { fill: '#785818', stroke: '#604810', pattern: { detail1: '#a08830', detail2: '#604810' } },
+    river:    { fill: '#4898c8', stroke: '#3884b0', pattern: { detail1: '#60b0d8', detail2: '#3884b0' } },
+    city:     { fill: '#d4a040', stroke: '#b08830', pattern: { detail1: '#e0b850', detail2: '#c09030' } },
+    gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
+    bridge:   { fill: '#988878', stroke: '#786858', pattern: { detail1: '#a89888', detail2: '#786858' } },
+  },
+  winter: {
+    plain:    { fill: '#889890', stroke: '#708078', pattern: { detail1: '#788888', detail2: '#889890' } },
+    forest:   { fill: '#688070', stroke: '#587060', pattern: { detail1: '#587060', detail2: '#788878' } },
+    mountain: { fill: '#98a898', stroke: '#889888', pattern: { detail1: '#c8d8c8', detail2: '#889888' } },
+    river:    { fill: '#5088a8', stroke: '#407890', pattern: { detail1: '#6098b0', detail2: '#407890' } },
+    city:     { fill: '#c8b878', stroke: '#a89868', pattern: { detail1: '#d8c888', detail2: '#b0a070' } },
+    gate:     { fill: '#908880', stroke: '#787068', pattern: { detail1: '#a09890', detail2: '#787068' } },
+    bridge:   { fill: '#a0a8a0', stroke: '#889088', pattern: { detail1: '#b0b8b0', detail2: '#889088' } },
+  },
+};
