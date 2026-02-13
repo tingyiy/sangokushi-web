@@ -225,30 +225,36 @@ interface NeutralMarkerProps {
 
 function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: NeutralMarkerProps) {
   const fogOpacity = revealed ? 1 : 0.45;
+  /** Neutral castles use a weathered gray-brown (abandoned/unoccupied look) */
+  const castleColor = revealed ? '#7a7060' : '#5a5548';
 
   return (
     <g onClick={onClick} style={{ cursor: 'pointer' }}>
-      {/* Small neutral marker — always fully opaque (physical structure) */}
+      {/* Castle building base — same structure as faction cities, muted color */}
       <rect
-        x={city.x - 0.9}
-        y={city.y - 0.9}
-        width={1.8}
-        height={1.8}
-        fill={revealed ? '#5a5a5a' : '#3a3a3a'}
-        stroke={isSelected ? '#fbbf24' : '#3a3a3a'}
-        strokeWidth={isSelected ? 0.4 : 0.15}
-        rx="0.2"
+        x={city.x - 0.7}
+        y={city.y - 0.7}
+        width={1.4}
+        height={1.2}
+        fill={castleColor}
+        stroke={isSelected ? '#fbbf24' : '#4a4238'}
+        strokeWidth={isSelected ? 0.25 : 0.12}
+        rx="0.1"
       />
+      {/* Castle battlements (3 small crenels) */}
+      <rect x={city.x - 0.7} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
+      <rect x={city.x - 0.1} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
+      <rect x={city.x + 0.45} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
       {/* City name label — dimmed for unrevealed */}
       <text
         x={city.x}
-        y={city.y + 2.2}
+        y={city.y + 1.5}
         textAnchor="middle"
         fill={isSelected ? '#fbbf24' : labelColor}
-        fontSize="1.4"
+        fontSize="1.1"
         fontWeight={isSelected ? 'bold' : 'normal'}
         stroke="rgba(0,0,0,0.5)"
-        strokeWidth="0.3"
+        strokeWidth="0.25"
         paintOrder="stroke"
         opacity={fogOpacity}
         style={{ pointerEvents: 'none' }}

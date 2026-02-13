@@ -7,7 +7,9 @@ import { getMovementRange, getAttackRange, getUnitTypeLabel } from '../../utils/
 import type { TerrainType } from '../../types/battle';
 import { localizedName } from '../../i18n/dataNames';
 import { useGameStore } from '../../store/gameStore';
-import { getWheelFactor } from './mapData';
+import { getWheelFactor, getSeason, BATTLE_TERRAIN_PALETTES } from './mapData';
+import type { Season } from './mapData';
+import { BattleMapPatterns } from './BattleMapPatterns';
 
 const HEX_SIZE = 32;
 
@@ -16,10 +18,11 @@ const TERRAIN_KEYS: Record<TerrainType, string> = {
   river: 'battle:terrain.river', city: 'battle:terrain.city', gate: 'battle:terrain.gate', bridge: 'battle:terrain.bridge',
 };
 
-const TERRAIN_COLORS: Record<TerrainType, string> = {
-  plain: '#7a9e7a', forest: '#2d5a27', mountain: '#5d4037',
-  river: '#0277bd', city: '#fbc02d', gate: '#8d6e63', bridge: '#78909c',
-};
+/** Terrain types that use SVG pattern fills for textured rendering */
+const PATTERNED_TERRAINS: readonly TerrainType[] = ['plain', 'forest', 'mountain', 'river', 'city', 'gate', 'bridge'];
+
+/** Terrain types that receive a snow overlay in winter */
+const SNOW_TERRAINS: readonly TerrainType[] = ['plain', 'forest', 'mountain'];
 
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 3.0;
@@ -33,6 +36,9 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
   const { t } = useTranslation();
   const battle = useBattleStore();
   const sensitivity = useGameStore(s => s.gameSettings.intelligenceSensitivity);
+  const month = useGameStore(s => s.month);
+  const season: Season = useMemo(() => getSeason(month), [month]);
+  const terrainPalette = useMemo(() => BATTLE_TERRAIN_PALETTES[season], [season]);
   const activeUnit = battle.units.find(u => u.id === battle.activeUnitId);
   const isPlayerUnit = activeUnit && activeUnit.factionId === playerFactionId;
 
@@ -237,6 +243,11 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
     const isAttackable = battle.mode === 'attack' && unit && attackableEnemies.has(unit.id);
     const isInspected = unit && unit.id === battle.inspectedUnitId;
 
+    const tc = terrainPalette[terrain];
+    const usePattern = (PATTERNED_TERRAINS as readonly string[]).includes(terrain);
+    const hexFill = usePattern ? `url(#bhex-${terrain})` : tc.fill;
+    const showSnow = season === 'winter' && (SNOW_TERRAINS as readonly string[]).includes(terrain);
+
     return (
       <g key={`${q},${r}`} transform={`translate(${x}, ${y})`}
          onClick={() => handleHexClick(q, r)}
@@ -244,10 +255,21 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         {/* Terrain hex */}
         <polygon
           points={getHexPoints(HEX_SIZE)}
-          fill={TERRAIN_COLORS[terrain] || '#555'}
-          stroke={isInspected ? '#0ff' : '#333'}
+          fill={hexFill}
+          stroke={isInspected ? '#0ff' : tc.stroke}
           strokeWidth={isInspected ? 2 : 1}
+          style={{ transition: 'fill 1.5s, stroke 1.5s' }}
         />
+
+        {/* Winter snow overlay */}
+        {showSnow && (
+          <polygon
+            points={getHexPoints(HEX_SIZE)}
+            fill="url(#bhex-snow)"
+            stroke="none"
+            pointerEvents="none"
+          />
+        )}
 
         {/* Move range highlight */}
         {isInMoveRange && !unit && (
@@ -344,6 +366,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         preserveAspectRatio="xMidYMid meet"
         style={{ display: 'block', cursor: isDragging ? 'grabbing' : 'grab' }}
       >
+        <BattleMapPatterns season={season} />
         {hexes}
       </svg>
 
