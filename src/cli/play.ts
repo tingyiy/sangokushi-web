@@ -335,7 +335,7 @@ function showStatus(factionId: number) {
     // Show officers
     for (const o of officers) {
       const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-      log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 體=${o.stamina} 忠=${o.loyalty}${skills}`);
+      log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 行=${o.acted ? '×' : '未'} 忠=${o.loyalty}${skills}`);
     }
 
     // Show POWs
@@ -576,10 +576,10 @@ function handleCommand(input: string, factionId: number): boolean {
         log('    Officers:');
         for (const o of view.officers) {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          if (o.stamina !== null) {
-            log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 體=${o.stamina} 忠=${o.loyalty} ${o.rank}${skills}`);
+          if (o.acted !== null) {
+            log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma} 行=${o.acted ? '×' : '未'} 忠=${o.loyalty} ${o.rank}${skills}`);
           } else {
-            // Revealed enemy city: no stamina/loyalty
+            // Revealed enemy city: no acted/loyalty
             log(`      ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} C${o.charisma}${skills}`);
           }
         }
@@ -606,8 +606,8 @@ function handleCommand(input: string, factionId: number): boolean {
         log(`    City: ${view.cityName} | Rank: ${view.rank} | ${view.isGovernor ? 'Governor' : ''}`);
       }
       log(`    L=${view.leadership} W=${view.war} I=${view.intelligence} P=${view.politics} C=${view.charisma}`);
-      if (view.stamina !== null) {
-        log(`    Stamina=${view.stamina} Loyalty=${view.loyalty} Age=${view.age}`);
+      if (view.acted !== null) {
+        log(`    Acted=${view.acted ? 'Yes' : 'No'} Loyalty=${view.loyalty} Age=${view.age}`);
       } else {
         log(`    Age=${view.age}`);
       }
@@ -638,7 +638,7 @@ function handleCommand(input: string, factionId: number): boolean {
         log(`  ${city?.name || '?'}:`);
         for (const o of officers) {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          log(`    ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} 體=${o.stamina} 忠=${o.loyalty} ${o.rank}${skills}`);
+          log(`    ${o.isGovernor ? '*' : ' '} ${o.name} L${o.leadership} W${o.war} I${o.intelligence} P${o.politics} 行=${o.acted ? '×' : '未'} 忠=${o.loyalty} ${o.rank}${skills}`);
         }
       }
       return false;
@@ -887,8 +887,8 @@ function handleCommand(input: string, factionId: number): boolean {
         .filter(c => c.adjacentCityIds.includes(targetCity.id))
         .sort((a, b) => {
           // Prefer cities with more officers and troops
-          const aOff = state.officers.filter(o => o.cityId === a.id && o.factionId === factionId && o.stamina >= 30).length;
-          const bOff = state.officers.filter(o => o.cityId === b.id && o.factionId === factionId && o.stamina >= 30).length;
+          const aOff = state.officers.filter(o => o.cityId === a.id && o.factionId === factionId && !o.acted).length;
+          const bOff = state.officers.filter(o => o.cityId === b.id && o.factionId === factionId && !o.acted).length;
           if (bOff !== aOff) return bOff - aOff;
           return b.troops - a.troops;
         });
@@ -897,11 +897,11 @@ function handleCommand(input: string, factionId: number): boolean {
 
       // Get available officers sorted by leadership
       const available = state.officers
-        .filter(o => o.cityId === sourceCity.id && o.factionId === factionId && o.stamina >= 30)
+        .filter(o => o.cityId === sourceCity.id && o.factionId === factionId && !o.acted)
         .sort((a, b) => b.leadership - a.leadership);
 
       if (available.length === 0) {
-        log(`  No officers with enough stamina (30+) at ${sourceCity.name}.`);
+        log(`  No officers available (not yet acted) at ${sourceCity.name}.`);
         return false;
       }
 
@@ -918,7 +918,7 @@ function handleCommand(input: string, factionId: number): boolean {
         log('  No valid officers selected. Available:');
         available.forEach((o, i) => {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${o.leadership * 100} 體=${o.stamina}${skills}`);
+          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${o.leadership * 100} 行=${o.acted ? '×' : '未'}${skills}`);
         });
         return false;
       }

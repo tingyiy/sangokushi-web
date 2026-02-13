@@ -24,7 +24,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
   }
 
   for (const city of ownedCities) {
-    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && o.stamina >= 30);
+    const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && !o.acted);
     if (officersInCity.length === 0) continue;
 
     // 2. Recruit unaffiliated officers

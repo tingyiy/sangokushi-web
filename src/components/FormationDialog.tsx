@@ -18,7 +18,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   const city = cities.find(c => c.id === selectedCityId);
   const targetCity = cities.find(c => c.id === targetCityId);
   
-  const cityOfficers = officers.filter(o => o.cityId === selectedCityId && o.factionId === playerFaction?.id && o.stamina >= 30);
+  const cityOfficers = officers.filter(o => o.cityId === selectedCityId && o.factionId === playerFaction?.id && !o.acted);
   
   const [selectedOfficerIds, setSelectedOfficerIds] = useState<number[]>([]);
   const [unitTypes, setUnitTypes] = useState<Record<number, UnitType>>({});

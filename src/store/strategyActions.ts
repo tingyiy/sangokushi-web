@@ -30,8 +30,8 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         return;
       }
 
-      if (messenger.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 15 }));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -46,7 +46,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
         officers: state.officers.map(o =>
           o.id === messenger.id
-            ? { ...o, stamina: o.stamina - 15 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -100,8 +100,8 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noSkillProvoke', { name: localizedName(messenger.name) }));
         return;
       }
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -114,7 +114,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 800 } : c),
         officers: state.officers.map(o => {
-          if (o.id === messenger.id) return { ...o, stamina: o.stamina - 20 };
+          if (o.id === messenger.id) return { ...o, acted: true };
           if (o.id === targetOfficerId && success) return { ...o, loyalty: Math.max(0, o.loyalty - (10 + Math.floor(messenger.intelligence / 10))) };
           return o;
         })
@@ -145,8 +145,8 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noSkillTigerTrap', { name: localizedName(messenger.name) }));
         return;
       }
-      if (messenger.stamina < 25) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -165,7 +165,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
           }
           return c;
         }),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 25 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o)
       });
 
       get().addLog(i18next.t('logs:strategy.tigerTrapSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity.name) }));
@@ -189,8 +189,8 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noSkillArson', { name: localizedName(messenger.name) }));
         return;
       }
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -207,7 +207,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
           }
           return c;
         }),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 20 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o)
       });
 
       const targetCity = state.cities.find(c => c.id === targetCityId);
@@ -236,8 +236,8 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noSkillEspionage', { name: localizedName(messenger.name) }));
         return;
       }
-      if (messenger.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -251,7 +251,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 500 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         revealedCities: result.success
           ? {
             ...state.revealedCities,
@@ -295,14 +295,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noSkillIntelligence', { name: localizedName(messenger.name) }));
         return;
       }
-      if (messenger.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 300 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 15 } : o),
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o),
         revealedCities: {
           ...state.revealedCities,
           [targetCityId]: {

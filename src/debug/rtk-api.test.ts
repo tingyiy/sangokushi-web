@@ -69,7 +69,7 @@ describe('RTK Automation API', () => {
     if (result.ok) {
         expect(rtkApi.query.city(myCity.id)?.commerce).toBeGreaterThan(commerceBefore);
     } else {
-        // Might fail if not enough gold/stamina in the scenario setup
+        // Might fail if not enough gold or officer already acted in the scenario setup
         expect(result.error).toBeDefined();
     }
   });

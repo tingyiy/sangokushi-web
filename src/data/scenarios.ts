@@ -51,7 +51,7 @@ function makeOfficer(
     ...base,
     factionId,
     cityId,
-    stamina: 100,
+    acted: false,
     loyalty: overrides.loyalty ?? (factionId === null ? 0 : 80),
     isGovernor: overrides.isGovernor ?? false,
     treasureId: overrides.treasureId ?? null,

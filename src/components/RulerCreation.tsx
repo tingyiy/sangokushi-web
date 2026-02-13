@@ -60,7 +60,7 @@ export function RulerCreation() {
       skills: ['infantry'] as RTK4Skill[],
       factionId: newFactionId,
       cityId: startCityId,
-      stamina: 100,
+      acted: false,
       loyalty: 100,
       isGovernor: true,
       rank: 'governor',

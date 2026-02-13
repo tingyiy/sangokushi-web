@@ -234,9 +234,9 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
-      // Check commander stamina (highest leadership officer)
+      // Check commander availability (highest leadership officer)
       const commander = attackerOfficers.reduce((prev, curr) => (prev.leadership > curr.leadership ? prev : curr));
-      if (commander.stamina < 30) {
+      if (commander.acted) {
         get().addLog(i18next.t('logs:error.commanderStamina', { name: localizedName(commander.name) }));
         return;
       }
@@ -279,7 +279,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           }),
           officers: state.officers.map(o =>
             attackerOfficers.some(ao => ao.id === o.id)
-              ? { ...o, stamina: Math.max(0, o.stamina - 10), cityId: targetCityId, isGovernor: false }
+              ? { ...o, acted: true, cityId: targetCityId, isGovernor: false }
               : o
           ),
           battleFormation: null,
@@ -327,7 +327,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         }),
         officers: state.officers.map(o =>
           attackerOfficers.some(ao => ao.id === o.id)
-            ? { ...o, stamina: Math.max(0, o.stamina - 30) }
+            ? { ...o, acted: true }
             : o
         ),
         battleFormation: null, // Clear after use
@@ -412,7 +412,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         }),
         officers: state.officers.map(o =>
           attackerOfficers.some(ao => ao.id === o.id)
-            ? { ...o, stamina: Math.max(0, o.stamina - 30) }
+            ? { ...o, acted: true }
             : o
         ),
         battleResolved: false,

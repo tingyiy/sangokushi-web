@@ -24,8 +24,8 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
       const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
-      if (messenger.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 15 }));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -54,7 +54,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
         officers: state.officers.map(o =>
           o.id === messenger.id
-            ? { ...o, stamina: o.stamina - 15 }
+            ? { ...o, acted: true }
             : o
         ),
         factions: updatedFactions,
@@ -79,8 +79,8 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
       const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(messenger.name), required: 20 }));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -102,7 +102,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 2000 } : c),
         officers: state.officers.map(o =>
           o.id === messenger.id
-            ? { ...o, stamina: o.stamina - 20 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -150,8 +150,8 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
       const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -160,7 +160,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       const success = Math.random() * 100 < successChance;
 
       set({
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 20 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o)
       });
 
       const targetFaction = state.factions.find(f => f.id === allyFactionId);
@@ -192,8 +192,8 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
       const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -203,7 +203,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
 
       set({
         cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 20 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o)
       });
 
       const targetFaction = state.factions.find(f => f.id === targetFactionId);
@@ -248,8 +248,8 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
       const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
 
-      if (messenger.stamina < 20) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientGeneric'));
+      if (messenger.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
         return;
       }
 
@@ -259,7 +259,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       const success = targetCities === 1 && playerCities > 5 && Math.random() < 0.1;
 
       set({
-        officers: state.officers.map(o => o.id === messenger.id ? { ...o, stamina: o.stamina - 20 } : o)
+        officers: state.officers.map(o => o.id === messenger.id ? { ...o, acted: true } : o)
       });
 
       const targetFaction = state.factions.find(f => f.id === targetFactionId);

@@ -172,7 +172,7 @@ export const rtkApi = {
     log: (n: number = 10) => useGameStore.getState().log.slice(-n),
     availableOfficers: (cityId: number) => {
       const state = useGameStore.getState();
-      return state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.stamina >= 15);
+      return state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted);
     },
     isCityRevealed: (cityId: number) => useGameStore.getState().isCityRevealed(cityId),
     pendingEvents: () => useGameStore.getState().pendingEvents,
@@ -346,7 +346,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.stamina < 20) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` });
+    if (executor.acted) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
 
     if (city.gold < 500) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` });
 
@@ -372,7 +372,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.stamina < 20) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` });
+    if (executor.acted) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
 
     if (city.gold < 500) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` });
 
@@ -436,7 +436,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.stamina < 20) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: `Executor ${executor.name} has low stamina (${executor.stamina}/20 required)` });
+    if (executor.acted) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
 
     if (city.training >= 100) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: 'Training already at maximum (100)' });
     if (city.food < 500) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: `Insufficient food (Current: ${city.food}, Required: 500)` });
@@ -619,7 +619,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.stamina < 10) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: `${executor.name} has insufficient stamina (Current: ${executor.stamina}, Required: 10)` });
+    if (executor.acted) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: `${executor.name} has already acted this turn` });
 
     const goldCost = amount * 2;
     const foodCost = amount * 3;
@@ -1116,8 +1116,8 @@ export const rtkApi = {
       const totalTroops = myCities.reduce((s, c) => s + c.troops, 0);
       console.log(`Gold: ${totalGold.toLocaleString()} | Food: ${totalFood.toLocaleString()} | Troops: ${totalTroops.toLocaleString()}`);
 
-      const officersWithStamina = myOfficers.filter(o => o.stamina >= 15).length;
-      console.log(`Officers: ${myOfficers.length} (${officersWithStamina} with stamina ≥15)`);
+      const officersAvailable = myOfficers.filter(o => !o.acted).length;
+      console.log(`Officers: ${myOfficers.length} (${officersAvailable} available)`);
 
       const warnings: string[] = [];
       if (totalGold < 1000) warnings.push('⚠️ Low gold alert');

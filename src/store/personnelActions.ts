@@ -28,7 +28,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       if (recruiterId) {
         recruiter = state.officers.find(o => o.id === recruiterId && o.cityId === city.id && o.factionId === playerFaction.id);
       } else {
-        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === playerFaction.id);
+        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === playerFaction.id && !o.acted);
         if (recruiters.length === 0) {
           get().addLog(i18next.t('logs:error.noOfficerAvailable'));
           return;
@@ -41,8 +41,8 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      if (recruiter.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(recruiter.name), required: 15 }));
+      if (recruiter.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(recruiter.name) }));
         return;
       }
 
@@ -52,7 +52,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       set({
         officers: state.officers.map(o => {
           if (o.id === recruiter!.id) {
-            return { ...o, stamina: o.stamina - 15 };
+            return { ...o, acted: true };
           }
           if (o.id === officerId && success) {
             return { ...o, factionId: playerFaction.id, loyalty: 60 };
@@ -77,7 +77,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       if (officerId) {
         recruiter = state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id);
       } else {
-        const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id);
+        const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted);
         if (recruiters.length === 0) {
           get().addLog(i18next.t('logs:error.noOfficerAvailable'));
           return;
@@ -90,8 +90,8 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      if (recruiter.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientShort', { name: localizedName(recruiter.name), required: 15 }));
+      if (recruiter.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(recruiter.name) }));
         return;
       }
 
@@ -110,7 +110,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       }
 
       set({
-        officers: state.officers.map(o => o.id === recruiter!.id ? { ...o, stamina: o.stamina - 15 } : o)
+        officers: state.officers.map(o => o.id === recruiter!.id ? { ...o, acted: true } : o)
       });
 
       if (found && foundOfficer) {
@@ -136,7 +136,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       if (recruiterId) {
         recruiter = state.officers.find(o => o.id === recruiterId && o.cityId === city.id && o.factionId === state.playerFaction?.id);
       } else {
-        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id && !o.acted);
         if (recruiters.length === 0) {
           get().addLog(i18next.t('logs:error.noOfficerForSurrender'));
           return;
@@ -149,8 +149,8 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      if (recruiter.stamina < 15) {
-        get().addLog(i18next.t('logs:error.staminaInsufficientShort', { name: localizedName(recruiter.name), required: 15 }));
+      if (recruiter.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(recruiter.name) }));
         return;
       }
 
@@ -159,7 +159,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
 
       set({
         officers: state.officers.map(o => {
-          if (o.id === recruiter!.id) return { ...o, stamina: o.stamina - 15 };
+          if (o.id === recruiter!.id) return { ...o, acted: true };
           if (o.id === officerId && success) return { ...o, factionId: state.playerFaction!.id, loyalty: 50, cityId: city.id };
           return o;
         })
@@ -269,15 +269,15 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
 
       const executor = officerId
         ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
-        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor)
-          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id).sort((a, b) => b.politics - a.politics)[0];
+        : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
+          || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
       if (!executor) {
         get().addLog(officerId ? i18next.t('logs:error.officerNotInCity') : i18next.t('logs:error.noOfficerInCity'));
         return;
       }
-      if (executor.stamina < 10) {
-        get().addLog(i18next.t('logs:error.staminaInsufficient', { name: localizedName(executor.name), required: 10 }));
+      if (executor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(executor.name) }));
         return;
       }
 
@@ -306,7 +306,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         ),
         officers: state.officers.map(o =>
           o.id === executor.id
-            ? { ...o, stamina: o.stamina - 10 }
+            ? { ...o, acted: true }
             : o
         ),
       });
@@ -319,9 +319,13 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const toCity = state.cities.find(c => c.id === toCityId);
       if (!fromCity || !toCity) return;
 
-      const governor = state.officers.find(o => o.cityId === fromCityId && o.isGovernor);
-      if (!governor || governor.stamina < 20) {
+      const governor = state.officers.find(o => o.cityId === fromCityId && o.isGovernor && o.factionId === state.playerFaction?.id);
+      if (!governor) {
         get().addLog(i18next.t('logs:error.transportStamina'));
+        return;
+      }
+      if (governor.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(governor.name) }));
         return;
       }
 
@@ -337,7 +341,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
           if (c.id === toCityId) return { ...c, [resource]: c[resource] + amount };
           return c;
         }),
-        officers: state.officers.map(o => o.id === governor.id ? { ...o, stamina: o.stamina - 20 } : o)
+        officers: state.officers.map(o => o.id === governor.id ? { ...o, acted: true } : o)
       });
       get().addLog(i18next.t('logs:domestic.transport', { from: localizedName(fromCity.name), to: localizedName(toCity.name), amount, resource: i18next.t(`logs:common.${resource}`) }));
     },
@@ -345,11 +349,15 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
     transferOfficer: (officerId, targetCityId) => {
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
-      const destCity = state.cities.find(c => c.id === targetCityId);
-      if (!officer || officer.stamina < 10) {
-        get().addLog(i18next.t('logs:error.moveOfficerStamina', { name: localizedName(officer?.name ?? '') }));
+      if (!officer) {
+        get().addLog(i18next.t('logs:error.moveOfficerStamina', { name: '' }));
         return;
       }
+      if (officer.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(officer.name) }));
+        return;
+      }
+      const destCity = state.cities.find(c => c.id === targetCityId);
       if (!destCity || destCity.factionId !== state.playerFaction?.id) {
         get().addLog(i18next.t('logs:error.moveOnlyFriendly'));
         return;
@@ -357,7 +365,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
 
       const wasGovernor = officer.isGovernor;
       const sourceCityId = officer.cityId;
-      const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, cityId: targetCityId, isGovernor: false, stamina: o.stamina - 10 } : o);
+      const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, cityId: targetCityId, isGovernor: false, acted: true } : o);
       if (wasGovernor && sourceCityId !== null) {
         autoAssignGovernorInPlace(updatedOfficers, sourceCityId, state.playerFaction!.id);
       }

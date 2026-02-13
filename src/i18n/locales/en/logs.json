@@ -22,6 +22,7 @@
     "noTroops": "No troops in the city to train.",
     "officerNotInCity": "Assigned officer is not in this city.",
     "noOfficerInCity": "No officers in this city.",
+    "officerActed": "{{name}} has already acted this turn.",
     "staminaInsufficient": "{{name}} lacks stamina (need {{required}}).",
     "staminaInsufficientShort": "{{name}} lacks stamina (need {{required}}).",
     "staminaInsufficientGeneric": "Not enough stamina.",
