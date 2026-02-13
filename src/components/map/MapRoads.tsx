@@ -13,20 +13,32 @@ interface MapRoadsProps {
  * Each edge is drawn once (deduped by comparing city IDs).
  * Roads are rendered as brown dirt-track paths with a thin dark border
  * for visibility over mountains and dark terrain (matching RTK IV style).
+ * Road endpoints are inset from city centers so they don't overlap city markers.
  */
 export function MapRoads({ cities, season }: MapRoadsProps) {
   const style = SEASON_ROAD_STYLE[season];
 
-  // Collect edges once
+  /** Inset distance — road ends this far from city center (avoids overlapping markers) */
+  const INSET = 1.3;
+
+  // Collect edges once, with endpoints inset from city centers
   const edges: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
   cities.forEach(city => {
     city.adjacentCityIds.forEach(adjId => {
       const adj = cities.find(c => c.id === adjId);
       if (!adj || adj.id < city.id) return;
+      const dx = adj.x - city.x;
+      const dy = adj.y - city.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < INSET * 2) return; // cities too close, skip
+      const ux = dx / dist;
+      const uy = dy / dist;
       edges.push({
         key: `road-${city.id}-${adjId}`,
-        x1: city.x, y1: city.y,
-        x2: adj.x, y2: adj.y,
+        x1: city.x + ux * INSET,
+        y1: city.y + uy * INSET,
+        x2: adj.x - ux * INSET,
+        y2: adj.y - uy * INSET,
       });
     });
   });
