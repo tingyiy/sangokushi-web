@@ -92,7 +92,7 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
   const surname = displayName.charAt(0) ?? '';
   const flagW = 2.2;
   const flagH = 2.4;
-  /** Dim unrevealed cities */
+  /** Dim unrevealed flag/info but keep castle structure fully opaque */
   const fogOpacity = revealed ? 1 : 0.5;
 
   return (
@@ -101,9 +101,8 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{ cursor: 'pointer' }}
-      opacity={fogOpacity}
     >
-      {/* Castle building base */}
+      {/* Castle building base — always fully opaque (physical structure) */}
       <rect
         x={city.x - 0.7}
         y={city.y - 0.7}
@@ -119,40 +118,42 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       <rect x={city.x - 0.1} y={city.y - 0.95} width={0.35} height={0.3} fill="#6b5a42" />
       <rect x={city.x + 0.45} y={city.y - 0.95} width={0.35} height={0.3} fill="#6b5a42" />
 
-      {/* Flag pole — goes up from castle top */}
-      <line
-        x1={city.x + 0.5}
-        y1={city.y - 0.95}
-        x2={city.x + 0.5}
-        y2={city.y - flagH - 1.1}
-        stroke="#5a4a3a"
-        strokeWidth="0.15"
-      />
-      {/* Flag banner — attached to pole, extends to the right */}
-      <rect
-        x={city.x + 0.5}
-        y={city.y - flagH - 1.1}
-        width={flagW}
-        height={flagH}
-        fill={color}
-        stroke={isSelected ? '#fbbf24' : '#2a2a2a'}
-        strokeWidth={isSelected ? 0.25 : 0.1}
-        rx="0.1"
-        opacity={0.92}
-      />
-      {/* Ruler surname on flag */}
-      <text
-        x={city.x + 0.5 + flagW / 2}
-        y={city.y - flagH / 2 - 1.1}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="#fff"
-        fontSize="1.6"
-        fontWeight="bold"
-        style={{ pointerEvents: 'none' }}
-      >
-        {surname}
-      </text>
+      {/* Flag group — dimmed for unrevealed cities */}
+      <g opacity={fogOpacity}>
+        {/* Flag pole — goes up from castle top */}
+        <line
+          x1={city.x + 0.5}
+          y1={city.y - 0.95}
+          x2={city.x + 0.5}
+          y2={city.y - flagH - 1.1}
+          stroke="#5a4a3a"
+          strokeWidth="0.15"
+        />
+        {/* Flag banner — attached to pole, extends to the right */}
+        <rect
+          x={city.x + 0.5}
+          y={city.y - flagH - 1.1}
+          width={flagW}
+          height={flagH}
+          fill={color}
+          stroke={isSelected ? '#fbbf24' : '#2a2a2a'}
+          strokeWidth={isSelected ? 0.25 : 0.1}
+          rx="0.1"
+        />
+        {/* Ruler surname on flag */}
+        <text
+          x={city.x + 0.5 + flagW / 2}
+          y={city.y - flagH / 2 - 1.1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#fff"
+          fontSize="1.6"
+          fontWeight="bold"
+          style={{ pointerEvents: 'none' }}
+        >
+          {surname}
+        </text>
+      </g>
 
       {/* City name label — below the castle */}
       <text
@@ -226,8 +227,8 @@ function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: Neut
   const fogOpacity = revealed ? 1 : 0.45;
 
   return (
-    <g onClick={onClick} style={{ cursor: 'pointer' }} opacity={fogOpacity}>
-      {/* Small neutral marker */}
+    <g onClick={onClick} style={{ cursor: 'pointer' }}>
+      {/* Small neutral marker — always fully opaque (physical structure) */}
       <rect
         x={city.x - 0.9}
         y={city.y - 0.9}
@@ -238,7 +239,7 @@ function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: Neut
         strokeWidth={isSelected ? 0.4 : 0.15}
         rx="0.2"
       />
-      {/* City name label */}
+      {/* City name label — dimmed for unrevealed */}
       <text
         x={city.x}
         y={city.y + 2.2}
@@ -249,6 +250,7 @@ function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: Neut
         stroke="rgba(0,0,0,0.5)"
         strokeWidth="0.3"
         paintOrder="stroke"
+        opacity={fogOpacity}
         style={{ pointerEvents: 'none' }}
       >
         {localizedName(city.name)}

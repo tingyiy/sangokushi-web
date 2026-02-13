@@ -27,10 +27,7 @@ interface RTKApi {
   phase(): GamePhase;
 
   /** Start a new game: select scenario by id, pick faction, configure settings, enter playing phase */
- - `newGame(scenarioId: number, factionId: number)`: Starts a new game. Supports scenario constants (e.g., `rtk.newGame(rtk.Scenario.AntiDongzhuo, 1)`).
-- `Scenario`: Constant object for scenario IDs (AntiDongzhuo, Guandu, etc.).
-- `ScenarioInfo`: Metadata lookup for scenarios (year, name, etc.).
-s?: Partial<GameSettings>): Result;
+  newGame(scenarioId: number, factionId: number, settings?: Partial<GameSettings>): Result;
 
   // ─── Queries (read-only, no side effects) ───────────
   query: {
@@ -111,13 +108,7 @@ s?: Partial<GameSettings>): Result;
   recruitOfficer(officerId: number, recruiterId?: number): Result;
   searchOfficer(cityId: number, officerId?: number): Result;
   recruitPOW(officerId: number, recruiterId?: number): Result;
-  rewardOfficer(officerId: number, type: 'gold' | 'treasure', amoun- `city(id: number)`: Returns full city object.
-- `officer(id: number)`: Returns full officer object.
-- `bestOfficerFor(cityId, task)`: Returns recommended officer for 'domestic', 'military', or 'strategy'.
-- `officerRecommendations(cityId)`: Returns a map of recommendations for all task types.
-- `canDraftTroops(cityId, amount)`: Pre-validates a draft action.
-- `canAffordDomestic(cityId)`: Pre-validates a domestic action (500 gold).
-erId: number): Result;
+  rewardOfficer(officerId: number, type: 'gold' | 'treasure', amount: number, recruiterId: number): Result;
   appointGovernor(cityId: number, officerId: number): Result;
   appointAdvisor(officerId: number): Result;
   promoteOfficer(officerId: number, rank: OfficerRank): Result;
@@ -155,9 +146,8 @@ erId: number): Result;
   // Events
   /** Dismiss the current pending event (or accept officer visit) */
   popEvent(): Result;
-  /** Robustly dismiss event if present (checks- `endTurn()`: Advances to next month. Returns event array: `{ ok: true, data: { month, year, events: [...], eventCount } }`.
-- `confirmEvent()`: Confirms the first pending event.
-(): Result;
+  /** Robustly dismiss event if present (checks phase and pending events) */
+  confirmEvent(): Result;
 
   // Battle (sub-commands when phase === 'battle')
   battle: {
@@ -245,7 +235,7 @@ interface Result {
 ```
 src/
   debug/
-    rtk-api.ts          # The API implementation (~500-600 lines)
+    rtk-api.ts          # The API implementation (~1160 lines)
     rtk-api.test.ts     # Tests for the API
     index.ts            # Conditional mount: if (import.meta.env.DEV) mount()
 ```
@@ -607,4 +597,4 @@ rtk.save(1);
 - **Added scenario reference table** for `newGame`
 - **Added battle command wrapper examples** (gate attack, tactic execution)
 - **Updated status() printer** to show tax, tech, POWs, pending events, battle weather
-- **Estimated implementation size** increased from ~300-400 to ~500-600 lines
+- **Estimated implementation size** grew from initial ~300-400 estimate to ~1160 lines

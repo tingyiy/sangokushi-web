@@ -48,9 +48,9 @@ Additionally, RTK IV has these systems that are not tied to a specific command c
 | Strategy | spy, intel, rumor, arson, rebel, counter | 6 |
 | Turn/System | end, quit | 2 |
 
-### 2.2 Skills (27 defined, RTK IV had 24)
+### 2.2 Skills (25 defined, RTK IV had 24)
 
-All 24 original RTK IV skills are implemented. We added 3 extra: 鼓舞 (Inspire), 伏兵 (Ambush), and one additional. All 13 battle tactics derived from these skills are fully functional in `battleStore.ts`.
+All 24 original RTK IV skills are implemented. We added 1 extra: 鼓舞 (Inspire). All 13 battle tactics derived from these skills are fully functional in `battleStore.ts`.
 
 ### 2.3 Battle Tactics (13 implemented)
 
@@ -287,7 +287,7 @@ The most powerful strategy command. You send a loyal officer to "defect" to the 
 
 **Implementation Plan:**
 
-1. **Add `埋伏` skill** to `RTK4_SKILLS` in `src/types/index.ts` (bringing total to 28)
+1. **Add `埋伏` skill** to `RTK4_SKILLS` in `src/types/index.ts` (bringing total to 26)
 
 2. **Mole state tracking** on officers:
    ```typescript

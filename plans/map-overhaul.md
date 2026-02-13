@@ -2,16 +2,25 @@
 
 Replace the current single static SVG map with an authentic RTK IV-style map featuring seasonal variations, pixel-art terrain, and historical geography.
 
+> **Status:** Phases 1-4 are **complete**. Phase 5 (battle map seasonal terrain) remains.
+
 ---
 
-## Current State
+## Current State (Post-Overhaul)
 
-- **File:** `src/components/ChinaMap.tsx` (730 lines)
-- **Format:** Single static SVG with gradient fills, basic terrain patterns (mountains, rivers)
-- **Cities:** Circular markers with text labels
-- **Roads:** Simple SVG paths connecting cities
-- **Seasons:** No seasonal variation
-- **Style:** Flat/modern — does not match RTK IV's pixel-art aesthetic
+The map has been refactored from a monolithic `ChinaMap.tsx` (730 lines) into modular sub-components under `src/components/map/`:
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `GameMap.tsx` | ~280 | Main container — pan/zoom/clamping, SVG viewBox, renders sub-components |
+| `MapTerrain.tsx` | ~690 | Terrain polygons — mountains, rivers, plains, deserts, lakes, seasonal overlays |
+| `MapCities.tsx` | ~260 | City markers — castle icons with battlements, faction flags, fog-of-war opacity |
+| `MapRoads.tsx` | ~60 | Road network — dark-bordered dirt-track lines between adjacent cities |
+| `MapPatterns.tsx` | ~170 | SVG fill patterns — grass, forest, tropical textures |
+| `mapData.ts` | ~270 | Season system, 4 color palettes, road styles, label colors, `getWheelFactor()` |
+| `BattleMap.tsx` | ~400 | Hex battle map — unit rendering, range visualization, gate display |
+| `GameMinimap.tsx` | ~46 | Strategic minimap overlay |
+| `SelectionMinimap.tsx` | ~55 | City selection minimap |
 
 ---
 
@@ -76,33 +85,33 @@ Use 4 pre-rendered background images (one per season) with SVG overlays for inte
 
 ## Implementation Phases
 
-### Phase 1: Terrain Data (2-3 days)
-- Define terrain polygons for mountain ranges, rivers, forests, plains
-- Create terrain type grid matching China's geography (approximate)
-- Define seasonal color palettes
-- Separate `ChinaMap.tsx` into sub-components
+### Phase 1: Terrain Data — ✅ Complete
+- Defined terrain polygons for mountain ranges, rivers, forests, plains, deserts, lakes
+- Created seasonal color palettes in `mapData.ts`
+- Split `ChinaMap.tsx` into sub-components (`GameMap`, `MapTerrain`, `MapCities`, `MapRoads`, `MapPatterns`)
 
-### Phase 2: Seasonal Rendering (2-3 days)
-- Implement season detection from game month
-- Apply seasonal palette to terrain fills
-- Winter: add snow overlays on mountains and northern regions
-- Spring: add blossom effects near certain cities
-- Autumn: shift vegetation to warm tones
-- Transition animation between seasons (CSS transition on fill colors)
+### Phase 2: Seasonal Rendering — ✅ Complete
+- Season detection from game month (spring/summer/autumn/winter)
+- 4 seasonal palettes applied to all terrain fills
+- Winter snow overlays on mountains and northern regions
+- CSS transitions between seasons
 
-### Phase 3: City & Road Redesign (1-2 days)
-- Replace circle markers with castle/fort icons (SVG sprites)
-- Redesign road paths to follow terrain (curves around mountains, bridges over rivers)
-- Add faction-colored flags on controlled cities
-- Tooltip on hover showing city name and basic stats
+### Phase 3: City & Road Redesign — ✅ Complete
+- Castle icons with 3 battlements replacing circle markers
+- Faction-colored flag banners with ruler surname
+- Tooltip on hover showing city name and stats (fog-of-war aware)
+- Dark-bordered dirt-track roads (two-layer SVG lines)
 
-### Phase 4: Pixel-Art Style (2-3 days)
-- Apply pixel-art rendering style (CSS `image-rendering: pixelated` on canvas elements)
-- Create pixel-art terrain patterns (repeating SVG patterns for grass, forest, water)
-- Match RTK IV's warm color palette
-- Optional: add subtle animation (flowing rivers, waving flags)
+### Phase 4: Pixel-Art Style — ✅ Complete
+- `image-rendering: pixelated` on SVG
+- SVG fill patterns for grass, forest, tropical terrain
+- Warm RTK IV color palette
+- Pan/zoom with mouse wheel, drag, and zoom buttons
+- Pan clamping to prevent edges from leaving viewport
+- Mouse sensitivity wired to game settings
+- Minimap integration
 
-### Phase 5: Battle Map Integration (1-2 days)
+### Phase 5: Battle Map Integration — 🔲 Remaining
 - Ensure battle maps (`BattleMap.tsx`) also reflect seasonal terrain colors
 - Battle terrain tiles should match the strategic map's current season
 
@@ -110,28 +119,29 @@ Use 4 pre-rendered background images (one per season) with SVG overlays for inte
 
 ## Effort Estimate
 
-| Phase | Days |
-|-------|------|
-| Terrain data | 2-3 |
-| Seasonal rendering | 2-3 |
-| City & road redesign | 1-2 |
-| Pixel-art style | 2-3 |
-| Battle map integration | 1-2 |
-| **Total** | **8-13 days** |
+| Phase | Days | Status |
+|-------|------|--------|
+| Terrain data | 2-3 | ✅ Done |
+| Seasonal rendering | 2-3 | ✅ Done |
+| City & road redesign | 1-2 | ✅ Done |
+| Pixel-art style | 2-3 | ✅ Done |
+| Battle map integration | 1-2 | 🔲 Remaining |
+| **Total** | **8-13 days** | **~85% complete** |
 
 ---
 
-## Key Files
+## Key Files (Final)
 
-| File | Change |
+| File | Status |
 |------|--------|
-| `src/components/ChinaMap.tsx` | Major refactor — split into sub-components, add season logic |
-| `src/components/map/MapTerrain.tsx` | **New** — terrain rendering with seasonal palettes |
-| `src/components/map/MapSeasons.tsx` | **New** — seasonal overlay effects |
-| `src/components/map/MapCities.tsx` | **New** — city marker rendering (castle icons) |
-| `src/components/map/MapRoads.tsx` | **New** — road network rendering |
-| `src/components/map/mapData.ts` | **New** — terrain polygons, palettes, seasonal data |
-| `src/components/map/BattleMap.tsx` | Update terrain tile colors to match season |
+| `src/components/ChinaMap.tsx` | **Removed** — replaced by `map/` sub-components |
+| `src/components/map/GameMap.tsx` | Main map container with pan/zoom/clamping |
+| `src/components/map/MapTerrain.tsx` | Terrain rendering with seasonal palettes |
+| `src/components/map/MapPatterns.tsx` | SVG terrain fill patterns |
+| `src/components/map/MapCities.tsx` | City marker rendering (castle icons, flags) |
+| `src/components/map/MapRoads.tsx` | Road network rendering (dark-bordered dirt tracks) |
+| `src/components/map/mapData.ts` | Season palettes, road styles, label colors, wheel factor |
+| `src/components/map/BattleMap.tsx` | Needs seasonal terrain color update (Phase 5) |
 
 ---
 

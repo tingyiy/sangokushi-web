@@ -26,8 +26,8 @@ Core RTK IV mechanics and the visual overhaul are complete. The game is playable
 
 - **6 historical scenarios** spanning 189-234 AD (董卓亂政 through 星落五丈原)
   **6 個歷史劇本**，橫跨西元 189-234 年（從董卓亂政到星落五丈原）
-- **400+ officers** with 22 distinct skills across 4 skill groups
-  **400 餘名武將**，擁有 4 大類共 22 種特殊技能
+- **400+ officers** with 25 distinct skills across 4 skill groups
+  **400 餘名武將**，擁有 4 大類共 25 種特殊技能
 - **25 commands** across 5 categories: 內政, 軍事, 人事, 外交, 謀略
   **25 項指令**，涵蓋內政、軍事、人事、外交、謀略五大類
 - **Hex-based tactical battles** with unit type differentiation (infantry/cavalry/archer), siege warfare, 13 battle tactics, morale/routing, POW capture, mode-based turn system (move → attack/tactic → wait), enemy AI, battle log, and range visualization
@@ -64,7 +64,7 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (352 tests across 29 test files)
+- **Vitest** -- unit and component tests (383 tests across 31 test files)
 - **i18next** + **react-i18next** -- internationalization (Traditional Chinese + English)
 
 ## Getting Started

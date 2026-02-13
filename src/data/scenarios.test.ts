@@ -131,6 +131,51 @@ describe('Scenarios Data Integrity', () => {
           ).toBe(officer.factionId);
         });
       });
+
+      it('each faction\'s cities form a connected subgraph', () => {
+        const cityMap = new Map(baseCities.map(c => [c.id, c]));
+        const errors: string[] = [];
+
+        scenario.factions.forEach(faction => {
+          const factionCityIds = scenario.cities
+            .filter(c => c.factionId === faction.id)
+            .map(c => c.id);
+
+          if (factionCityIds.length <= 1) return; // 0 or 1 city is trivially connected
+
+          // BFS from the first city, only traversing edges between faction cities
+          const factionSet = new Set(factionCityIds);
+          const visited = new Set<number>();
+          const queue = [factionCityIds[0]];
+          visited.add(queue[0]);
+
+          while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            const base = cityMap.get(currentId);
+            if (!base) continue;
+            for (const adjId of base.adjacentCityIds) {
+              if (factionSet.has(adjId) && !visited.has(adjId)) {
+                visited.add(adjId);
+                queue.push(adjId);
+              }
+            }
+          }
+
+          const unreached = factionCityIds.filter(id => !visited.has(id));
+          if (unreached.length > 0) {
+            const rulerName = baseOfficers.find(o => o.id === faction.rulerId)?.name ?? `ruler#${faction.rulerId}`;
+            const unreachedNames = unreached.map(id => {
+              const c = baseCities.find(bc => bc.id === id);
+              return `${c?.name ?? '?'}(${id})`;
+            });
+            errors.push(
+              `${rulerName}'s cities are disconnected — cannot reach: ${unreachedNames.join(', ')}`
+            );
+          }
+        });
+
+        expect(errors).toEqual([]);
+      });
     });
   });
 });

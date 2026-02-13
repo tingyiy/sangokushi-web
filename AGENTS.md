@@ -214,22 +214,30 @@ Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / 
 
 ### Key Files
 - `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~580 lines)
-- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~300 lines)
-- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~320 lines)
-- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~490 lines)
+- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~350 lines)
+- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~370 lines)
+- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~690 lines)
 - `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~330 lines)
-- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~310 lines)
-- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~400 lines)
-- `src/store/saveLoadActions.ts` - Save, load, slots, delete (~120 lines)
+- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~320 lines)
+- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~470 lines)
+- `src/store/saveLoadActions.ts` - Save, load, slots, delete (~115 lines)
 - `src/store/storeHelpers.ts` - Shared helpers (autoAssignGovernor, getAttackDirection)
-- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines, 16 actions)
+- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
 - `src/components/GameScreen.tsx` - Main gameplay UI
 - `src/components/BattleScreen.tsx` - Tactical battle UI with battle log and mode indicators
-- `src/components/map/BattleMap.tsx` - Hex battle map with range visualization
-- `src/data/scenarios.ts` - Scenario definitions
+- `src/components/map/GameMap.tsx` - Main strategic map with pan/zoom/clamping (~280 lines)
+- `src/components/map/MapTerrain.tsx` - Terrain polygons, rivers, mountains, seasonal overlays (~690 lines)
+- `src/components/map/MapCities.tsx` - City markers, flags, labels, fog-of-war opacity (~260 lines)
+- `src/components/map/MapRoads.tsx` - Road network with dark border styling (~60 lines)
+- `src/components/map/MapPatterns.tsx` - SVG terrain fill patterns (~170 lines)
+- `src/components/map/mapData.ts` - Season system, color palettes, `getWheelFactor()` (~270 lines)
+- `src/components/map/BattleMap.tsx` - Hex battle map with range visualization (~400 lines)
+- `src/data/cities.ts` - City coordinates, adjacency data (43 cities)
+- `src/data/scenarios.ts` - Scenario definitions (6 scenarios)
 - `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
+- `src/debug/rtk-api.ts` - Browser automation API (`window.rtk`) (~1160 lines)
 - `src/i18n/index.ts` - i18next config, browser language detection
 - `src/i18n/dataNames.ts` - `localizedName()` helper for officer/city/faction name translation
 - `src/i18n/cli.ts` - CLI-specific i18n init (Node.js, no browser detector)
@@ -243,7 +251,7 @@ Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / 
 **Language Detection:** Browser language is auto-detected on first visit. Detection order: `localStorage` → `navigator` → fallback (`zh-TW`). Supported languages: `zh-TW`, `en`. User can override via the language switcher in `GameSettingsScreen.tsx`.
 
 **Type literals use English keys** (decoupled from display text):
-- `RTK4Skill`: `'firePlot' | 'confusion' | 'diplomacy' | ...` (27 skills)
+- `RTK4Skill`: `'firePlot' | 'confusion' | 'diplomacy' | ...` (25 skills)
 - `OfficerRank`: `'governor' | 'general' | 'advisor' | ...` (6 ranks)
 - `CommandCategory`: `'domestic' | 'military' | ...` (6 categories)
 
@@ -375,11 +383,12 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 352 tests across 29 test files
+- Current test suite: 383 tests across 31 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 - Fog-of-war tests: `src/store/fogOfWar.test.ts` (23 tests covering isCityRevealed, getCityView, getOfficerView, getNeighborSummary, getFactionSummaries)
 - i18n regression tests: `src/store/i18n-logs.test.ts` (13 tests scanning for Chinese leaks)
+- City data coherence tests: `src/data/cities.test.ts` (21 tests covering adjacency, connectivity, coordinate bounds)
 
 ---
 

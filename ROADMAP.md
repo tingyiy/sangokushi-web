@@ -27,11 +27,17 @@ Full i18n support is implemented. The UI supports **Traditional Chinese (繁體�
 
 ---
 
-## Map Overhaul
+## Map Overhaul — ✅ Complete (Phases 1-4)
 
-The current map (`ChinaMap.tsx`, 730 lines) is a single static SVG with flat gradient fills. RTK IV's original maps are pixel-art masterpieces with 4 seasonal variants — spring blossoms, summer green, autumn gold, winter snow. We want to replicate this aesthetic with seasonal palette switching, terrain detail, and castle-style city markers.
+The strategic map has been fully rewritten from a single static SVG (`ChinaMap.tsx`, 730 lines) into an inline SVG component system under `src/components/map/` with seasonal terrain, pixel-art style, castle city markers, and dark-bordered dirt-track roads.
 
-See [plans/map-overhaul.md](plans/map-overhaul.md) for the reference screenshots, 3 implementation approaches (SVG layers recommended), and phased plan.
+**What was done:**
+- **Phase 1:** Terrain data — defined terrain polygons (mountains, rivers, plains, deserts, lakes), separated into sub-components (`GameMap.tsx`, `MapTerrain.tsx`, `MapCities.tsx`, `MapRoads.tsx`, `MapPatterns.tsx`, `mapData.ts`)
+- **Phase 2:** Seasonal rendering — 4 seasonal palettes (spring/summer/autumn/winter), CSS transitions, winter snow overlays
+- **Phase 3:** City & road redesign — castle icons with battlements, faction-colored flag banners with ruler surname, tooltip on hover, dark-bordered dirt-track roads
+- **Phase 4:** Pixel-art style — SVG fill patterns, warm RTK IV palette, `image-rendering: pixelated`, pan/zoom with clamping, mouse sensitivity wired to settings, minimap integration
+
+**Remaining:** Phase 5 — battle map hex grid should reflect strategic map's seasonal terrain colors. See [plans/map-overhaul.md](plans/map-overhaul.md) for the original plan.
 
 ---
 
