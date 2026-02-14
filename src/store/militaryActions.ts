@@ -3,6 +3,7 @@ import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 import type { UnitType } from '../types/battle';
 import type { GameState } from './gameStore';
+import { getMaxTroops } from '../utils/officers';
 import { useBattleStore } from './battleStore';
 import { hasSkill } from '../utils/skills';
 import { autoAssignGovernorInPlace, getAttackDirection } from './storeHelpers';
@@ -213,11 +214,11 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
-      // Calculate actual troop allocation per officer (based on city garrison, capped by leadership)
-      // If the player specified troops in the formation, use those (still capped by leadership)
+      // Calculate actual troop allocation per officer (capped by rank-based MaxTroops)
       const playerTroops = state.battleFormation?.troops;
+      const attackerRulerId = state.playerFaction?.rulerId;
       const troopsPerOfficer = attackerOfficers.map((off, i) => {
-        const maxForOfficer = off.leadership * 100; // RTK IV: leadership determines max troops
+        const maxForOfficer = getMaxTroops(off, off.id === attackerRulerId);
         if (playerTroops && playerTroops[i] !== undefined) {
           return Math.min(playerTroops[i], maxForOfficer, city.troops);
         }
@@ -307,8 +308,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
+      const defenderFaction = state.factions.find(f => f.id === targetCity.factionId);
+      const defenderRulerId = defenderFaction?.rulerId;
       const defenderTroopsPerOfficer = defenderOfficers.map(off => {
-        const maxForOfficer = off.leadership * 100;
+        const maxForOfficer = getMaxTroops(off, off.id === defenderRulerId);
         const equalShare = Math.floor(targetCity.troops / Math.max(1, defenderOfficers.length));
         return Math.min(equalShare, maxForOfficer);
       });
@@ -385,15 +388,19 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       const warHorsesUsed = city.warHorses - warHorsesAvailable;
 
       // Calculate actual troop allocation per officer
+      const aiAttackerFaction = state.factions.find(f => f.id === city.factionId);
+      const aiAttackerRulerId = aiAttackerFaction?.rulerId;
       const troopsPerOfficer = attackerOfficers.map(off => {
-        const maxForOfficer = off.leadership * 100;
+        const maxForOfficer = getMaxTroops(off, off.id === aiAttackerRulerId);
         const equalShare = Math.floor(city.troops / attackerOfficers.length);
         return Math.min(equalShare, maxForOfficer);
       });
       const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
       const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
+      const aiDefenderFaction = state.factions.find(f => f.id === targetCity.factionId);
+      const aiDefenderRulerId = aiDefenderFaction?.rulerId;
       const defenderTroopsPerOfficer = defenderOfficers.map(off => {
-        const maxForOfficer = off.leadership * 100;
+        const maxForOfficer = getMaxTroops(off, off.id === aiDefenderRulerId);
         const equalShare = Math.floor(targetCity.troops / Math.max(1, defenderOfficers.length));
         return Math.min(equalShare, maxForOfficer);
       });

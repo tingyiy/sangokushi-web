@@ -20,6 +20,7 @@ import { scenarios } from '../data/scenarios';
 import { getDistance } from '../utils/hex';
 import { getMovementRange, getAttackRange } from '../utils/unitTypes';
 import { hasSkill } from '../utils/skills';
+import { getMaxTroops } from '../utils/officers';
 import { audioSystem } from '../systems/audio';
 import type { BattleUnit } from '../types/battle';
 import i18next from 'i18next';
@@ -916,9 +917,11 @@ function handleCommand(input: string, factionId: number): boolean {
 
       if (selectedOfficers.length === 0) {
         log('  No valid officers selected. Available:');
+        const myFaction = state.factions.find(f => f.id === factionId);
         available.forEach((o, i) => {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${o.leadership * 100} 行=${o.acted ? '×' : '未'}${skills}`);
+          const max = getMaxTroops(o, o.id === myFaction?.rulerId);
+          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${max} 行=${o.acted ? '×' : '未'}${skills}`);
         });
         return false;
       }
@@ -965,8 +968,10 @@ function handleCommand(input: string, factionId: number): boolean {
       }
 
       log(`  ${sourceCity.name} → ${targetCity.name}`);
+      const cliMyFaction = state.factions.find(f => f.id === factionId);
       log(`  ${selectedOfficers.map((o, i) => {
-        const t = troopsPerOfficer ? troopsPerOfficer[i] : `auto(max ${o.leadership * 100})`;
+        const max = getMaxTroops(o, o.id === cliMyFaction?.rulerId);
+        const t = troopsPerOfficer ? troopsPerOfficer[i] : `auto(max ${max})`;
         return `${o.name}(${unitTypes[i]},${t})`;
       }).join(', ')}`);
 

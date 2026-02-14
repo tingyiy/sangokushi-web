@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import { localizedName } from '../i18n/dataNames';
+import { getMaxTroops } from '../utils/officers';
 import type { UnitType } from '../types/battle';
 
 interface Props {
@@ -24,11 +25,13 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   const [unitTypes, setUnitTypes] = useState<Record<number, UnitType>>({});
   const [troopCounts, setTroopCounts] = useState<Record<number, number>>({});
 
-  /** Max troops an officer can lead = leadership * 100 */
+  /** Max troops an officer can lead (rank-based cap) */
   const maxTroopsForOfficer = useCallback((officerId: number) => {
     const off = officers.find(o => o.id === officerId);
-    return off ? off.leadership * 100 : 5000;
-  }, [officers]);
+    if (!off) return 5000;
+    const isRuler = off.id === playerFaction?.rulerId;
+    return getMaxTroops(off, isRuler);
+  }, [officers, playerFaction]);
 
   /** Total troops allocated to all selected officers */
   const totalAllocated = useMemo(() => {
@@ -109,7 +112,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
         <div className="officer-selection-list">
           {cityOfficers.map(o => {
             const isSelected = selectedOfficerIds.includes(o.id);
-            const maxTroop = o.leadership * 100;
+            const maxTroop = maxTroopsForOfficer(o.id);
             return (
               <div key={o.id} className={`officer-item ${isSelected ? 'selected' : ''}`} onClick={() => toggleOfficer(o.id)}>
                 <div className="officer-info">

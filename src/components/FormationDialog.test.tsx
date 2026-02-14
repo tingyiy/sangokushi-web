@@ -21,10 +21,10 @@ describe('FormationDialog', () => {
         { id: 2, name: '洛陽', warHorses: 0, crossbows: 0, troops: 10000 }
       ],
       officers: [
-        { id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, cityId: 1, factionId: 1, acted: false },
-        { id: 2, name: '夏侯惇', leadership: 90, war: 95, intelligence: 70, cityId: 1, factionId: 1, acted: false },
+        { id: 1, name: '荀彧', leadership: 85, war: 60, intelligence: 95, cityId: 1, factionId: 1, acted: false, rank: 'common', treasureId: null },
+        { id: 2, name: '夏侯惇', leadership: 90, war: 95, intelligence: 70, cityId: 1, factionId: 1, acted: false, rank: 'common', treasureId: null },
       ],
-      playerFaction: { id: 1 },
+      playerFaction: { id: 1, rulerId: 99 },
       startBattle: mockStartBattle,
       setBattleFormation: mockSetBattleFormation,
     });
@@ -48,7 +48,7 @@ describe('FormationDialog', () => {
     expect(mockSetBattleFormation).toHaveBeenCalledWith({
       officerIds: [2],
       unitTypes: ['infantry'],
-      troops: [9000], // min(50000/1, 90*100) = 9000
+      troops: [50000], // min(50000/1, 90*1000*1.0) = 50000 (garrison-limited)
     });
     expect(mockStartBattle).toHaveBeenCalledWith(2);
   });
