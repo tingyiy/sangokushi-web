@@ -1,9 +1,10 @@
 import type { Scenario, City, Officer } from '../types';
-import { baseCities } from './cities';
+import { baseCities, cityBaseStats } from './cities';
 import { baseOfficers } from './officers';
 
-/** Helper: create a full City from base + scenario overrides
- * Phase 1.2: Updated with new city attributes and differentiated stats
+/** Helper: create a full City from base + scenario overrides.
+ * Uses per-city base stats (population, commerce, agriculture, floodControl)
+ * from cityBaseStats for historically-differentiated defaults.
  */
 function makeCity(
   id: number,
@@ -11,28 +12,26 @@ function makeCity(
   overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults' | 'taxRate'>> = {}
 ): City {
   const base = baseCities.find(c => c.id === id)!;
+  const stats = cityBaseStats[id];
   return {
     ...base,
     factionId,
-    population: overrides.population ?? 100000,
+    population: overrides.population ?? stats.population,
     gold: overrides.gold ?? 5000,
     food: overrides.food ?? 10000,
-    commerce: overrides.commerce ?? 500,
-    agriculture: overrides.agriculture ?? 500,
+    commerce: overrides.commerce ?? stats.commerce,
+    agriculture: overrides.agriculture ?? stats.agriculture,
     defense: overrides.defense ?? 50,
     troops: overrides.troops ?? 10000,
-    // Phase 1.2: New city attributes with sensible defaults
-    floodControl: overrides.floodControl ?? 50,
+    floodControl: overrides.floodControl ?? stats.floodControl,
     technology: overrides.technology ?? 30,
     peopleLoyalty: overrides.peopleLoyalty ?? 70,
     morale: overrides.morale ?? 60,
     training: overrides.training ?? 40,
-    // Phase 1.2: Weapon inventory defaults
     crossbows: overrides.crossbows ?? 0,
     warHorses: overrides.warHorses ?? 0,
     batteringRams: overrides.batteringRams ?? 0,
     catapults: overrides.catapults ?? 0,
-    // Phase 6.7: Tax rate
     taxRate: overrides.taxRate ?? 'medium',
   };
 }
