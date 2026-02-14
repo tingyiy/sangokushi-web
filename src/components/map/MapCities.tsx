@@ -4,6 +4,8 @@ import type { City, Officer, Faction } from '../../types';
 import type { Season } from './mapData';
 import { SEASON_LABEL_COLOR } from './mapData';
 import { localizedName } from '../../i18n/dataNames';
+import { getCityTier } from '../../data/cities';
+import type { CityTier } from '../../data/cities';
 
 interface MapCitiesProps {
   cities: City[];
@@ -21,8 +23,23 @@ interface MapCitiesProps {
  *
  * Faction-owned cities show a flag with the ruler's surname.
  * Neutral (unowned) cities show a small gray marker.
- * Hovering shows a tooltip with basic city info.
+ * Castle size scales with population tier:
+ *   mega (>=500k): large fortress with 5 crenels
+ *   large (350-499k): substantial castle with 4 crenels
+ *   medium (200-349k): standard castle with 3 crenels
+ *   small (<200k): small outpost with 2 crenels
  */
+
+/** Castle dimensions per population tier */
+const CASTLE_SIZE: Record<CityTier, { w: number; h: number; crenels: number }> = {
+  mega:   { w: 2.2, h: 1.8, crenels: 5 },
+  large:  { w: 1.8, h: 1.5, crenels: 4 },
+  medium: { w: 1.4, h: 1.2, crenels: 3 },
+  small:  { w: 1.0, h: 0.9, crenels: 2 },
+};
+
+/** Minimum invisible hit area so small cities are easy to click */
+const MIN_HIT_SIZE = 3.0;
 export function MapCities({
   cities,
   factions,
@@ -95,6 +112,11 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
   /** Dim unrevealed flag/info but keep castle structure fully opaque */
   const fogOpacity = revealed ? 1 : 0.5;
 
+  const tier = getCityTier(city.population);
+  const { w: cW, h: cH, crenels } = CASTLE_SIZE[tier];
+  const crenelW = cW / (crenels * 2 + 0.5);
+  const crenelH = cH * 0.22;
+
   return (
     <g
       onClick={onClick}
@@ -102,37 +124,55 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       onMouseLeave={() => setHovered(false)}
       style={{ cursor: 'pointer' }}
     >
-      {/* Castle building base — always fully opaque (physical structure) */}
+      {/* Invisible hit area — ensures small cities are easy to click */}
       <rect
-        x={city.x - 0.7}
-        y={city.y - 0.7}
-        width={1.4}
-        height={1.2}
+        x={city.x - MIN_HIT_SIZE / 2}
+        y={city.y - MIN_HIT_SIZE / 2}
+        width={MIN_HIT_SIZE}
+        height={MIN_HIT_SIZE}
+        fill="transparent"
+      />
+      {/* Castle building base — size scales with population tier */}
+      <rect
+        x={city.x - cW / 2}
+        y={city.y - cH / 2}
+        width={cW}
+        height={cH}
         fill="#6b5a42"
         stroke={isSelected ? '#fbbf24' : '#3a2a1a'}
         strokeWidth={isSelected ? 0.25 : 0.12}
         rx="0.1"
       />
-      {/* Castle battlements (3 small crenels) */}
-      <rect x={city.x - 0.7} y={city.y - 0.95} width={0.35} height={0.3} fill="#6b5a42" />
-      <rect x={city.x - 0.1} y={city.y - 0.95} width={0.35} height={0.3} fill="#6b5a42" />
-      <rect x={city.x + 0.45} y={city.y - 0.95} width={0.35} height={0.3} fill="#6b5a42" />
+      {/* Castle battlements — count scales with tier */}
+      {Array.from({ length: crenels }).map((_, i) => {
+        const spacing = cW / crenels;
+        return (
+          <rect
+            key={`cren-${i}`}
+            x={city.x - cW / 2 + i * spacing + (spacing - crenelW) / 2}
+            y={city.y - cH / 2 - crenelH}
+            width={crenelW}
+            height={crenelH}
+            fill="#6b5a42"
+          />
+        );
+      })}
 
       {/* Flag group — dimmed for unrevealed cities */}
       <g opacity={fogOpacity}>
         {/* Flag pole — goes up from castle top */}
         <line
-          x1={city.x + 0.5}
-          y1={city.y - 0.95}
-          x2={city.x + 0.5}
-          y2={city.y - flagH - 1.1}
+          x1={city.x + cW / 2 - 0.2}
+          y1={city.y - cH / 2 - crenelH}
+          x2={city.x + cW / 2 - 0.2}
+          y2={city.y - flagH - cH / 2 - crenelH - 0.2}
           stroke="#5a4a3a"
           strokeWidth="0.15"
         />
         {/* Flag banner — attached to pole, extends to the right */}
         <rect
-          x={city.x + 0.5}
-          y={city.y - flagH - 1.1}
+          x={city.x + cW / 2 - 0.2}
+          y={city.y - flagH - cH / 2 - crenelH - 0.2}
           width={flagW}
           height={flagH}
           fill={color}
@@ -142,8 +182,8 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
         />
         {/* Ruler surname on flag */}
         <text
-          x={city.x + 0.5 + flagW / 2}
-          y={city.y - flagH / 2 - 1.1}
+          x={city.x + cW / 2 - 0.2 + flagW / 2}
+          y={city.y - flagH / 2 - cH / 2 - crenelH - 0.2}
           textAnchor="middle"
           dominantBaseline="central"
           fill="#fff"
@@ -158,7 +198,7 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       {/* City name label — below the castle */}
       <text
         x={city.x}
-        y={city.y + 1.5}
+        y={city.y + cH / 2 + 1.2}
         textAnchor="middle"
         fill={isSelected ? '#fbbf24' : labelColor}
         fontSize="1.1"
@@ -228,27 +268,50 @@ function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: Neut
   /** Neutral castles use a weathered gray-brown (abandoned/unoccupied look) */
   const castleColor = revealed ? '#7a7060' : '#5a5548';
 
+  const tier = getCityTier(city.population);
+  const { w: cW, h: cH, crenels } = CASTLE_SIZE[tier];
+  const crenelW = cW / (crenels * 2 + 0.5);
+  const crenelH = cH * 0.22;
+
   return (
     <g onClick={onClick} style={{ cursor: 'pointer' }}>
-      {/* Castle building base — same structure as faction cities, muted color */}
+      {/* Invisible hit area — ensures small cities are easy to click */}
       <rect
-        x={city.x - 0.7}
-        y={city.y - 0.7}
-        width={1.4}
-        height={1.2}
+        x={city.x - MIN_HIT_SIZE / 2}
+        y={city.y - MIN_HIT_SIZE / 2}
+        width={MIN_HIT_SIZE}
+        height={MIN_HIT_SIZE}
+        fill="transparent"
+      />
+      {/* Castle building base — size scales with population tier */}
+      <rect
+        x={city.x - cW / 2}
+        y={city.y - cH / 2}
+        width={cW}
+        height={cH}
         fill={castleColor}
         stroke={isSelected ? '#fbbf24' : '#4a4238'}
         strokeWidth={isSelected ? 0.25 : 0.12}
         rx="0.1"
       />
-      {/* Castle battlements (3 small crenels) */}
-      <rect x={city.x - 0.7} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
-      <rect x={city.x - 0.1} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
-      <rect x={city.x + 0.45} y={city.y - 0.95} width={0.35} height={0.3} fill={castleColor} />
+      {/* Castle battlements — count scales with tier */}
+      {Array.from({ length: crenels }).map((_, i) => {
+        const spacing = cW / crenels;
+        return (
+          <rect
+            key={`cren-${i}`}
+            x={city.x - cW / 2 + i * spacing + (spacing - crenelW) / 2}
+            y={city.y - cH / 2 - crenelH}
+            width={crenelW}
+            height={crenelH}
+            fill={castleColor}
+          />
+        );
+      })}
       {/* City name label — dimmed for unrevealed */}
       <text
         x={city.x}
-        y={city.y + 1.5}
+        y={city.y + cH / 2 + 1.2}
         textAnchor="middle"
         fill={isSelected ? '#fbbf24' : labelColor}
         fontSize="1.1"

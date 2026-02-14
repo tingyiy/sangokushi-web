@@ -1,9 +1,10 @@
 import type { Scenario, City, Officer } from '../types';
-import { baseCities } from './cities';
+import { baseCities, cityBaseStats } from './cities';
 import { baseOfficers } from './officers';
 
-/** Helper: create a full City from base + scenario overrides
- * Phase 1.2: Updated with new city attributes and differentiated stats
+/** Helper: create a full City from base + scenario overrides.
+ * Uses per-city base stats (population, commerce, agriculture, floodControl)
+ * from cityBaseStats for historically-differentiated defaults.
  */
 function makeCity(
   id: number,
@@ -11,28 +12,26 @@ function makeCity(
   overrides: Partial<Pick<City, 'population' | 'gold' | 'food' | 'commerce' | 'agriculture' | 'defense' | 'troops' | 'floodControl' | 'technology' | 'peopleLoyalty' | 'morale' | 'training' | 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults' | 'taxRate'>> = {}
 ): City {
   const base = baseCities.find(c => c.id === id)!;
+  const stats = cityBaseStats[id];
   return {
     ...base,
     factionId,
-    population: overrides.population ?? 100000,
+    population: overrides.population ?? stats.population,
     gold: overrides.gold ?? 5000,
     food: overrides.food ?? 10000,
-    commerce: overrides.commerce ?? 500,
-    agriculture: overrides.agriculture ?? 500,
+    commerce: overrides.commerce ?? stats.commerce,
+    agriculture: overrides.agriculture ?? stats.agriculture,
     defense: overrides.defense ?? 50,
     troops: overrides.troops ?? 10000,
-    // Phase 1.2: New city attributes with sensible defaults
-    floodControl: overrides.floodControl ?? 50,
+    floodControl: overrides.floodControl ?? stats.floodControl,
     technology: overrides.technology ?? 30,
     peopleLoyalty: overrides.peopleLoyalty ?? 70,
     morale: overrides.morale ?? 60,
     training: overrides.training ?? 40,
-    // Phase 1.2: Weapon inventory defaults
     crossbows: overrides.crossbows ?? 0,
     warHorses: overrides.warHorses ?? 0,
     batteringRams: overrides.batteringRams ?? 0,
     catapults: overrides.catapults ?? 0,
-    // Phase 6.7: Tax rate
     taxRate: overrides.taxRate ?? 'medium',
   };
 }
@@ -83,80 +82,90 @@ const scenario189: Scenario = {
     { id: 9, name: '馬騰', rulerId: 208, advisorId: null, color: '#78716c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
     { id: 10, name: '陶謙', rulerId: 285, advisorId: null, color: '#65a30d', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ], cities: [
-    // 董卓 - 長安：高技術、高防禦、低治水（內陸）
+    // ── 董卓 (total ~450k) ──
+    // 長安：西都，董卓主力
     makeCity(11, 4, {
-      gold: 15000, food: 30000, troops: 50000, defense: 90,
+      gold: 15000, food: 30000, troops: 130000, defense: 90,
       technology: 60, peopleLoyalty: 40, morale: 70, training: 60,
       warHorses: 200, crossbows: 100
     }),
-    // 董卓 - 洛陽：首都，高民忠但最近受戰亂影響
+    // 洛陽：東都，遷都後受損
     makeCity(12, 4, {
-      gold: 12000, food: 25000, troops: 30000, defense: 80,
+      gold: 12000, food: 25000, troops: 150000, defense: 80,
       technology: 50, peopleLoyalty: 35, morale: 60, training: 50,
       warHorses: 100
     }),
-    // 董卓 - 天水
+    // 天水：西北前哨 (absorbs 武威+安定 troops from balance data)
     makeCity(10, 4, {
-      troops: 10000, defense: 50, peopleLoyalty: 45, morale: 50, training: 40
+      troops: 90000, defense: 55, peopleLoyalty: 45, morale: 50, training: 45
     }),
-    // 董卓 - 弘農 (connects 長安↔洛陽)
+    // 弘農：關隘要地 (connects 長安↔洛陽)
     makeCity(13, 4, {
-      troops: 8000, defense: 45, peopleLoyalty: 40, morale: 50, training: 40
+      troops: 80000, defense: 65, peopleLoyalty: 40, morale: 50, training: 45
     }),
-    // 袁紹 - 南皮
-    makeCity(5, 5, {
-      troops: 30000, defense: 70, peopleLoyalty: 75, morale: 65, training: 55
-    }),
-    // 袁紹 - 鄴：技術中心
+    // ── 袁紹 (total ~220k) ──
+    // 鄴：冀州核心
     makeCity(8, 5, {
-      troops: 25000, technology: 55, peopleLoyalty: 70, morale: 60, training: 50,
+      troops: 90000, technology: 55, peopleLoyalty: 75, morale: 65, training: 55,
       crossbows: 50
     }),
-    // 曹操 - 陳留
-    makeCity(15, 1, {
-      troops: 15000, defense: 60, peopleLoyalty: 65, morale: 70, training: 55
+    // 南皮：河北副城
+    makeCity(5, 5, {
+      troops: 70000, defense: 70, peopleLoyalty: 75, morale: 65, training: 55
     }),
-    // 劉備 - 平原：資源匱乏
-    makeCity(6, 2, {
-      troops: 5000, gold: 2000, food: 5000, defense: 45,
-      peopleLoyalty: 60, morale: 50, training: 35
-    }),
-    // 孫堅 - 柴桑：河川城市，高治水
-    makeCity(35, 3, {
-      troops: 15000, floodControl: 80, technology: 40,
-      peopleLoyalty: 75, morale: 65, training: 50
-    }),
-    // 袁術 - 壽春
-    makeCity(20, 6, {
-      troops: 18000, peopleLoyalty: 55, morale: 55, training: 45
-    }),
-    // 劉表 - 襄陽：荊州核心
-    makeCity(32, 7, {
-      troops: 20000, gold: 8000, food: 18000, defense: 75,
-      technology: 45, peopleLoyalty: 70, morale: 60, training: 50
-    }),
-    // 劉表 - 江陵
-    makeCity(33, 7, {
-      troops: 12000, floodControl: 70, peopleLoyalty: 65, morale: 55, training: 45
-    }),
-    // 公孫瓚 - 北平：邊境要塞
+    // ── 公孫瓚 (total ~60k) ──
+    // 北平：幽州邊境要塞
     makeCity(2, 8, {
-      troops: 22000, defense: 75, technology: 35, peopleLoyalty: 60, morale: 65, training: 60,
+      troops: 60000, defense: 75, technology: 35, peopleLoyalty: 60, morale: 65, training: 60,
       warHorses: 300
     }),
-    // 馬騰 - 西涼：騎兵產地
+    // ── 曹操 (total ~40k, very weak) ──
+    // 陳留：起兵之地
+    makeCity(15, 1, {
+      troops: 40000, defense: 60, peopleLoyalty: 65, morale: 70, training: 55
+    }),
+    // ── 劉備 (total ~15k, weakest) ──
+    // 平原：資源匱乏
+    makeCity(6, 2, {
+      troops: 15000, gold: 2000, food: 5000, defense: 45,
+      peopleLoyalty: 60, morale: 50, training: 35
+    }),
+    // ── 孫堅 (total ~50k) ──
+    // 柴桑：江東據點
+    makeCity(35, 3, {
+      troops: 50000, floodControl: 80, technology: 40,
+      peopleLoyalty: 75, morale: 65, training: 50
+    }),
+    // ── 袁術 (total ~40k) ──
+    // 壽春：淮南
+    makeCity(20, 6, {
+      troops: 40000, peopleLoyalty: 55, morale: 55, training: 45
+    }),
+    // ── 劉表 (total ~70k) ──
+    // 襄陽：荊州核心
+    makeCity(32, 7, {
+      troops: 45000, gold: 8000, food: 18000, defense: 75,
+      technology: 45, peopleLoyalty: 70, morale: 60, training: 50
+    }),
+    // 江陵：荊州副城
+    makeCity(33, 7, {
+      troops: 25000, floodControl: 70, peopleLoyalty: 65, morale: 55, training: 45
+    }),
+    // ── 馬騰 (total ~40k) ──
+    // 西涼：騎兵產地
     makeCity(9, 9, {
-      troops: 18000, gold: 3000, food: 8000, defense: 60,
+      troops: 40000, gold: 3000, food: 8000, defense: 60,
       technology: 30, peopleLoyalty: 65, morale: 70, training: 65,
       warHorses: 500
     }),
-    // 陶謙 - 徐州
+    // ── 陶謙 (total ~30k) ──
+    // 徐州
     makeCity(19, 10, {
-      troops: 12000, peopleLoyalty: 70, morale: 55, training: 40
+      troops: 30000, peopleLoyalty: 70, morale: 55, training: 40
     }),
     // Neutral cities
     ...baseCities
-      .filter(c => ![11, 12, 10, 13, 5, 8, 15, 35, 20, 32, 33, 2, 9, 6, 19].includes(c.id))
+      .filter(c => ![11, 12, 10, 13, 5, 8, 2, 15, 35, 20, 32, 33, 9, 6, 19].includes(c.id))
       .map(c => makeCity(c.id, null, { troops: 0, gold: 2000, food: 5000, defense: 30 })),
   ],
   officers: [
@@ -275,62 +284,94 @@ const scenario194: Scenario = {
     { id: 10, name: '李傕', rulerId: 158, advisorId: 136, color: '#4b5563', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
-    makeCity(12, 10, { troops: 25000, defense: 70 }), // 洛陽 - 李傕
-    makeCity(11, 10, { troops: 35000, defense: 85, gold: 10000 }), // 長安 - 李傕
-    makeCity(13, 10, { troops: 8000, defense: 50 }), // 弘農 - 李傕 (connects 長安↔洛陽)
-    makeCity(15, 1, { troops: 30000, defense: 75, gold: 8000 }), // 陳留 - 曹操
-    makeCity(16, 1, { troops: 20000 }), // 濮陽 - 曹操
-    makeCity(18, 4, { troops: 25000, defense: 70 }), // 下邳 - 呂布
-    makeCity(19, 2, { troops: 8000, gold: 3000 }), // 徐州 - 劉備
-    makeCity(35, 3, { troops: 15000, technology: 45 }), // 柴桑 - 孫策
-    makeCity(8, 5, { troops: 40000, technology: 60 }), // 鄴 - 袁紹
-    makeCity(5, 5, { troops: 30000 }), // 南皮 - 袁紹
-    makeCity(20, 6, { troops: 25000 }), // 壽春 - 袁術
-    makeCity(32, 7, { troops: 35000, defense: 80 }), // 襄陽 - 劉表
-    makeCity(25, 8, { troops: 30000, food: 40000 }), // 成都 - 劉璋
-    makeCity(9, 9, { troops: 20000, warHorses: 800 }), // 西涼 - 馬騰
-    ...baseCities.filter(c => ![12, 11, 13, 15, 16, 18, 19, 35, 8, 5, 20, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    // ── 李傕 (remnants, total ~100k) ──
+    makeCity(12, 10, { troops: 40000, defense: 70 }), // 洛陽
+    makeCity(11, 10, { troops: 50000, defense: 85, gold: 10000 }), // 長安
+    makeCity(13, 10, { troops: 10000, defense: 50 }), // 弘農 (connects 長安↔洛陽)
+    // ── 曹操 (total ~220k) ──
+    makeCity(15, 1, { troops: 50000, defense: 75, gold: 8000 }), // 陳留
+    makeCity(16, 1, { troops: 60000 }), // 濮陽
+    makeCity(14, 1, { troops: 80000, defense: 80 }), // 許昌 (emerging capital)
+    // ── 呂布 (total ~100k) ──
+    makeCity(18, 4, { troops: 60000, defense: 70 }), // 下邳
+    makeCity(17, 4, { troops: 40000 }), // 譙
+    // ── 劉備 (total ~30k, weak) ──
+    makeCity(19, 2, { troops: 30000, gold: 3000 }), // 徐州
+    // ── 孫策 (total ~100k) ──
+    makeCity(35, 3, { troops: 40000, technology: 45 }), // 柴桑
+    makeCity(39, 3, { troops: 20000 }), // 廬江 (connects 柴桑↔建業)
+    makeCity(38, 3, { troops: 40000 }), // 建業 (expanding into Jiangdong)
+    // ── 袁紹 (total ~300k) ──
+    makeCity(8, 5, { troops: 120000, technology: 60 }), // 鄴
+    makeCity(5, 5, { troops: 80000 }), // 南皮
+    makeCity(2, 5, { troops: 60000 }), // 北平 (absorbed 公孫瓚)
+    makeCity(6, 5, { troops: 40000 }), // 平原
+    // ── 袁術 (total ~60k) ──
+    makeCity(20, 6, { troops: 60000 }), // 壽春
+    // ── 劉表 (total ~80k) ──
+    makeCity(32, 7, { troops: 50000, defense: 80 }), // 襄陽
+    makeCity(33, 7, { troops: 30000 }), // 江陵
+    // ── 劉璋 (total ~60k) ──
+    makeCity(25, 8, { troops: 60000, food: 40000 }), // 成都
+    // ── 馬騰 (total ~40k) ──
+    makeCity(9, 9, { troops: 40000, warHorses: 800 }), // 西涼
+    // Neutral cities
+    ...baseCities.filter(c => ![12, 11, 13, 15, 16, 14, 18, 17, 19, 35, 39, 38, 8, 5, 2, 6, 20, 32, 33, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
-    // 曹操
-    makeOfficer(11, 1, 15, { isGovernor: true, loyalty: 100 }),
-    makeOfficer(326, 1, 15, { loyalty: 98 }),
-    makeOfficer(334, 1, 16, { isGovernor: true, loyalty: 98 }),
-    makeOfficer(350, 1, 15, { loyalty: 100 }),
-    makeOfficer(103, 1, 15, { loyalty: 95 }),
-    makeOfficer(347, 1, 15, { loyalty: 92 }),
+    // 曹操 - 許昌
+    makeOfficer(11, 1, 14, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(350, 1, 14, { loyalty: 100 }),
+    makeOfficer(103, 1, 14, { loyalty: 95 }),
+    // 曹操 - 陳留
+    makeOfficer(326, 1, 15, { loyalty: 98, isGovernor: true }),
     makeOfficer(55, 1, 15, { loyalty: 95 }),
+    // 曹操 - 濮陽
+    makeOfficer(334, 1, 16, { isGovernor: true, loyalty: 98 }),
+    makeOfficer(347, 1, 16, { loyalty: 92 }),
 
-    // 劉備
+    // 劉備 - 徐州
     makeOfficer(169, 2, 19, { isGovernor: true, loyalty: 100 }),
     makeOfficer(100, 2, 19, { loyalty: 100 }),
     makeOfficer(390, 2, 19, { loyalty: 100 }),
     makeOfficer(421, 2, 19, { loyalty: 95 }), // 趙雲加入
 
-    // 孫策
+    // 孫策 - 柴桑
     makeOfficer(258, 3, 35, { isGovernor: true, loyalty: 100 }),
     makeOfficer(430, 3, 35, { loyalty: 100 }),
-    makeOfficer(44, 3, 35, { loyalty: 90 }),
-    makeOfficer(108, 3, 35, { loyalty: 88 }),
+    // 孫策 - 廬江
+    makeOfficer(125, 3, 39, { isGovernor: true, loyalty: 88 }), // 黃蓋
+    // 孫策 - 建業
+    makeOfficer(44, 3, 38, { isGovernor: true, loyalty: 90 }),
+    makeOfficer(108, 3, 38, { loyalty: 88 }),
 
-    // 呂布
+    // 呂布 - 下邳
     makeOfficer(187, 4, 18, { isGovernor: true, loyalty: 100 }),
-    makeOfficer(160, 4, 18, { loyalty: 85 }), // 李儒投呂布? (虛構/假設) -> 修正：陳宮未在名單，暫用李儒代或不加
     makeOfficer(398, 4, 18, { loyalty: 85 }), // 張遼
+    // 呂布 - 譙
+    makeOfficer(160, 4, 17, { isGovernor: true, loyalty: 85 }),
 
-    // 袁紹
+    // 袁紹 - 鄴
     makeOfficer(376, 5, 8, { isGovernor: true, loyalty: 100 }),
     makeOfficer(354, 5, 8, { loyalty: 90 }),
-    makeOfficer(309, 5, 5, { isGovernor: true, loyalty: 90 }),
     makeOfficer(288, 5, 8, { loyalty: 95 }),
+    // 袁紹 - 南皮
+    makeOfficer(309, 5, 5, { isGovernor: true, loyalty: 90 }),
+    // 袁紹 - 北平
+    makeOfficer(349, 5, 2, { isGovernor: true, loyalty: 88 }),
+    // 袁紹 - 平原
+    makeOfficer(84, 5, 6, { isGovernor: true, loyalty: 85 }),
 
-    // 李傕
+    // 李傕 - 長安
     makeOfficer(158, 10, 11, { isGovernor: true, loyalty: 100 }),
+    // 李傕 - 洛陽
     makeOfficer(104, 10, 12, { isGovernor: true, loyalty: 90 }),
-    makeOfficer(136, 10, 13, { loyalty: 80, isGovernor: true }), // 賈詡 - 弘農
+    // 李傕 - 弘農
+    makeOfficer(136, 10, 13, { loyalty: 80, isGovernor: true }), // 賈詡
 
     // 其他
     makeOfficer(170, 7, 32, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(310, 7, 33, { isGovernor: true, loyalty: 85 }), // 文聘 - 江陵
     makeOfficer(185, 8, 25, { isGovernor: true, loyalty: 100 }),
     makeOfficer(208, 9, 9, { isGovernor: true, loyalty: 100 }),
     makeOfficer(377, 6, 20, { isGovernor: true, loyalty: 100 }),
@@ -356,16 +397,32 @@ const scenario200: Scenario = {
     { id: 9, name: '馬騰', rulerId: 208, advisorId: null, color: '#78716c', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
-    makeCity(12, 1, { troops: 30000, defense: 85 }), // 洛陽 - 曹操
-    makeCity(15, 1, { troops: 40000, gold: 15000 }), // 陳留 - 曹操
-    makeCity(14, 1, { troops: 35000, defense: 90 }), // 許昌 - 曹操 (首都)
-    makeCity(18, 2, { troops: 10000 }), // 下邳 - 劉備 (暫居)
-    makeCity(38, 3, { troops: 30000, technology: 65 }), // 建業 - 孫權
-    makeCity(8, 5, { troops: 60000, food: 80000, morale: 80 }), // 鄴 - 袁紹
-    makeCity(32, 7, { troops: 40000 }), // 襄陽 - 劉表
-    makeCity(25, 8, { troops: 35000 }), // 成都 - 劉璋
-    makeCity(9, 9, { troops: 25000 }), // 西涼 - 馬騰
-    ...baseCities.filter(c => ![12, 15, 14, 16, 18, 38, 8, 32, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    // ── 曹操 (total ~350k) ──
+    makeCity(12, 1, { troops: 80000, defense: 85 }), // 洛陽
+    makeCity(15, 1, { troops: 60000, gold: 15000 }), // 陳留
+    makeCity(14, 1, { troops: 100000, defense: 90 }), // 許昌 (首都)
+    makeCity(16, 1, { troops: 50000 }), // 濮陽
+    makeCity(17, 1, { troops: 40000 }), // 譙
+    // ── 劉備 (total ~30k, weak, sheltering with 劉表) ──
+    makeCity(18, 2, { troops: 30000 }), // 下邳 (暫居)
+    // ── 孫權 (total ~120k) ──
+    makeCity(38, 3, { troops: 60000, technology: 65 }), // 建業
+    makeCity(39, 3, { troops: 20000 }), // 廬江 (connects 建業↔柴桑)
+    makeCity(35, 3, { troops: 40000 }), // 柴桑
+    // ── 袁紹 (total ~400k, strongest) ──
+    makeCity(8, 5, { troops: 150000, food: 80000, morale: 80 }), // 鄴 (主力)
+    makeCity(5, 5, { troops: 100000 }), // 南皮
+    makeCity(2, 5, { troops: 80000 }), // 北平
+    makeCity(6, 5, { troops: 70000 }), // 平原
+    // ── 劉表 (total ~100k) ──
+    makeCity(32, 7, { troops: 60000, defense: 80 }), // 襄陽
+    makeCity(33, 7, { troops: 40000 }), // 江陵
+    // ── 劉璋 (total ~80k) ──
+    makeCity(25, 8, { troops: 80000 }), // 成都
+    // ── 馬騰 (total ~50k) ──
+    makeCity(9, 9, { troops: 50000 }), // 西涼
+    // Neutral cities
+    ...baseCities.filter(c => ![12, 15, 14, 16, 17, 18, 38, 39, 35, 8, 5, 2, 6, 32, 33, 25, 9].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操 - 許昌
@@ -376,6 +433,10 @@ const scenario200: Scenario = {
     makeOfficer(398, 1, 12, { isGovernor: true, loyalty: 95 }), // 張遼
     // 曹操 - 陳留
     makeOfficer(349, 1, 15, { isGovernor: true, loyalty: 92 }), // 荀攸
+    // 曹操 - 濮陽
+    makeOfficer(347, 1, 16, { isGovernor: true, loyalty: 90 }), // 于禁
+    // 曹操 - 譯
+    makeOfficer(55, 1, 17, { isGovernor: true, loyalty: 95 }), // 曹洪
 
     // 劉備
     makeOfficer(169, 2, 18, { isGovernor: true, loyalty: 100 }),
@@ -384,14 +445,25 @@ const scenario200: Scenario = {
     // 孫權
     makeOfficer(273, 3, 38, { isGovernor: true, loyalty: 100 }),
     makeOfficer(430, 3, 38, { loyalty: 100 }),
+    // 孫權 - 廬江
+    makeOfficer(125, 3, 39, { isGovernor: true, loyalty: 88 }), // 黃蓋
+    // 孫權 - 柴桑
+    makeOfficer(44, 3, 35, { isGovernor: true, loyalty: 90 }), // 程普
 
     // 袁紹
     makeOfficer(376, 5, 8, { isGovernor: true, loyalty: 100 }),
     makeOfficer(354, 5, 8, { loyalty: 90 }),
     makeOfficer(309, 5, 8, { loyalty: 90 }),
+    // 袁紹 - 南皮
+    makeOfficer(84, 5, 5, { isGovernor: true, loyalty: 85 }), // 高覽
+    // 袁紹 - 北平
+    makeOfficer(244, 5, 2, { isGovernor: true, loyalty: 82 }), // 審配
+    // 袁紹 - 平原
+    makeOfficer(75, 5, 6, { isGovernor: true, loyalty: 80 }), // 郭圖
 
     // 其他
     makeOfficer(170, 7, 32, { isGovernor: true, loyalty: 100 }),
+    makeOfficer(310, 7, 33, { isGovernor: true, loyalty: 85 }), // 文聘 - 江陵
     makeOfficer(185, 8, 25, { isGovernor: true, loyalty: 100 }),
     makeOfficer(208, 9, 9, { isGovernor: true, loyalty: 100 }),
   ]
@@ -414,22 +486,32 @@ const scenario208: Scenario = {
     { id: 11, name: '張魯', rulerId: 399, advisorId: null, color: '#059669', isPlayer: false, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
-    makeCity(12, 1, { troops: 40000 }), // 洛陽
-    makeCity(11, 1, { troops: 40000 }), // 長安
-    makeCity(13, 1, { troops: 15000 }), // 弘農 (connects 長安↔洛陽)
-    makeCity(14, 1, { troops: 50000 }), // 許昌
-    makeCity(8, 1, { troops: 40000 }), // 鄴
-    makeCity(30, 1, { troops: 20000 }), // 宛 (connects 許昌→新野)
-    makeCity(31, 1, { troops: 15000 }), // 新野 (connects 宛→襄陽)
+    // ── 曹操 (total ~650k) ──
+    makeCity(8, 1, { troops: 120000 }), // 鄴
+    makeCity(14, 1, { troops: 150000 }), // 許昌
+    makeCity(12, 1, { troops: 100000 }), // 洛陽
+    makeCity(11, 1, { troops: 90000 }), // 長安
+    makeCity(13, 1, { troops: 30000 }), // 弘農 (connects 長安↔洛陽)
+    makeCity(30, 1, { troops: 30000 }), // 宛 (connects 許昌→新野)
+    makeCity(31, 1, { troops: 20000 }), // 新野 (connects 宛→襄陽)
     makeCity(32, 1, { troops: 60000 }), // 襄陽 (劉琮降曹)
-    makeCity(33, 1, { troops: 50000 }), // 江陵
-    makeCity(34, 2, { troops: 15000, gold: 5000 }), // 江夏 - 劉備
-    makeCity(35, 3, { troops: 40000, defense: 90 }), // 柴桑 - 孫權
-    makeCity(39, 3, { troops: 15000 }), // 廬江 (connects 柴桑↔建業)
-    makeCity(38, 3, { troops: 35000 }), // 建業
-    makeCity(25, 8, { troops: 40000 }), // 成都 - 劉璋
-    makeCity(22, 11, { troops: 25000 }), // 漢中 - 張魯
-    ...baseCities.filter(c => ![12, 11, 13, 14, 8, 30, 31, 32, 33, 34, 35, 39, 38, 25, 22].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    makeCity(20, 1, { troops: 50000 }), // 壽春 (曹操東線)
+    makeCity(19, 1, { troops: 30000 }), // 徐州 (connects 曹操中原↔壽春)
+    makeCity(17, 1, { troops: 20000 }), // 譯 (connects 許昌↔徐州)
+    // ── 劉備 (total ~80k, very weak) ──
+    makeCity(34, 2, { troops: 80000, gold: 5000 }), // 江夏
+    // ── 孫權 (total ~200k) ──
+    makeCity(38, 3, { troops: 80000 }), // 建業
+    makeCity(35, 3, { troops: 50000, defense: 90 }), // 柴桑
+    makeCity(39, 3, { troops: 40000 }), // 廬江 (connects 柴桑↔建業)
+    makeCity(40, 3, { troops: 30000 }), // 吳
+    // ── 劉璋 (total ~80k) ──
+    makeCity(25, 8, { troops: 80000 }), // 成都
+    // ── 張魯 (total ~40k) ──
+    makeCity(22, 11, { troops: 40000 }), // 漢中
+    // Neutral cities (江陵 is contested — starts neutral after 赤壁)
+    makeCity(33, null, { troops: 0 }), // 江陵 (will be fought over)
+    ...baseCities.filter(c => ![8, 14, 12, 11, 13, 30, 31, 32, 20, 19, 17, 34, 38, 35, 39, 40, 25, 22, 33].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操 - 許昌
@@ -445,12 +527,17 @@ const scenario208: Scenario = {
     makeOfficer(391, 1, 8, { isGovernor: true, loyalty: 90 }), // 張郃
     // 曹操 - 襄陽 (劉琮降曹)
     makeOfficer(339, 1, 32, { isGovernor: true, loyalty: 90 }), // 徐晃
+    makeOfficer(18, 1, 32, { loyalty: 95 }), // 曹仁 (preparing to take 江陵)
     // 曹操 - 宛
     makeOfficer(136, 1, 30, { isGovernor: true, loyalty: 88 }), // 賈詡
     // 曹操 - 新野
     makeOfficer(398, 1, 31, { isGovernor: true, loyalty: 90 }), // 張遼
-    // 曹操 - 江陵
-    makeOfficer(18, 1, 33, { isGovernor: true, loyalty: 95 }), // 曹仁
+    // 曹操 - 徐州
+    makeOfficer(347, 1, 19, { isGovernor: true, loyalty: 92 }), // 于禁
+    // 曹操 - 壽春
+    makeOfficer(55, 1, 20, { isGovernor: true, loyalty: 95 }), // 曹洪
+    // 曹操 - 譯
+    makeOfficer(103, 1, 17, { isGovernor: true, loyalty: 98 }), // 荀彧
     // 劉備 - 江夏
     makeOfficer(169, 2, 34, { isGovernor: true, loyalty: 100 }),
     makeOfficer(443, 2, 34, { loyalty: 100 }), // 諸葛亮
@@ -464,6 +551,8 @@ const scenario208: Scenario = {
     makeOfficer(430, 3, 35, { isGovernor: true, loyalty: 100 }), // 周瑜
     // 孫權 - 廬江
     makeOfficer(196, 3, 39, { isGovernor: true, loyalty: 90 }), // 魯肅
+    // 孫權 - 吳
+    makeOfficer(44, 3, 40, { isGovernor: true, loyalty: 90 }), // 程普
     // 張魯
     makeOfficer(399, 11, 22, { isGovernor: true, loyalty: 100 }),
     // 劉璋
@@ -486,24 +575,33 @@ const scenario221: Scenario = {
     { id: 3, name: '孫權', rulerId: 273, advisorId: 199, color: '#dc2626', isPlayer: false, relations: {}, allies: [1], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
-    makeCity(14, 1, { troops: 60000 }), // 許昌
-    makeCity(12, 1, { troops: 30000 }), // 洛陽
-    makeCity(13, 1, { troops: 15000 }), // 弘農 (connects 洛陽↔長安)
-    makeCity(11, 1, { troops: 50000 }), // 長安
-    makeCity(30, 1, { troops: 20000 }), // 宛 (connects 許昌→新野)
-    makeCity(31, 1, { troops: 15000 }), // 新野 (connects 宛→襄陽)
-    makeCity(32, 1, { troops: 40000 }), // 襄陽
-    makeCity(25, 2, { troops: 50000 }), // 成都
-    makeCity(24, 2, { troops: 15000 }), // 梓潼 (connects 成都↔漢中)
-    makeCity(22, 2, { troops: 30000 }), // 漢中
-    makeCity(23, 2, { troops: 10000 }), // 上庸
-    makeCity(26, 2, { troops: 10000 }), // 江州 (connects 成都→永安)
-    makeCity(27, 2, { troops: 10000 }), // 永安 (connects 江州→江陵)
-    makeCity(33, 2, { troops: 30000 }), // 江陵 (關羽)
-    makeCity(38, 3, { troops: 50000 }), // 建業
-    makeCity(39, 3, { troops: 15000 }), // 廬江 (connects 建業↔柴桑)
-    makeCity(35, 3, { troops: 40000 }), // 柴桑
-    ...baseCities.filter(c => ![14, 12, 13, 11, 30, 31, 32, 25, 24, 22, 23, 26, 27, 33, 38, 39, 35].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    // ── 魏 (total ~900k) ──
+    makeCity(8, 1, { troops: 200000 }), // 鄴
+    makeCity(14, 1, { troops: 180000 }), // 許昌
+    makeCity(12, 1, { troops: 150000 }), // 洛陽
+    makeCity(11, 1, { troops: 130000 }), // 長安
+    makeCity(13, 1, { troops: 40000 }), // 弘農 (connects 洛陽↔長安)
+    makeCity(30, 1, { troops: 40000 }), // 宛 (connects 許昌→新野)
+    makeCity(31, 1, { troops: 30000 }), // 新野 (connects 宛→襄陽)
+    makeCity(32, 1, { troops: 120000 }), // 襄陽 (魏南部重鎮)
+    makeCity(15, 1, { troops: 10000 }), // 陳留 (後方)
+    // ── 蜀 (total ~400k, defensive) ──
+    makeCity(25, 2, { troops: 120000 }), // 成都
+    makeCity(22, 2, { troops: 90000 }), // 漢中
+    makeCity(27, 2, { troops: 70000 }), // 永安
+    makeCity(26, 2, { troops: 20000 }), // 江州 (connects 成都↔永安)
+    makeCity(24, 2, { troops: 30000 }), // 梓潼 (connects 成都↔漢中)
+    makeCity(21, 2, { troops: 40000 }), // 武都
+    makeCity(33, 2, { troops: 50000 }), // 江陵 (關羽)
+    // ── 吳 (total ~550k) ──
+    makeCity(38, 3, { troops: 150000 }), // 建業
+    makeCity(35, 3, { troops: 120000 }), // 柴桑 (武昌 troops merged)
+    makeCity(39, 3, { troops: 90000 }), // 廬江
+    makeCity(41, 3, { troops: 80000 }), // 會稽
+    makeCity(40, 3, { troops: 60000 }), // 吳
+    makeCity(34, 3, { troops: 50000 }), // 江夏
+    // Neutral cities
+    ...baseCities.filter(c => ![8, 14, 12, 11, 13, 30, 31, 32, 15, 25, 22, 27, 26, 24, 21, 33, 38, 35, 39, 41, 40, 34].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹操 - 許昌
@@ -521,6 +619,10 @@ const scenario221: Scenario = {
     makeOfficer(391, 1, 31, { isGovernor: true, loyalty: 90 }), // 張郃
     // 曹操 - 襄陽
     makeOfficer(18, 1, 32, { isGovernor: true, loyalty: 95 }), // 曹仁
+    // 曹操 - 陳留
+    makeOfficer(334, 1, 15, { isGovernor: true, loyalty: 95 }), // 夏侯淵
+    // 曹操 - 鄴
+    makeOfficer(55, 1, 8, { isGovernor: true, loyalty: 95 }), // 曹洪
     // 劉備 - 成都
     makeOfficer(169, 2, 25, { isGovernor: true, loyalty: 100 }),
     makeOfficer(443, 2, 25, { loyalty: 100 }),
@@ -528,12 +630,12 @@ const scenario221: Scenario = {
     makeOfficer(390, 2, 24, { isGovernor: true, loyalty: 100 }), // 張飛
     // 劉備 - 漢中
     makeOfficer(308, 2, 22, { isGovernor: true, loyalty: 80 }), // 魏延
-    // 劉備 - 上庸
-    makeOfficer(128, 2, 23, { isGovernor: true, loyalty: 90 }), // 黃忠
-    // 劉備 - 江州
-    makeOfficer(355, 2, 26, { isGovernor: true, loyalty: 85 }), // 嚴顏
+    // 劉備 - 武都
+    makeOfficer(128, 2, 21, { isGovernor: true, loyalty: 90 }), // 黃忠
     // 劉備 - 永安
     makeOfficer(421, 2, 27, { isGovernor: true, loyalty: 100 }), // 趙雲
+    // 劉備 - 江州
+    makeOfficer(355, 2, 26, { isGovernor: true, loyalty: 85 }), // 嚴顏
     // 劉備 - 江陵
     makeOfficer(100, 2, 33, { isGovernor: true, loyalty: 100 }), // 關羽守荊州
     // 孫權 - 建業
@@ -543,6 +645,12 @@ const scenario221: Scenario = {
     makeOfficer(196, 3, 39, { isGovernor: true, loyalty: 90 }), // 魯肅
     // 孫權 - 柴桑
     makeOfficer(194, 3, 35, { isGovernor: true, loyalty: 95 }), // 呂蒙
+    // 孫權 - 會稽
+    makeOfficer(125, 3, 41, { isGovernor: true, loyalty: 88 }), // 黃蓋
+    // 孫權 - 江夏
+    makeOfficer(44, 3, 34, { isGovernor: true, loyalty: 90 }), // 程普
+    // 孫權 - 吳
+    makeOfficer(108, 3, 40, { isGovernor: true, loyalty: 88 }), // 韓當
   ]
 };
 
@@ -561,22 +669,35 @@ const scenario235: Scenario = {
     { id: 3, name: '孫權', rulerId: 273, advisorId: 199, color: '#dc2626', isPlayer: false, relations: {}, allies: [2], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
   ],
   cities: [
-    makeCity(12, 1, { troops: 40000 }), // 洛陽
-    makeCity(13, 1, { troops: 15000 }), // 弘農 (connects 洛陽↔長安)
-    makeCity(11, 1, { troops: 60000 }), // 長安
-    makeCity(14, 1, { troops: 50000 }), // 許昌
-    makeCity(30, 1, { troops: 20000 }), // 宛 (connects 許昌→新野)
-    makeCity(31, 1, { troops: 15000 }), // 新野 (connects 宛→襄陽)
-    makeCity(32, 1, { troops: 40000 }), // 襄陽
-    makeCity(22, 2, { troops: 80000, morale: 90 }), // 漢中 - 蜀軍主力
-    makeCity(24, 2, { troops: 15000 }), // 梓潼 (connects 漢中↔成都)
-    makeCity(25, 2, { troops: 40000 }), // 成都
-    makeCity(38, 3, { troops: 50000 }), // 建業
-    makeCity(39, 3, { troops: 15000 }), // 廬江 (connects 建業↔柴桑)
-    makeCity(35, 3, { troops: 30000 }), // 柴桑
-    makeCity(34, 3, { troops: 20000 }), // 江夏 (connects 柴桑↔江陵)
-    makeCity(33, 3, { troops: 40000 }), // 江陵
-    ...baseCities.filter(c => ![12, 13, 11, 14, 30, 31, 32, 22, 24, 25, 38, 39, 35, 34, 33].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
+    // ── 魏 (total ~1,000k) ──
+    makeCity(12, 1, { troops: 120000 }), // 洛陽
+    makeCity(13, 1, { troops: 40000 }), // 弘農 (connects 洛陽↔長安)
+    makeCity(11, 1, { troops: 180000 }), // 長安 (司馬懿鎮守，對蜀前線)
+    makeCity(14, 1, { troops: 150000 }), // 許昌
+    makeCity(8, 1, { troops: 200000 }), // 鄴
+    makeCity(30, 1, { troops: 60000 }), // 宛 (connects 許昌→新野)
+    makeCity(31, 1, { troops: 40000 }), // 新野 (connects 宛→襄陽)
+    makeCity(32, 1, { troops: 120000 }), // 襄陽
+    makeCity(10, 1, { troops: 50000 }), // 天水 (對蜀前線)
+    makeCity(15, 1, { troops: 40000 }), // 陳留 (後方)
+    // ── 蜀 (total ~250k, weakest) ──
+    makeCity(22, 2, { troops: 80000, morale: 90 }), // 漢中 - 蜀軍主力 (諸葛亮)
+    makeCity(24, 2, { troops: 30000 }), // 梓潼 (connects 漢中↔成都)
+    makeCity(25, 2, { troops: 100000 }), // 成都
+    makeCity(26, 2, { troops: 15000 }), // 江州 (connects 成都↔永安)
+    makeCity(27, 2, { troops: 40000 }), // 永安
+    // ── 吳 (total ~600k) ──
+    makeCity(38, 3, { troops: 150000 }), // 建業
+    makeCity(39, 3, { troops: 60000 }), // 廬江 (connects 建業↔柴桑)
+    makeCity(35, 3, { troops: 100000 }), // 柴桑
+    makeCity(34, 3, { troops: 60000 }), // 江夏 (connects 柴桑↔江陵)
+    makeCity(33, 3, { troops: 80000 }), // 江陵 (陸遜守)
+    makeCity(36, 3, { troops: 20000 }), // 武陵 (connects 江陵↔長沙)
+    makeCity(40, 3, { troops: 60000 }), // 吳
+    makeCity(41, 3, { troops: 50000 }), // 會稽
+    makeCity(37, 3, { troops: 40000 }), // 長沙
+    // Neutral cities
+    ...baseCities.filter(c => ![12, 13, 11, 14, 8, 30, 31, 32, 10, 15, 22, 24, 25, 26, 27, 38, 39, 35, 34, 33, 36, 40, 41, 37].includes(c.id)).map(c => makeCity(c.id, null, { troops: 0 })),
   ],
   officers: [
     // 曹叡 - 洛陽
@@ -588,12 +709,18 @@ const scenario235: Scenario = {
     makeOfficer(391, 1, 11, { loyalty: 90 }), // 張郃
     // 曹叡 - 許昌
     makeOfficer(39, 1, 14, { isGovernor: true, loyalty: 95 }), // 陳群
+    // 曹叡 - 鄴
+    makeOfficer(339, 1, 8, { isGovernor: true, loyalty: 90 }), // 徐晃
     // 曹叡 - 宛
-    makeOfficer(339, 1, 30, { isGovernor: true, loyalty: 90 }), // 徐晃
+    makeOfficer(398, 1, 30, { isGovernor: true, loyalty: 90 }), // 張遼
     // 曹叡 - 新野
-    makeOfficer(398, 1, 31, { isGovernor: true, loyalty: 90 }), // 張遼
+    makeOfficer(102, 1, 31, { isGovernor: true, loyalty: 90 }), // 郭淮
     // 曹叡 - 襄陽
-    makeOfficer(102, 1, 32, { isGovernor: true, loyalty: 90 }), // 郭淮
+    makeOfficer(349, 1, 32, { isGovernor: true, loyalty: 92 }), // 荀攸
+    // 曹叡 - 天水
+    makeOfficer(334, 1, 10, { isGovernor: true, loyalty: 95 }), // 夏侯淵
+    // 曹叡 - 陳留
+    makeOfficer(326, 1, 15, { isGovernor: true, loyalty: 95 }), // 夏侯惇
     // 劉禪 - 成都
     makeOfficer(171, 2, 25, { isGovernor: true, loyalty: 100 }), // 劉禪
     makeOfficer(421, 2, 25, { loyalty: 100 }), // 趙雲 (已老)
@@ -602,6 +729,10 @@ const scenario235: Scenario = {
     // 劉禪 - 漢中
     makeOfficer(443, 2, 22, { loyalty: 100, isGovernor: true }), // 諸葛亮在漢中
     makeOfficer(308, 2, 22, { loyalty: 80 }), // 魏延
+    // 劉禪 - 永安
+    makeOfficer(128, 2, 27, { isGovernor: true, loyalty: 90 }), // 黃忠
+    // 劉禪 - 江州
+    makeOfficer(402, 2, 26, { isGovernor: true, loyalty: 85 }), // 張任
     // 孫權 - 建業
     makeOfficer(273, 3, 38, { isGovernor: true, loyalty: 100 }),
     // 孫權 - 廬江
@@ -612,6 +743,14 @@ const scenario235: Scenario = {
     makeOfficer(125, 3, 34, { isGovernor: true, loyalty: 88 }), // 黃蓋
     // 孫權 - 江陵
     makeOfficer(199, 3, 33, { isGovernor: true, loyalty: 100 }), // 陸遜守江陵
+    // 孫權 - 武陵
+    makeOfficer(310, 3, 36, { isGovernor: true, loyalty: 85 }), // 文聘
+    // 孫權 - 吳
+    makeOfficer(44, 3, 40, { isGovernor: true, loyalty: 90 }), // 程普
+    // 孫權 - 會稽
+    makeOfficer(108, 3, 41, { isGovernor: true, loyalty: 88 }), // 韓當
+    // 孫權 - 長沙
+    makeOfficer(430, 3, 37, { isGovernor: true, loyalty: 95 }), // 周瑜 (historically dead by 210, but for game balance)
   ]
 };
 

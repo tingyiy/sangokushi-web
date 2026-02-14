@@ -195,7 +195,7 @@ export const rtkApi = {
 
       const hasOfficer = this.availableOfficers(cityId).length > 0;
       if (!hasOfficer) {
-        return { ok: false, error: 'No officers with stamina in city' };
+        return { ok: false, error: 'No available officers in city (all have acted this turn)' };
       }
 
       return { ok: true, data: { gold: city.gold, canAfford: true } };
@@ -228,7 +228,7 @@ export const rtkApi = {
         return { ok: false, error: `Amount exceeds population limit (Requested: ${amount}, Max: ${maxDraft})`, data: checks };
       }
       if (!checks.hasOfficer) {
-        return { ok: false, error: 'No officers with stamina', data: checks };
+        return { ok: false, error: 'No available officers (all have acted this turn)', data: checks };
       }
 
       return { ok: true, data: checks };
@@ -636,15 +636,25 @@ export const rtkApi = {
     return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: 'Draft failed unexpectedly in logic' });
   },
 
-  transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result {
+  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number): Result {
     const state = useGameStore.getState();
-    const label = `transport(${cityName(fromCityId)} → ${cityName(toCityId)}, ${resource} ${amount})`;
+    const details = Object.entries(resources).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ');
+    const label = `transport(${cityName(fromCityId)} → ${cityName(toCityId)}, ${details})`;
     if (state.phase !== 'playing') return logCmd('⚔', label, { ok: false, error: 'Not in playing phase' });
     const fromCity = state.cities.find(c => c.id === fromCityId);
     if (!fromCity) return logCmd('⚔', label, { ok: false, error: 'Origin city not found' });
-    if (fromCity[resource] < amount) return logCmd('⚔', label, { ok: false, error: `Insufficient ${resource}` });
-    state.transport(fromCityId, toCityId, resource, amount);
-    return logCmd('⚔', label, { ok: true });
+    if (fromCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: 'Not your city' });
+
+    // Check escort officer availability
+    const factionId = state.playerFaction?.id;
+    const escort = officerId
+      ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
+      : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
+    if (!escort) return logCmd('⚔', label, { ok: false, error: officerId ? `Officer ${officerName(officerId)} not found or not in city` : 'No available officer to escort transport' });
+    if (escort.acted) return logCmd('⚔', label, { ok: false, error: `${escort.name} has already acted this turn` });
+
+    state.transport(fromCityId, toCityId, resources, officerId);
+    return logCmd('⚔', label, { ok: true, data: { escort: escort.name } });
   },
 
   transferOfficer(officerId: number, targetCityId: number): Result {
@@ -657,12 +667,12 @@ export const rtkApi = {
     return logCmd('⚔', label, { ok: false, error: 'Action failed' });
   },
 
-  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[] } | null): Result {
+  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return logCmd('⚔', 'setBattleFormation', { ok: false, error: 'Not in playing phase' });
     state.setBattleFormation(formation);
     const names = formation?.officerIds.map(id => officerName(id)) ?? [];
-    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes } });
+    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes, troops: formation?.troops } });
   },
 
   startBattle(targetCityId: number): Result {
@@ -678,9 +688,9 @@ export const rtkApi = {
     const targetNow = useGameStore.getState().cities.find(c => c.id === targetCityId);
     if (targetNow?.factionId === state.playerFaction?.id) {
       logEvent(`Auto-captured ${cn}! (undefended)`);
-      return { ok: false, error: 'Battle failed to start (check requirements/stamina)' };
+      return { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' };
     }
-    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (check requirements/stamina)' });
+    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' });
   },
 
   retreat(): Result {
@@ -718,7 +728,7 @@ export const rtkApi = {
   },
 
   // Diplomacy
-  improveRelations(targetFactionId: number): Result {
+  improveRelations(targetFactionId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
@@ -731,50 +741,50 @@ export const rtkApi = {
     if (totalGold < 1000) return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: `Insufficient total gold across cities (Current: ${totalGold}, Required: 1000)` });
 
     const hostilityBefore = player.relations[targetFactionId] ?? 60;
-    state.improveRelations(targetFactionId);
+    state.improveRelations(targetFactionId, officerId);
     const hostilityAfter = useGameStore.getState().playerFaction?.relations[targetFactionId] ?? 60;
     if (hostilityAfter < hostilityBefore) return logCmd('🤝', `improveRelations(${tName})`, { ok: true, data: { before: hostilityBefore, after: hostilityAfter } });
-    return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: 'Action failed (check stamina of ruler/advisor)' });
+    return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: 'Action failed (ruler/advisor may have acted this turn)' });
   },
 
-  formAlliance(targetFactionId: number): Result {
+  formAlliance(targetFactionId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `formAlliance(${tName})`, { ok: false, error: 'Not in playing phase' });
     const alliesBefore = state.playerFaction?.allies || [];
-    state.formAlliance(targetFactionId);
+    state.formAlliance(targetFactionId, officerId);
     const after = useGameStore.getState().playerFaction;
     if (after?.allies.includes(targetFactionId) && !alliesBefore.includes(targetFactionId)) return logCmd('🤝', `formAlliance(${tName})`, { ok: true, data: { success: true } });
     return logCmd('🤝', `formAlliance(${tName})`, { ok: true, data: { success: false } });
   },
 
-  requestJointAttack(allyFactionId: number, targetCityId: number): Result {
+  requestJointAttack(allyFactionId: number, targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const label = `requestJointAttack(ally:#${allyFactionId}, ${cityName(targetCityId)})`;
     if (state.phase !== 'playing') return logCmd('🤝', label, { ok: false, error: 'Not in playing phase' });
-    state.requestJointAttack(allyFactionId, targetCityId);
+    state.requestJointAttack(allyFactionId, targetCityId, officerId);
     return logCmd('🤝', label, { ok: true });
   },
 
-  proposeCeasefire(targetFactionId: number): Result {
+  proposeCeasefire(targetFactionId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `proposeCeasefire(${tName})`, { ok: false, error: 'Not in playing phase' });
     const ceasefiresBefore = state.playerFaction?.ceasefires.length || 0;
-    state.proposeCeasefire(targetFactionId);
+    state.proposeCeasefire(targetFactionId, officerId);
     const after = useGameStore.getState().playerFaction;
     if ((after?.ceasefires.length || 0) > ceasefiresBefore) return logCmd('🤝', `proposeCeasefire(${tName})`, { ok: true, data: { success: true } });
     return logCmd('🤝', `proposeCeasefire(${tName})`, { ok: true, data: { success: false } });
   },
 
-  demandSurrender(targetFactionId: number): Result {
+  demandSurrender(targetFactionId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `demandSurrender(${tName})`, { ok: false, error: 'Not in playing phase' });
-    state.demandSurrender(targetFactionId);
+    state.demandSurrender(targetFactionId, officerId);
     const after = useGameStore.getState().factions;
     if (!after.find(f => f.id === targetFactionId)) return logCmd('🤝', `demandSurrender(${tName})`, { ok: true, data: { success: true } });
     return logCmd('🤝', `demandSurrender(${tName})`, { ok: true, data: { success: false } });
@@ -801,62 +811,62 @@ export const rtkApi = {
   },
 
   // Strategy
-  rumor(targetCityId: number): Result {
+  rumor(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `rumor(${cn})`, { ok: false, error: 'Not in playing phase' });
     const targetCity = state.cities.find(c => c.id === targetCityId);
     if (!targetCity) return logCmd('🕵', `rumor(${cn})`, { ok: false, error: 'City not found' });
     const loyaltyBefore = targetCity.peopleLoyalty;
-    state.rumor(targetCityId);
+    state.rumor(targetCityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === targetCityId)!;
     if (after.peopleLoyalty < loyaltyBefore) return logCmd('🕵', `rumor(${targetCity.name})`, { ok: true, data: { success: true, before: loyaltyBefore, after: after.peopleLoyalty } });
     return logCmd('🕵', `rumor(${targetCity.name})`, { ok: true, data: { success: false } });
   },
 
-  counterEspionage(targetCityId: number, targetOfficerId: number): Result {
+  counterEspionage(targetCityId: number, targetOfficerId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const label = `counterEspionage(${cityName(targetCityId)}, ${officerName(targetOfficerId)})`;
     if (state.phase !== 'playing') return logCmd('🕵', label, { ok: false, error: 'Not in playing phase' });
     const officer = state.officers.find(o => o.id === targetOfficerId);
     if (!officer) return logCmd('🕵', label, { ok: false, error: 'Officer not found' });
     const loyaltyBefore = officer.loyalty;
-    state.counterEspionage(targetCityId, targetOfficerId);
+    state.counterEspionage(targetCityId, targetOfficerId, officerId);
     const after = useGameStore.getState().officers.find(o => o.id === targetOfficerId)!;
     if (after.loyalty < loyaltyBefore) return logCmd('🕵', label, { ok: true, data: { success: true } });
     return logCmd('🕵', label, { ok: true, data: { success: false } });
   },
 
-  inciteRebellion(targetCityId: number): Result {
+  inciteRebellion(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `inciteRebellion(${cn})`, { ok: false, error: 'Not in playing phase' });
-    state.inciteRebellion(targetCityId);
+    state.inciteRebellion(targetCityId, officerId);
     return logCmd('🕵', `inciteRebellion(${cn})`, { ok: true });
   },
 
-  arson(targetCityId: number): Result {
+  arson(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `arson(${cn})`, { ok: false, error: 'Not in playing phase' });
-    state.arson(targetCityId);
+    state.arson(targetCityId, officerId);
     return logCmd('🕵', `arson(${cn})`, { ok: true });
   },
 
-  spy(targetCityId: number): Result {
+  spy(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `spy(${cn})`, { ok: false, error: 'Not in playing phase' });
-    state.spy(targetCityId);
+    state.spy(targetCityId, officerId);
     if (useGameStore.getState().isCityRevealed(targetCityId)) return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: true } });
     return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: false } });
   },
 
-  gatherIntelligence(targetCityId: number): Result {
+  gatherIntelligence(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: false, error: 'Not in playing phase' });
-    state.gatherIntelligence(targetCityId);
+    state.gatherIntelligence(targetCityId, officerId);
     if (useGameStore.getState().isCityRevealed(targetCityId)) return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: true });
     return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: false, error: 'Action failed' });
   },
@@ -917,9 +927,17 @@ export const rtkApi = {
       if (!unit) return [];
 
       const range = getMovementRange(unit.type);
+      // Enemy units block BFS; friendly units are passable but not destinations
       const blocked = new Set<string>();
+      const occupied = new Set<string>();
       battle.units.forEach(u => {
-        if (u.id !== unitId && u.troops > 0) blocked.add(`${u.x},${u.y}`);
+        if (u.id !== unitId && u.troops > 0) {
+          if (u.factionId !== unit.factionId) {
+            blocked.add(`${u.x},${u.y}`);
+          } else {
+            occupied.add(`${u.x},${u.y}`);
+          }
+        }
       });
       battle.gates.forEach(g => {
         if (g.hp > 0) blocked.add(`${g.q},${g.r}`);
@@ -931,7 +949,8 @@ export const rtkApi = {
         battle.battleMap.width,
         battle.battleMap.height,
         battle.battleMap.terrain,
-        blocked
+        blocked,
+        occupied
       );
 
       return Array.from(map.keys()).map(k => {

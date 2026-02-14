@@ -64,7 +64,7 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (383 tests across 31 test files)
+- **Vitest** -- unit and component tests (395 tests across 31 test files)
 - **i18next** + **react-i18next** -- internationalization (Traditional Chinese + English)
 
 ## Getting Started

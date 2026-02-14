@@ -218,7 +218,7 @@ export interface GameState {
   appointGovernor: (cityId: number, officerId: number) => void;
   appointAdvisor: (officerId: number) => void;
   draftTroops: (cityId: number, amount: number, officerId?: number) => void;
-  transport: (fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number) => void;
+  transport: (fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number) => void;
   transferOfficer: (officerId: number, targetCityId: number) => void;
 
   // ── Military Actions ──
@@ -233,21 +233,21 @@ export interface GameState {
   resolveBattle: (winnerFactionId: number, loserFactionId: number, cityId: number, battleUnits: { officerId: number; troops: number; factionId: number; status: string }[], capturedOfficerIds?: number[], routedOfficerIds?: number[]) => void;
 
   // ── Diplomacy Actions ──
-  improveRelations: (targetFactionId: number) => void;
-  formAlliance: (targetFactionId: number) => void;
-  requestJointAttack: (allyFactionId: number, targetCityId: number) => void;
-  proposeCeasefire: (targetFactionId: number) => void;
-  demandSurrender: (targetFactionId: number) => void;
+  improveRelations: (targetFactionId: number, officerId?: number) => void;
+  formAlliance: (targetFactionId: number, officerId?: number) => void;
+  requestJointAttack: (allyFactionId: number, targetCityId: number, officerId?: number) => void;
+  proposeCeasefire: (targetFactionId: number, officerId?: number) => void;
+  demandSurrender: (targetFactionId: number, officerId?: number) => void;
   breakAlliance: (targetFactionId: number) => void;
   exchangeHostage: (officerId: number, targetFactionId: number) => void;
 
   // ── Strategy Actions ──
-  rumor: (targetCityId: number) => void;
-  counterEspionage: (targetCityId: number, targetOfficerId: number) => void;
-  inciteRebellion: (targetCityId: number) => void;
-  arson: (targetCityId: number) => void;
-  spy: (targetCityId: number) => void;
-  gatherIntelligence: (targetCityId: number) => void;
+  rumor: (targetCityId: number, officerId?: number) => void;
+  counterEspionage: (targetCityId: number, targetOfficerId: number, officerId?: number) => void;
+  inciteRebellion: (targetCityId: number, officerId?: number) => void;
+  arson: (targetCityId: number, officerId?: number) => void;
+  spy: (targetCityId: number, officerId?: number) => void;
+  gatherIntelligence: (targetCityId: number, officerId?: number) => void;
 
   // ── Turn/AI Actions ──
   endTurn: () => void;

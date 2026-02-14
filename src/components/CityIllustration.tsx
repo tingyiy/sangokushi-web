@@ -1,4 +1,5 @@
 import type { City } from '../types';
+import { getCityTier } from '../data/cities';
 
 interface CityIllustrationProps {
   /** City data to visualize */
@@ -6,22 +7,30 @@ interface CityIllustrationProps {
 }
 
 /**
- * CityIllustration Component - Phase 0.5
- * Procedural SVG illustration that renders a city scene based on city attributes
- * - Defense affects wall height
- * - Commerce affects market stalls
- * - Agriculture affects farmland
- * - Population affects building count
+ * CityIllustration Component
+ * Procedural SVG illustration that renders a city scene based on city attributes.
+ * Scene complexity scales with population tier:
+ *   mega (>=500k): Grand capital with tall walls, palace, pagoda, many buildings
+ *   large (350-499k): Major city with substantial walls, multiple towers
+ *   medium (200-349k): Standard walled city
+ *   small (<200k): Frontier outpost with low walls, few buildings
  */
 export function CityIllustration({ city }: CityIllustrationProps) {
-  // Calculate visual elements based on city stats
-  const wallHeight = Math.min(city.defense / 100 * 70, 70);
-  const numMarketBuildings = Math.min(Math.floor(city.commerce / 180), 6);
-  const farmRows = Math.min(Math.floor(city.agriculture / 160), 6);
-  const numBuildings = Math.min(Math.floor(city.population / 25000), 7);
+  const tier = getCityTier(city.population);
+
+  // Scale visual elements based on both tier and individual stats
+  const tierScale = tier === 'mega' ? 1.3 : tier === 'large' ? 1.1 : tier === 'medium' ? 1.0 : 0.8;
+  const wallHeight = Math.min(city.defense / 100 * 70 * tierScale, 85);
+  const numMarketBuildings = Math.min(Math.floor(city.commerce / 150 * tierScale), 8);
+  const farmRows = Math.min(Math.floor(city.agriculture / 140 * tierScale), 7);
+  const numBuildings = Math.min(Math.floor(city.population / 60000), 10);
   const hasRiver = city.floodControl > 60;
-  const hasTowers = city.defense > 50;
-  const prosperity = city.commerce + city.agriculture;
+  const hasTowers = city.defense > 40 || tier === 'mega' || tier === 'large';
+  const hasPalace = tier === 'mega';
+  const hasPagoda = (city.commerce + city.agriculture) > 250 || tier === 'mega' || tier === 'large';
+  const numCrenels = tier === 'mega' ? 14 : tier === 'large' ? 12 : tier === 'medium' ? 10 : 7;
+  const wallWidth = tier === 'mega' ? 220 : tier === 'large' ? 200 : tier === 'medium' ? 180 : 140;
+  const wallX = (400 - wallWidth) / 2;
 
   return (
     <svg viewBox="0 0 400 200" className="city-illustration">
@@ -58,68 +67,104 @@ export function CityIllustration({ city }: CityIllustrationProps) {
         <ellipse cx="280" cy="24" rx="18" ry="8" />
       </g>
 
+      {/* Mountains in background for small/frontier cities */}
+      {tier === 'small' && (
+        <g fill="#7a9a6a" opacity="0.5">
+          <polygon points="0,95 50,50 100,95" />
+          <polygon points="60,95 120,45 180,95" />
+          <polygon points="300,95 360,55 400,95" />
+        </g>
+      )}
+
       {/* Ground */}
       <rect y="95" width="400" height="105" fill="url(#ground)" />
 
-      {/* City walls (height based on defense) */}
+      {/* City walls (height and width based on tier + defense) */}
       <rect
-        x="110"
+        x={wallX}
         y={95 - wallHeight}
-        width="180"
+        width={wallWidth}
         height={wallHeight}
         fill="url(#wallPattern)"
         stroke="#6b5540"
         strokeWidth="2"
       />
 
-      {/* Wall crenellations */}
-      {Array.from({ length: 10 }).map((_, i) => (
-        <rect
-          key={`cren-${i}`}
-          x={118 + i * 16}
-          y={95 - wallHeight - 6}
-          width="10"
-          height="6"
-          fill="#8B7355"
-          stroke="#6b5540"
-          strokeWidth="1"
-        />
-      ))}
+      {/* Wall crenellations — count scales with tier */}
+      {Array.from({ length: numCrenels }).map((_, i) => {
+        const spacing = wallWidth / numCrenels;
+        return (
+          <rect
+            key={`cren-${i}`}
+            x={wallX + 4 + i * spacing}
+            y={95 - wallHeight - 6}
+            width={spacing * 0.6}
+            height="6"
+            fill="#8B7355"
+            stroke="#6b5540"
+            strokeWidth="1"
+          />
+        );
+      })}
 
       {/* Gate */}
-      <rect x="190" y={95 - 24} width="30" height="24" fill="#4a3520" />
-      <rect x="198" y={95 - 18} width="14" height="18" fill="#2a1d10" />
-      <rect x="182" y={95 - 28} width="46" height="6" fill="#6b5540" />
+      <rect x={wallX + wallWidth / 2 - 15} y={95 - 24} width="30" height="24" fill="#4a3520" />
+      <rect x={wallX + wallWidth / 2 - 7} y={95 - 18} width="14" height="18" fill="#2a1d10" />
+      <rect x={wallX + wallWidth / 2 - 23} y={95 - 28} width="46" height="6" fill="#6b5540" />
+
+      {/* Palace (mega cities only) — tall central structure */}
+      {hasPalace && (
+        <g>
+          <rect x={wallX + wallWidth / 2 - 20} y={95 - wallHeight + 4} width="40" height={wallHeight - 20} fill="#d4b888" stroke="#a08060" strokeWidth="1.5" />
+          <polygon points={`${wallX + wallWidth / 2 - 24},${95 - wallHeight + 4} ${wallX + wallWidth / 2},${95 - wallHeight - 12} ${wallX + wallWidth / 2 + 24},${95 - wallHeight + 4}`} fill="#c44040" stroke="#8a2a2a" strokeWidth="1" />
+          {/* Second floor */}
+          <rect x={wallX + wallWidth / 2 - 14} y={95 - wallHeight - 8} width="28" height="14" fill="#d4b888" stroke="#a08060" strokeWidth="1" />
+          <polygon points={`${wallX + wallWidth / 2 - 18},${95 - wallHeight - 8} ${wallX + wallWidth / 2},${95 - wallHeight - 20} ${wallX + wallWidth / 2 + 18},${95 - wallHeight - 8}`} fill="#c44040" stroke="#8a2a2a" strokeWidth="1" />
+        </g>
+      )}
 
       {/* Buildings inside walls (based on population) */}
-      {Array.from({ length: numBuildings }).map((_, i) => (
-        <rect
-          key={`bld-${i}`}
-          x={125 + i * 22}
-          y={95 - wallHeight + 8}
-          width={16}
-          height={wallHeight - 16}
-          fill="#c8a882"
-          stroke="#a08060"
-          strokeWidth="1"
-          rx="1"
-        />
-      ))}
+      {Array.from({ length: numBuildings }).map((_, i) => {
+        const bldSpacing = (wallWidth - 60) / Math.max(numBuildings, 1);
+        const bldX = wallX + 20 + i * bldSpacing;
+        // Skip buildings that overlap with palace
+        if (hasPalace && Math.abs(bldX - (wallX + wallWidth / 2)) < 25) return null;
+        return (
+          <rect
+            key={`bld-${i}`}
+            x={bldX}
+            y={95 - wallHeight + 8}
+            width={14}
+            height={wallHeight - 16}
+            fill="#c8a882"
+            stroke="#a08060"
+            strokeWidth="1"
+            rx="1"
+          />
+        );
+      })}
 
       {/* Towers on wall */}
       {hasTowers && (
         <>
-          <rect x="100" y={95 - wallHeight - 20} width="24" height="20" fill="#8B7355" stroke="#6b5540" />
-          <rect x="286" y={95 - wallHeight - 20} width="24" height="20" fill="#8B7355" stroke="#6b5540" />
+          <rect x={wallX - 10} y={95 - wallHeight - 20} width="24" height="20" fill="#8B7355" stroke="#6b5540" />
+          <rect x={wallX + wallWidth - 14} y={95 - wallHeight - 20} width="24" height="20" fill="#8B7355" stroke="#6b5540" />
+          {/* Extra corner towers for mega/large */}
+          {(tier === 'mega' || tier === 'large') && (
+            <>
+              <rect x={wallX - 10} y={95 - 20} width="20" height="20" fill="#8B7355" stroke="#6b5540" />
+              <rect x={wallX + wallWidth - 10} y={95 - 20} width="20" height="20" fill="#8B7355" stroke="#6b5540" />
+            </>
+          )}
         </>
       )}
 
       {/* Pagoda (prosperity indicator) */}
-      {prosperity > 250 && (
+      {hasPagoda && (
         <>
-          <rect x="240" y={95 - wallHeight + 6} width="20" height="24" fill="#d2b089" stroke="#a08060" />
-          <rect x="236" y={95 - wallHeight} width="28" height="6" fill="url(#roofPattern)" />
-          <rect x="238" y={95 - wallHeight - 10} width="24" height="6" fill="url(#roofPattern)" />
+          <rect x={wallX + wallWidth - 40} y={95 - wallHeight + 6} width="20" height="24" fill="#d2b089" stroke="#a08060" />
+          <rect x={wallX + wallWidth - 44} y={95 - wallHeight} width="28" height="6" fill="url(#roofPattern)" />
+          <rect x={wallX + wallWidth - 42} y={95 - wallHeight - 10} width="24" height="6" fill="url(#roofPattern)" />
         </>
       )}
 
@@ -163,7 +208,7 @@ export function CityIllustration({ city }: CityIllustrationProps) {
 
       {/* Road to gate */}
       <path
-        d="M205 95 L210 150 L200 200 L225 200 L215 150 L220 95 Z"
+        d={`M${wallX + wallWidth / 2 - 5} 95 L${wallX + wallWidth / 2} 150 L${wallX + wallWidth / 2 - 10} 200 L${wallX + wallWidth / 2 + 15} 200 L${wallX + wallWidth / 2 + 5} 150 L${wallX + wallWidth / 2 + 10} 95 Z`}
         fill="#b08b5a"
         opacity="0.8"
       />
@@ -177,8 +222,7 @@ export function CityIllustration({ city }: CityIllustrationProps) {
         />
       )}
 
-      {/* Decorative elements */}
-      {/* Trees */}
+      {/* Decorative trees */}
       <circle cx="40" cy="90" r="10" fill="#4a7c36" />
       <circle cx="48" cy="84" r="7" fill="#5a8c46" />
       <circle cx="360" cy="92" r="10" fill="#4a7c36" />

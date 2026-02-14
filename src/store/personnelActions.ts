@@ -291,7 +291,13 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
       const maxDraft = Math.floor(city.population * 0.1);
-      const actual = Math.min(amount, maxDraft);
+      const troopCap = Math.floor(city.population * 0.12);
+      const roomForTroops = Math.max(0, troopCap - city.troops);
+      const actual = Math.min(amount, maxDraft, roomForTroops);
+      if (actual <= 0) {
+        get().addLog(i18next.t('logs:error.troopCapReached'));
+        return;
+      }
       set({
         cities: state.cities.map(c =>
           c.id === cityId
@@ -313,37 +319,79 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       get().addLog(i18next.t('logs:domestic.conscript', { city: localizedName(city.name), officer: localizedName(executor.name), amount: actual }));
     },
 
-    transport: (fromCityId, toCityId, resource, amount) => {
+    transport: (fromCityId, toCityId, resources, officerId) => {
       const state = get();
       const fromCity = state.cities.find(c => c.id === fromCityId);
       const toCity = state.cities.find(c => c.id === toCityId);
       if (!fromCity || !toCity) return;
 
-      const governor = state.officers.find(o => o.cityId === fromCityId && o.isGovernor && o.factionId === state.playerFaction?.id);
-      if (!governor) {
-        get().addLog(i18next.t('logs:error.transportStamina'));
+      // Find the escort officer: use specified officerId, or auto-pick first available
+      const factionId = fromCity.factionId ?? state.playerFaction?.id;
+      const escort = officerId
+        ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
+        : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
+      if (!escort) {
+        get().addLog(i18next.t('logs:error.transportNoOfficer'));
         return;
       }
-      if (governor.acted) {
-        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(governor.name) }));
+      if (escort.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(escort.name) }));
         return;
       }
 
-      if (fromCity[resource] < amount) {
-        const label = resource === 'gold' ? '金' : resource === 'food' ? '糧' : '兵';
-        get().addLog(i18next.t('logs:error.transportInsufficient', { label, amount, current: fromCity[resource] }));
+      // Validate all requested resources
+      const entries = Object.entries(resources).filter(([, amt]) => amt !== undefined && amt > 0) as [string, number][];
+      if (entries.length === 0) return;
+
+      const shortages: string[] = [];
+      for (const [res, amt] of entries) {
+        const available = fromCity[res as keyof typeof fromCity] as number;
+        if (available < amt) {
+          const label = res === 'gold' ? '金' : res === 'food' ? '糧' : '兵';
+          shortages.push(i18next.t('logs:error.transportInsufficient', { label, amount: amt, current: available }));
+        }
+      }
+      if (shortages.length > 0) {
+        shortages.forEach(s => get().addLog(s));
         return;
       }
 
+      // Apply transfers
       set({
         cities: state.cities.map(c => {
-          if (c.id === fromCityId) return { ...c, [resource]: c[resource] - amount };
-          if (c.id === toCityId) return { ...c, [resource]: c[resource] + amount };
+          if (c.id === fromCityId) {
+            let gold = c.gold;
+            let food = c.food;
+            let troops = c.troops;
+            for (const [res, amt] of entries) {
+              if (res === 'gold') gold -= amt;
+              else if (res === 'food') food -= amt;
+              else if (res === 'troops') troops -= amt;
+            }
+            return { ...c, gold, food, troops };
+          }
+          if (c.id === toCityId) {
+            let gold = c.gold;
+            let food = c.food;
+            let troops = c.troops;
+            for (const [res, amt] of entries) {
+              if (res === 'gold') gold += amt;
+              else if (res === 'food') food += amt;
+              else if (res === 'troops') troops += amt;
+            }
+            return { ...c, gold, food, troops };
+          }
           return c;
         }),
-        officers: state.officers.map(o => o.id === governor.id ? { ...o, acted: true } : o)
+        officers: state.officers.map(o => o.id === escort.id ? { ...o, acted: true } : o)
       });
-      get().addLog(i18next.t('logs:domestic.transport', { from: localizedName(fromCity.name), to: localizedName(toCity.name), amount, resource: i18next.t(`logs:common.${resource}`) }));
+
+      // Build summary log
+      const parts: string[] = [];
+      for (const [res, amt] of entries) {
+        parts.push(`${i18next.t(`logs:common.${res}`)} ${amt}`);
+      }
+      get().addLog(i18next.t('logs:domestic.transportMulti', { from: localizedName(fromCity.name), to: localizedName(toCity.name), officer: localizedName(escort.name), details: parts.join(i18next.t('logs:common.comma')) }));
     },
 
     transferOfficer: (officerId, targetCityId) => {

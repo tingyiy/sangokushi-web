@@ -15,7 +15,7 @@
  * - Officers who flee keep their faction affiliation
  * - No flee destination → 100% captured
  */
-import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
 import { useGameStore } from './gameStore';
 import type { City, Officer, Faction, RTK4Skill } from '../types';
 

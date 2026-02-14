@@ -231,6 +231,16 @@
   background: #1a3a5a;
 }
 
+/* When city panel is open, shrink map area so panel doesn't overlap */
+.game-left.panel-open .game-map {
+  width: calc(100% - 340px);
+}
+
+/* Shift minimap left so it doesn't hide behind the panel */
+.game-left.panel-open .game-minimap {
+  right: 352px;
+}
+
 .game-right {
   width: 260px;
   flex-shrink: 0;

@@ -1,10 +1,40 @@
-import type { Officer, Treasure } from '../types';
+import type { Officer, Treasure, OfficerRank } from '../types';
 import { treasures } from '../data/treasures';
 
 /**
  * Officer Utility Functions - Phase 1.3, 1.4
  * Provides functions for officer data manipulation and effective stat calculation
  */
+
+/**
+ * Rank-based multiplier for MaxTroops calculation.
+ * Rulers get a special bonus detected via faction.rulerId (not stored in rank).
+ */
+const RANK_TROOP_MULTIPLIER: Record<OfficerRank, number> = {
+  governor:  1.10,  // 太守 — regional commander
+  viceroy:   1.20,  // 都督/丞相 — supreme commander
+  general:   1.00,  // 將軍 — standard officer
+  advisor:   0.80,  // 軍師 — strategist, not a field commander
+  attendant: 0.90,  // 侍中 — court official
+  common:    1.00,  // 一般 — baseline
+};
+
+/** Ruler multiplier (applied when officer is faction.rulerId) */
+const RULER_TROOP_MULTIPLIER = 1.30;
+
+/**
+ * Calculate the maximum troops an officer can command in battle.
+ * Formula: leadership × 1000 × rankMultiplier
+ *
+ * @param officer The officer
+ * @param isRuler Whether this officer is the ruler of their faction
+ * @returns Maximum troops (integer)
+ */
+export function getMaxTroops(officer: Officer, isRuler = false): number {
+  const stats = getEffectiveStats(officer);
+  const multiplier = isRuler ? RULER_TROOP_MULTIPLIER : RANK_TROOP_MULTIPLIER[officer.rank];
+  return Math.floor(stats.leadership * 1000 * multiplier);
+}
 
 /** Get officer stats with treasure bonuses applied */
 export function getEffectiveStats(officer: Officer): {

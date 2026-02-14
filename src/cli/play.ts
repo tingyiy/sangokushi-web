@@ -20,6 +20,7 @@ import { scenarios } from '../data/scenarios';
 import { getDistance } from '../utils/hex';
 import { getMovementRange, getAttackRange } from '../utils/unitTypes';
 import { hasSkill } from '../utils/skills';
+import { getMaxTroops } from '../utils/officers';
 import { audioSystem } from '../systems/audio';
 import type { BattleUnit } from '../types/battle';
 import i18next from 'i18next';
@@ -391,15 +392,16 @@ function showHelp() {
   log('  log | l                    — Show recent game log (last 20)');
   log('');
   log('  --- 內政 (Domestic) ---');
-  log('  commerce <city> [officer]       — Develop commerce (+10~20, costs 500g, stamina -20)');
-  log('  agriculture <city> [officer]    — Develop agriculture (+10~20, costs 500g, stamina -20)');
-  log('  defense <city> [officer]        — Reinforce defense (+5, costs 300g, stamina -20)');
-  log('  train <city> [officer]          — Train troops (+training/morale, costs 500f, stamina -20)');
-  log('  technology <city> [officer]     — Develop technology (+5~10, costs 800g, stamina -25)');
-  log('  flood <city> [officer]          — Flood control (+8~14, costs 500g, stamina -20)');
+  log('  commerce <city> [officer]       — Develop commerce (+10~20, costs 500g)');
+  log('  agriculture <city> [officer]    — Develop agriculture (+10~20, costs 500g)');
+  log('  defense <city> [officer]        — Reinforce defense (+5, costs 300g)');
+  log('  train <city> [officer]          — Train troops (+training/morale, costs 500f)');
+  log('  technology <city> [officer]     — Develop technology (+5~10, costs 800g)');
+  log('  flood <city> [officer]          — Flood control (+8~14, costs 500g)');
   log('  manufacture <city> <type> [off] — Manufacture weapons (crossbows|horses|rams|catapults, 1000g)');
-  log('  relief <city> [officer]         — Disaster relief (+loyalty, costs 500g+1000f, stamina -15)');
+  log('  relief <city> [officer]         — Disaster relief (+loyalty, costs 500g+1000f)');
   log('  tax <city> <low|med|high>       — Set tax rate');
+  log('  NOTE: Each officer can perform ONE action per turn (acted = done for the turn)');
   log('');
   log('  --- 人事 (Personnel) ---');
   log('  recruit <officer name>          — Recruit unaffiliated officer (在野)');
@@ -419,7 +421,7 @@ function showHelp() {
   log('    officers: "all" or 1,2,3 (index from status) | types: i,c,a or "auto" | troops: 5000 or 5000,3000');
   log('    e.g. attack 平原                              — auto everything');
   log('    e.g. attack 平原 1,2 i,c 5000,4000           — officers 1&2, infantry+cavalry, 5000+4000 troops');
-  log('  transport <from> <to> <gold|food|troops> <amt> — Transport resources between cities');
+  log('  transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name] — Transport resources');
   log('  retreat                                         — Retreat from current battle');
   log('');
   log('  --- 外交 (Diplomacy) ---');
@@ -440,7 +442,7 @@ function showHelp() {
   log('  counter <city> <officer>        — Counter-espionage (requires 做敵 skill)');
   log('');
   log('  --- Turn ---');
-  log('  end                             — End turn (AI acts, income, stamina +20, next month)');
+  log('  end                             — End turn (AI acts, income, resets acted, next month)');
   log('  help | h | ?                    — Show this help');
   log('  quit | q                        — Exit');
   log('');
@@ -498,6 +500,7 @@ function syncLogIndex() {
 
 // ── Command Router ──
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function findCity(name: string): City | null {
   const state = game.getState();
   return state.cities.find(c => c.name === name) || null;
@@ -774,28 +777,34 @@ function handleCommand(input: string, factionId: number): boolean {
     // ── Personnel ──
 
     case 'recruit': {
-      const name = parts.slice(1).join('');
+      const name = parts[1] || '';
+      const recruiterName = parts[2] || '';
       const officer = findOfficerByName(name, null); // unaffiliated
       if (!officer) { log(`  Officer "${name}" not found (must be 在野).`); return false; }
-      game.getState().recruitOfficer(officer.id);
+      const recruiter = recruiterName ? findOfficerByName(recruiterName, factionId) : undefined;
+      game.getState().recruitOfficer(officer.id, recruiter?.id);
       return false;
     }
 
     case 'recruitpow': {
-      const name = parts.slice(1).join('');
+      const name = parts[1] || '';
+      const recruiterName = parts[2] || '';
       const officer = findOfficerByName(name, -1); // POW
       if (!officer) { log(`  POW "${name}" not found.`); return false; }
+      const recruiter = recruiterName ? findOfficerByName(recruiterName, factionId) : undefined;
       // Select the city where the POW is held so the store can find recruiters
       game.getState().selectCity(officer.cityId);
-      game.getState().recruitPOW(officer.id);
+      game.getState().recruitPOW(officer.id, recruiter?.id);
       return false;
     }
 
     case 'search': {
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
+      const searcherName = parts[2] || '';
+      const searcher = searcherName ? findOfficerByName(searcherName, factionId) : undefined;
       game.getState().selectCity(city.id);
-      game.getState().searchOfficer(city.id);
+      game.getState().searchOfficer(city.id, searcher?.id);
       return false;
     }
 
@@ -916,9 +925,11 @@ function handleCommand(input: string, factionId: number): boolean {
 
       if (selectedOfficers.length === 0) {
         log('  No valid officers selected. Available:');
+        const myFaction = state.factions.find(f => f.id === factionId);
         available.forEach((o, i) => {
           const skills = o.skills.length > 0 ? ` [${o.skills.join(',')}]` : '';
-          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${o.leadership * 100} 行=${o.acted ? '×' : '未'}${skills}`);
+          const max = getMaxTroops(o, o.id === myFaction?.rulerId);
+          log(`    ${i + 1}. ${o.name} L${o.leadership} W${o.war} max=${max} 行=${o.acted ? '×' : '未'}${skills}`);
         });
         return false;
       }
@@ -965,8 +976,10 @@ function handleCommand(input: string, factionId: number): boolean {
       }
 
       log(`  ${sourceCity.name} → ${targetCity.name}`);
+      const cliMyFaction = state.factions.find(f => f.id === factionId);
       log(`  ${selectedOfficers.map((o, i) => {
-        const t = troopsPerOfficer ? troopsPerOfficer[i] : `auto(max ${o.leadership * 100})`;
+        const max = getMaxTroops(o, o.id === cliMyFaction?.rulerId);
+        const t = troopsPerOfficer ? troopsPerOfficer[i] : `auto(max ${max})`;
         return `${o.name}(${unitTypes[i]},${t})`;
       }).join(', ')}`);
 
@@ -998,36 +1011,83 @@ function handleCommand(input: string, factionId: number): boolean {
     case 'transport': {
       const from = findCityByIdOrName(parts[1] || '');
       const to = findCityByIdOrName(parts[2] || '');
+      if (!from || !to) {
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name]');
+        log('  e.g. transport 鄴 濮陽 gold=5000 food=3000');
+        log('  e.g. transport 鄴 濮陽 gold=5000 officer=張遼');
+        return false;
+      }
+      // Parse resource specs and officer from remaining parts
+      // Also support old format: transport <from> <to> <resource> <amount>
+      const resources: { gold?: number; food?: number; troops?: number } = {};
       const resMap: Record<string, 'gold' | 'food' | 'troops'> = {
         gold: 'gold', '金': 'gold',
         food: 'food', '糧': 'food',
         troops: 'troops', '兵': 'troops',
       };
-      const resource = resMap[(parts[3] || '').toLowerCase()];
-      const amount = parseInt(parts[4] || '1000', 10);
-      if (!from || !to || !resource) {
-        log('  Usage: transport <from city> <to city> <gold|food|troops> <amount>');
+      const remaining = parts.slice(3);
+      let escortOfficerId: number | undefined;
+      if (remaining.length === 2 && resMap[remaining[0].toLowerCase()]) {
+        // Old format: transport <from> <to> gold 5000
+        resources[resMap[remaining[0].toLowerCase()]] = parseInt(remaining[1], 10);
+      } else {
+        // New format: transport <from> <to> gold=5000 food=3000 officer=張遼
+        for (const spec of remaining) {
+          const [key, val] = spec.split('=');
+          if ((key || '').toLowerCase() === 'officer' && val) {
+            const escort = findOfficerByName(val, factionId);
+            if (escort) escortOfficerId = escort.id;
+            else { log(`  Officer "${val}" not found in your faction.`); return false; }
+            continue;
+          }
+          const res = resMap[(key || '').toLowerCase()];
+          if (res && val) resources[res] = parseInt(val, 10);
+        }
+      }
+      if (Object.keys(resources).length === 0) {
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name]');
         return false;
       }
-      game.getState().transport(from.id, to.id, resource, amount);
+      game.getState().transport(from.id, to.id, resources, escortOfficerId);
       return false;
     }
 
     // ── Diplomacy ──
 
     case 'relations': {
-      const fName = parts.slice(1).join('');
+      // Parse officer=Name from args
+      let relOfficerId: number | undefined;
+      const relParts = parts.slice(1).filter(p => {
+        if (p.toLowerCase().startsWith('officer=')) {
+          const oName = p.slice(8);
+          const o = findOfficerByName(oName, factionId);
+          if (o) relOfficerId = o.id;
+          return false;
+        }
+        return true;
+      });
+      const fName = relParts.join('');
       const targetFaction = state.factions.find(f => f.name === fName);
       if (!targetFaction) { log(`  Faction "${fName}" not found.`); return false; }
-      game.getState().improveRelations(targetFaction.id);
+      game.getState().improveRelations(targetFaction.id, relOfficerId);
       return false;
     }
 
     case 'alliance': {
-      const fName = parts.slice(1).join('');
+      let alliOfficerId: number | undefined;
+      const alliParts = parts.slice(1).filter(p => {
+        if (p.toLowerCase().startsWith('officer=')) {
+          const oName = p.slice(8);
+          const o = findOfficerByName(oName, factionId);
+          if (o) alliOfficerId = o.id;
+          return false;
+        }
+        return true;
+      });
+      const fName = alliParts.join('');
       const targetFaction = state.factions.find(f => f.name === fName);
       if (!targetFaction) { log(`  Faction "${fName}" not found.`); return false; }
-      game.getState().formAlliance(targetFaction.id);
+      game.getState().formAlliance(targetFaction.id, alliOfficerId);
       return false;
     }
 
@@ -1040,28 +1100,58 @@ function handleCommand(input: string, factionId: number): boolean {
     }
 
     case 'jointattack': {
-      const allyName = parts[1] || '';
-      const cityName = parts[2] || '';
+      let jaOfficerId: number | undefined;
+      const jaParts = parts.slice(1).filter(p => {
+        if (p.toLowerCase().startsWith('officer=')) {
+          const oName = p.slice(8);
+          const o = findOfficerByName(oName, factionId);
+          if (o) jaOfficerId = o.id;
+          return false;
+        }
+        return true;
+      });
+      const allyName = jaParts[0] || '';
+      const cityName = jaParts[1] || '';
       const allyFaction = state.factions.find(f => f.name === allyName);
       const targetCity = findCityByIdOrName(cityName);
-      if (!allyFaction || !targetCity) { log('  Usage: jointattack <ally faction> <target city>'); return false; }
-      game.getState().requestJointAttack(allyFaction.id, targetCity.id);
+      if (!allyFaction || !targetCity) { log('  Usage: jointattack <ally faction> <target city> [officer=Name]'); return false; }
+      game.getState().requestJointAttack(allyFaction.id, targetCity.id, jaOfficerId);
       return false;
     }
 
     case 'ceasefire': {
-      const fName = parts.slice(1).join('');
+      let cfOfficerId: number | undefined;
+      const cfParts = parts.slice(1).filter(p => {
+        if (p.toLowerCase().startsWith('officer=')) {
+          const oName = p.slice(8);
+          const o = findOfficerByName(oName, factionId);
+          if (o) cfOfficerId = o.id;
+          return false;
+        }
+        return true;
+      });
+      const fName = cfParts.join('');
       const targetFaction = state.factions.find(f => f.name === fName);
       if (!targetFaction) { log(`  Faction "${fName}" not found.`); return false; }
-      game.getState().proposeCeasefire(targetFaction.id);
+      game.getState().proposeCeasefire(targetFaction.id, cfOfficerId);
       return false;
     }
 
     case 'surrender': {
-      const fName = parts.slice(1).join('');
+      let surOfficerId: number | undefined;
+      const surParts = parts.slice(1).filter(p => {
+        if (p.toLowerCase().startsWith('officer=')) {
+          const oName = p.slice(8);
+          const o = findOfficerByName(oName, factionId);
+          if (o) surOfficerId = o.id;
+          return false;
+        }
+        return true;
+      });
+      const fName = surParts.join('');
       const targetFaction = state.factions.find(f => f.name === fName);
       if (!targetFaction) { log(`  Faction "${fName}" not found.`); return false; }
-      game.getState().demandSurrender(targetFaction.id);
+      game.getState().demandSurrender(targetFaction.id, surOfficerId);
       return false;
     }
 
@@ -1078,53 +1168,65 @@ function handleCommand(input: string, factionId: number): boolean {
     // ── Strategy ──
 
     case 'spy': {
+      const stratExecutorName = parts[2] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().spy(city.id);
+      game.getState().spy(city.id, stratExecutor?.id);
       return false;
     }
 
     case 'intel': {
+      const stratExecutorName = parts[2] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().gatherIntelligence(city.id);
+      game.getState().gatherIntelligence(city.id, stratExecutor?.id);
       return false;
     }
 
     case 'rumor': {
+      const stratExecutorName = parts[2] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().rumor(city.id);
+      game.getState().rumor(city.id, stratExecutor?.id);
       return false;
     }
 
     case 'arson': {
+      const stratExecutorName = parts[2] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().arson(city.id);
+      game.getState().arson(city.id, stratExecutor?.id);
       return false;
     }
 
     case 'rebel': {
+      const stratExecutorName = parts[2] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(parts[1] || '');
       if (!city) { log('  City not found.'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().inciteRebellion(city.id);
+      game.getState().inciteRebellion(city.id, stratExecutor?.id);
       return false;
     }
 
     case 'counter': {
       const cityName = parts[1] || '';
       const officerName = parts[2] || '';
+      const stratExecutorName = parts[3] || '';
+      const stratExecutor = stratExecutorName ? findOfficerByName(stratExecutorName, factionId) : undefined;
       const city = findCityByIdOrName(cityName);
       const officer = officerName ? state.officers.find(o => o.name === officerName && o.cityId === city?.id) : undefined;
-      if (!city || !officer) { log('  Usage: counter <city> <target officer name>'); return false; }
+      if (!city || !officer) { log('  Usage: counter <city> <target officer name> [executor]'); return false; }
       game.getState().selectCity(state.cities.find(c => c.factionId === factionId)?.id || 0);
-      game.getState().counterEspionage(city.id, officer.id);
+      game.getState().counterEspionage(city.id, officer.id, stratExecutor?.id);
       return false;
     }
 
@@ -1176,6 +1278,7 @@ function handleCommand(input: string, factionId: number): boolean {
       log('Goodbye.');
       rl.close();
       process.exit(0);
+      break; // unreachable but satisfies no-fallthrough
 
     default:
       log(`  Unknown command: "${cmd}". Type "help" for commands.`);
@@ -1244,6 +1347,7 @@ function saveState(filepath: string) {
   // Strip non-serializable `mutate` functions from pendingEvents
   const safePendingEvents = (gs.pendingEvents || []).map(e => {
     if (e.mutate) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { mutate: _mutate, ...rest } = e;
       return rest;
     }

@@ -1,8 +1,10 @@
 #!/usr/bin/env ts-node
 import fs from 'fs';
 import path from 'path';
-import { cityIdMapping, reverseCityIdMapping } from '../src/data/cities';
-import rtk4 from '../data/rtk4_officers_zh.json';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { cityIdMapping, reverseCityIdMapping as _reverseCityIdMapping } from '../src/data/cities';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import _rtk4 from '../data/rtk4_officers_zh.json';
 // ID maps from MIGRATION-PLAN
 const officerMap: Record<number, number> = { /* ... copy mapping table ... */ };
 
@@ -17,7 +19,7 @@ text = text.replace(/filter\(c => !\[(.*?)\]\)/g, (_, ids) => {
 });
 // Replace faction ruler/advisor IDs and makeOfficer first arg
 Object.entries(officerMap).forEach(([oldId, newId]) => {
-  const re = new RegExp(`([=,]\s*)${oldId}([,)]`, 'g');
+  const re = new RegExp(`([=,]\\s*)${oldId}([,)]`, 'g');
   text = text.replace(re, `$1${newId}$2`);
 });
 

@@ -1224,13 +1224,14 @@ describe('gameStore - Acted Flag System', () => {
       useGameStore.getState().endTurn();
 
       const updatedCity = useGameStore.getState().cities[0];
-      // goldIncome = 500 * 0.5 * (50/100) * 0.5 = 62.5 -> 62
-      // gold = 1000 + 62 = 1062
-      expect(updatedCity.gold).toBe(1062);
+      // goldIncome = 100000 * (500/1000) * 0.15 * (50/100) * 0.5 = 1875
+      // gold = 1000 + 1875 = 2875
+      expect(updatedCity.gold).toBe(2875);
       // loyaltyChange = +2
       expect(updatedCity.peopleLoyalty).toBe(52);
-      // popChangeRate = 0.01
-      expect(updatedCity.population).toBe(101000);
+      // annualGrowth = 3%/year for low tax, monthly = 0.0025
+      // population = floor(100000 * 1.0025) = 100250
+      expect(updatedCity.population).toBe(100250);
       spy.mockRestore();
     });
 

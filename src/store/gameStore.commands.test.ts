@@ -161,7 +161,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       useGameStore.setState({
         cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
       });
-      useGameStore.getState().transport(1, 2, 'gold', 2000);
+      useGameStore.getState().transport(1, 2, { gold: 2000 });
       const city1 = useGameStore.getState().cities.find(c => c.id === 1);
       const city2 = useGameStore.getState().cities.find(c => c.id === 2);
       expect(city1?.gold).toBe(8000);
@@ -328,14 +328,14 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
   describe('Military (軍事) - Edge Cases', () => {
     it('transport fails if resources or officer already acted', () => {
       useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c) });
-      useGameStore.getState().transport(1, 2, 'gold', 1000);
+      useGameStore.getState().transport(1, 2, { gold: 1000 });
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('金不足，無法輸送'));
 
       useGameStore.setState({
         cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 10000 } : c),
         officers: useGameStore.getState().officers.map(o => o.id === 1 ? { ...o, acted: true } : o)
       });
-      useGameStore.getState().transport(1, 2, 'gold', 1000);
+      useGameStore.getState().transport(1, 2, { gold: 1000 });
       expect(useGameStore.getState().log.length).toBeGreaterThan(0);
     });
 

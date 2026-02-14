@@ -52,20 +52,29 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
   // Move range (BFS with terrain costs)
   const moveRange = useMemo(() => {
     if (activeUnit && activeUnit.status === 'active' && !activeUnit.hasMoved && isPlayerUnit) {
-      const blocked = new Set(battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id).map(u => `${u.x},${u.y}`));
-      // Also block intact gates
+      // Enemy units and intact gates are impassable (block BFS)
+      const blocked = new Set(
+        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
       battle.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+      // Friendly units are passable but not valid destinations
+      const occupied = new Set(
+        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
       return getMoveRange(
         { q: activeUnit.x, r: activeUnit.y },
         getMovementRange(activeUnit.type),
         battle.battleMap.width,
         battle.battleMap.height,
         battle.battleMap.terrain,
-        blocked
+        blocked,
+        occupied
       );
     }
     return new Map<string, number>();
-  }, [activeUnit, battle.units, battle.battleMap, isPlayerUnit]);
+  }, [activeUnit, battle.units, battle.battleMap, isPlayerUnit, battle.gates]);
 
   // Attack range (enemies within range)
   const attackableEnemies = useMemo(() => {
@@ -126,7 +135,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
       prevActiveUnitId.current = activeUnit.id;
       // Only auto-center if zoomed in enough that the unit might be off-screen
       if (zoom > 1.2) {
-        centerOnHex(activeUnit.x, activeUnit.y);
+        centerOnHex(activeUnit.x, activeUnit.y); // eslint-disable-line react-hooks/set-state-in-effect
       }
     }
   }, [activeUnit, zoom, centerOnHex]);

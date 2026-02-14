@@ -20,6 +20,7 @@ import {
 import { getDistance } from '../utils/hex';
 import { hasSkill } from '../utils/skills';
 import { getMoveRange } from '../utils/pathfinding';
+import { cityBaseStats } from '../data/cities';
 
 interface BattleActions {
   initBattle: (
@@ -84,6 +85,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   inspectedUnitId: null,
   turnPhase: 'player',
   playerFactionId: 0,
+  defenseCoefficient: 1.0,
 
   addBattleLog: (msg) => set(s => ({ battleLog: [...s.battleLog.slice(-49), msg] })),
 
@@ -247,6 +249,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       inspectedUnitId: null,
       turnPhase: 'player',
       playerFactionId,
+      defenseCoefficient: cityBaseStats[defenderCityId]?.defenseCoefficient ?? 1.0,
     });
 
     // Check if battle should end immediately (e.g. all defenders have 0 troops)
@@ -264,19 +267,25 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     if (unit.hasMoved) return;
 
     if (q < 0 || q >= state.battleMap.width || r < 0 || r >= state.battleMap.height) return;
+    // Cannot stop on any occupied hex (friend or foe)
     if (state.units.some(u => u.id !== unitId && u.x === q && u.y === r && u.troops > 0)) return;
 
-    // Validate target is in BFS move range (respects terrain costs, walls, gates)
+    // Enemy units block the path entirely; friendly units are passable but not destinations
     const blocked = new Set(
-      state.units.filter(u => u.troops > 0 && u.id !== unitId).map(u => `${u.x},${u.y}`)
+      state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId !== unit.factionId)
+        .map(u => `${u.x},${u.y}`)
     );
     state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+    const occupied = new Set(
+      state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId === unit.factionId)
+        .map(u => `${u.x},${u.y}`)
+    );
 
     const range = getMovementRange(unit.type);
     const validMoves = getMoveRange(
       { q: unit.x, r: unit.y }, range,
       state.battleMap.width, state.battleMap.height,
-      state.battleMap.terrain, blocked
+      state.battleMap.terrain, blocked, occupied
     );
     if (!validMoves.has(`${q},${r}`)) return;
 
@@ -313,7 +322,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const trainingBonus = 1 + (attacker.training / 200);
     const baseDamage = (attacker.officer.war * attacker.troops) / 1000;
     const targetDefense = (target.officer.leadership * target.troops) / 1000;
-    const modDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus * attackMod / defenseMod;
+    // City defense coefficient reduces damage dealt to defending faction's units
+    const cityDefCoeff = (target.factionId === state.defenderId)
+      ? state.defenseCoefficient
+      : 1.0;
+    const modDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus * attackMod / (defenseMod * cityDefCoeff);
     const damage = Math.floor(Math.max(50, modDamage));
 
     const targetRange = getAttackRange(target.type);
@@ -401,7 +414,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const gateIndex = state.gates.findIndex(g => g.q === gateQ && g.r === gateR);
     if (gateIndex === -1) return;
 
-    const damage = Math.floor((attacker.officer.war * attacker.troops) / 1500);
+    const damage = Math.floor((attacker.officer.war * attacker.troops) / 1500 / state.defenseCoefficient);
 
     const newGates = [...state.gates];
     newGates[gateIndex] = { ...newGates[gateIndex], hp: Math.max(0, newGates[gateIndex].hp - damage) };

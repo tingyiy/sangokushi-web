@@ -219,6 +219,8 @@
   },
   "transport": {
     "title": "資源輸送：{{cityName}}",
+    "officer": "護送武將",
+    "noOfficer": "城中無可用武將",
     "resourceType": "資源類型",
     "goldOption": "金 (現有: {{amount}})",
     "foodOption": "糧 (現有: {{amount}})",

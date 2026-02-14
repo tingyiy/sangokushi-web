@@ -73,7 +73,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
         if (targetBorderCity) {
             decisions.push({
                 action: 'transport',
-                params: [city.id, targetBorderCity.id, 'troops', 5000],
+                params: [city.id, targetBorderCity.id, { troops: 5000 }],
                 description: i18next.t('logs:ai.transport', { city: localizedName(city.name), target: localizedName(targetBorderCity.name) })
             });
         }

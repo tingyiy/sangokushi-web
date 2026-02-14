@@ -54,6 +54,7 @@ const BattleScreen: React.FC = () => {
       void hasMore; // React will re-render and re-trigger if turnPhase is still 'enemy'
     }, 400);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle.turnPhase, battle.isFinished, battle.units, battle.activeUnitId]);
 
   // Battle end handler

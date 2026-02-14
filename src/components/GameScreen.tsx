@@ -15,7 +15,7 @@ import SaveLoadMenu from './SaveLoadMenu';
 
 export function GameScreen() {
   const { t } = useTranslation();
-  const { cities, officers, playerFaction } = useGameStore();
+  const { cities, officers, playerFaction, selectedCityId } = useGameStore();
   const [showStatusPanel, setShowStatusPanel] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [showLoadMenu, setShowLoadMenu] = useState(false);
@@ -29,7 +29,7 @@ export function GameScreen() {
   return (
     <div className="game-screen">
       <div className="game-body">
-        <div className="game-left" style={{ position: 'relative' }}>
+        <div className={`game-left ${selectedCityId !== null ? 'panel-open' : ''}`} style={{ position: 'relative' }}>
           <GameMap />
           <GameHeader />
           <GameMinimap />
