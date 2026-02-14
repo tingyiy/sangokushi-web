@@ -219,6 +219,8 @@
   },
   "transport": {
     "title": "Transport to {{cityName}}",
+    "officer": "Escort Officer",
+    "noOfficer": "No available officers",
     "resourceType": "Resource Type",
     "goldOption": "Gold (Current: {{amount}})",
     "foodOption": "Food (Current: {{amount}})",

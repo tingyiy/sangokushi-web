@@ -313,16 +313,23 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       get().addLog(i18next.t('logs:domestic.conscript', { city: localizedName(city.name), officer: localizedName(executor.name), amount: actual }));
     },
 
-    transport: (fromCityId, toCityId, resources) => {
+    transport: (fromCityId, toCityId, resources, officerId) => {
       const state = get();
       const fromCity = state.cities.find(c => c.id === fromCityId);
       const toCity = state.cities.find(c => c.id === toCityId);
       if (!fromCity || !toCity) return;
 
-      // Find any available officer in the source city to escort the transport
-      const escort = state.officers.find(o => o.cityId === fromCityId && o.factionId === (fromCity.factionId ?? state.playerFaction?.id) && !o.acted);
+      // Find the escort officer: use specified officerId, or auto-pick first available
+      const factionId = fromCity.factionId ?? state.playerFaction?.id;
+      const escort = officerId
+        ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
+        : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
       if (!escort) {
         get().addLog(i18next.t('logs:error.transportNoOfficer'));
+        return;
+      }
+      if (escort.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(escort.name) }));
         return;
       }
 

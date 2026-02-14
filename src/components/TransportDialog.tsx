@@ -10,22 +10,30 @@ interface Props {
 
 export function TransportDialog({ toCityId, onClose }: Props) {
   const { t } = useTranslation();
-  const { selectedCityId, cities, transport } = useGameStore();
+  const { selectedCityId, cities, officers, playerFaction, transport } = useGameStore();
   const fromCity = cities.find(c => c.id === selectedCityId);
   const toCity = cities.find(c => c.id === toCityId);
+
+  // Available officers: own faction, in source city, not yet acted
+  const availableOfficers = fromCity
+    ? officers.filter(o => o.cityId === fromCity.id && o.factionId === playerFaction?.id && !o.acted)
+    : [];
   
+  const [selectedOfficerId, setSelectedOfficerId] = useState<number | null>(
+    availableOfficers.length > 0 ? availableOfficers[0].id : null
+  );
   const [gold, setGold] = useState<number>(0);
   const [food, setFood] = useState<number>(0);
   const [troops, setTroops] = useState<number>(0);
 
   const handleTransport = () => {
-    if (!fromCity || !toCity) return;
+    if (!fromCity || !toCity || !selectedOfficerId) return;
     const resources: { gold?: number; food?: number; troops?: number } = {};
     if (gold > 0) resources.gold = gold;
     if (food > 0) resources.food = food;
     if (troops > 0) resources.troops = troops;
     if (Object.keys(resources).length === 0) return;
-    transport(fromCity.id, toCity.id, resources);
+    transport(fromCity.id, toCity.id, resources, selectedOfficerId);
     onClose();
   };
 
@@ -37,6 +45,24 @@ export function TransportDialog({ toCityId, onClose }: Props) {
     <div className="modal-overlay">
       <div className="modal-content transport-dialog">
         <h3>{t('transport.title', { cityName: localizedName(toCity.name) })}</h3>
+
+        <div className="input-group">
+          <label>{t('transport.officer')}</label>
+          {availableOfficers.length === 0 ? (
+            <span style={{ color: '#ff6b6b' }}>{t('transport.noOfficer')}</span>
+          ) : (
+            <select
+              value={selectedOfficerId ?? ''}
+              onChange={(e) => setSelectedOfficerId(parseInt(e.target.value))}
+            >
+              {availableOfficers.map(o => (
+                <option key={o.id} value={o.id}>
+                  {localizedName(o.name)}（{t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war}）
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         
         <div className="input-group">
           <label>{t('transport.goldOption', { amount: fromCity.gold })}</label>
@@ -82,7 +108,7 @@ export function TransportDialog({ toCityId, onClose }: Props) {
 
         <div className="modal-actions">
           <button className="btn btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="btn btn-confirm" onClick={handleTransport} disabled={!hasAny}>
+          <button className="btn btn-confirm" onClick={handleTransport} disabled={!hasAny || !selectedOfficerId}>
             {t('transport.confirm')}
           </button>
         </div>
