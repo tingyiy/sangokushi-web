@@ -41,15 +41,29 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   /** Remaining garrison after allocation */
   const remaining = (city?.troops ?? 0) - totalAllocated;
 
-  /** Recalculate default troop shares for all selected officers */
+  /** Recalculate default troop allocation: each officer gets their max, scaled down if garrison insufficient */
   const recalcDefaults = useCallback((ids: number[]) => {
     if (!city) return {};
-    const numOfficers = ids.length;
-    if (numOfficers === 0) return {};
-    const equalShare = Math.floor(city.troops / numOfficers);
-    const newCounts: Record<number, number> = {};
+    if (ids.length === 0) return {};
+    // Start with each officer's individual max
+    const maxes: Record<number, number> = {};
+    let totalMax = 0;
     for (const id of ids) {
-      newCounts[id] = Math.min(equalShare, maxTroopsForOfficer(id));
+      const m = maxTroopsForOfficer(id);
+      maxes[id] = m;
+      totalMax += m;
+    }
+    const newCounts: Record<number, number> = {};
+    if (totalMax <= city.troops) {
+      // Garrison can cover everyone's max
+      for (const id of ids) {
+        newCounts[id] = maxes[id];
+      }
+    } else {
+      // Scale down proportionally to fit garrison
+      for (const id of ids) {
+        newCounts[id] = Math.floor(city.troops * (maxes[id] / totalMax));
+      }
     }
     return newCounts;
   }, [city, maxTroopsForOfficer]);
