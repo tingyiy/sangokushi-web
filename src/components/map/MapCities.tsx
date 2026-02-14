@@ -37,6 +37,9 @@ const CASTLE_SIZE: Record<CityTier, { w: number; h: number; crenels: number }> =
   medium: { w: 1.4, h: 1.2, crenels: 3 },
   small:  { w: 1.0, h: 0.9, crenels: 2 },
 };
+
+/** Minimum invisible hit area so small cities are easy to click */
+const MIN_HIT_SIZE = 3.0;
 export function MapCities({
   cities,
   factions,
@@ -121,6 +124,14 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       onMouseLeave={() => setHovered(false)}
       style={{ cursor: 'pointer' }}
     >
+      {/* Invisible hit area — ensures small cities are easy to click */}
+      <rect
+        x={city.x - MIN_HIT_SIZE / 2}
+        y={city.y - MIN_HIT_SIZE / 2}
+        width={MIN_HIT_SIZE}
+        height={MIN_HIT_SIZE}
+        fill="transparent"
+      />
       {/* Castle building base — size scales with population tier */}
       <rect
         x={city.x - cW / 2}
@@ -264,6 +275,14 @@ function NeutralMarker({ city, isSelected, labelColor, revealed, onClick }: Neut
 
   return (
     <g onClick={onClick} style={{ cursor: 'pointer' }}>
+      {/* Invisible hit area — ensures small cities are easy to click */}
+      <rect
+        x={city.x - MIN_HIT_SIZE / 2}
+        y={city.y - MIN_HIT_SIZE / 2}
+        width={MIN_HIT_SIZE}
+        height={MIN_HIT_SIZE}
+        fill="transparent"
+      />
       {/* Castle building base — size scales with population tier */}
       <rect
         x={city.x - cW / 2}
