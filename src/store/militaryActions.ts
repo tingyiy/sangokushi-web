@@ -617,10 +617,13 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
             };
           } else {
             // Attacker won - replace garrison with winning surviving troops
+            // Battle defeat population loss: 5-20%
+            const defeatLossRate = 0.05 + Math.random() * 0.15;
             return {
               ...c,
               factionId: winnerFactionId,
               troops: Math.floor(totalSurvivingTroops * 0.8),
+              population: Math.floor(c.population * (1 - defeatLossRate)),
             };
           }
         }

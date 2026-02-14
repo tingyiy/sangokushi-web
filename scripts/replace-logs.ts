@@ -25,7 +25,8 @@ function replaceInFile(filePath: string, replacements: [string, string][]) {
 const t = (key: string, params?: string) =>
   params ? `i18next.t('logs:${key}', ${params})` : `i18next.t('logs:${key}')`;
 
-const ln = (name: string) => `localizedName(${name})`;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _ln = (name: string) => `localizedName(${name})`;
 
 // ─── gameStore.ts replacements ─────────────────────────────
 

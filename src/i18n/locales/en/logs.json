@@ -20,6 +20,7 @@
     "goldInsufficient": "Not enough gold for {{action}}. Need {{required}} (have {{current}}).",
     "foodInsufficient": "Not enough food to train. Need {{required}} (have {{current}}).",
     "noTroops": "No troops in the city to train.",
+    "troopCapReached": "City garrison has reached its troop capacity limit.",
     "officerNotInCity": "Assigned officer is not in this city.",
     "noOfficerInCity": "No officers in this city.",
     "officerActed": "{{name}} has already acted this turn.",

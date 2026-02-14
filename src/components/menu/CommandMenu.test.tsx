@@ -137,6 +137,6 @@ describe('CommandMenu', () => {
     if (officerRow) {
       fireEvent.click(officerRow);
     }
-    expect(mockDevelopCommerce).toHaveBeenCalledWith(1);
+    expect(mockDevelopCommerce).toHaveBeenCalledWith(1, 1);
   });
 });

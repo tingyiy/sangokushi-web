@@ -51,7 +51,7 @@ class AudioSystem {
         // resume on first user interaction
         this.ensureInteractionListener();
       });
-    } catch (_e) {
+    } catch {
       // Audio API unavailable in this environment
       this.missingTracks.add(track);
     }

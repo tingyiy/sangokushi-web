@@ -8,7 +8,7 @@ type Get = () => GameState;
 
 export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'improveRelations' | 'formAlliance' | 'requestJointAttack' | 'proposeCeasefire' | 'demandSurrender' | 'breakAlliance' | 'exchangeHostage'> {
   return {
-    improveRelations: (targetFactionId: number) => {
+    improveRelations: (targetFactionId: number, officerId?: number) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 1000) {
@@ -16,13 +16,20 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         return;
       }
 
-      // Find messenger (highest politics in city)
+      // Find messenger: use specified officerId, or highest politics in city
       const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
       if (officersInCity.length === 0) {
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+      const messenger = officerId
+        ? officersInCity.find(o => o.id === officerId)
+        : officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (messenger.acted) {
         get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
@@ -64,7 +71,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       get().addLog(i18next.t('logs:diplomacy.giftSuccess', { messenger: localizedName(messenger.name), faction: localizedName(targetFaction.name), reduction }));
     },
 
-    formAlliance: (targetFactionId) => {
+    formAlliance: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 2000) {
@@ -77,7 +84,14 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+      const messenger = officerId
+        ? officersInCity.find(o => o.id === officerId)
+        : officersInCity.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (messenger.acted) {
         get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
@@ -139,7 +153,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
     },
 
-    requestJointAttack: (allyFactionId, targetCityId) => {
+    requestJointAttack: (allyFactionId, targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city) return;
@@ -148,7 +162,14 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (messenger.acted) {
         get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
@@ -178,7 +199,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
     },
 
-    proposeCeasefire: (targetFactionId) => {
+    proposeCeasefire: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 1000) {
@@ -190,7 +211,14 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (messenger.acted) {
         get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));
@@ -237,7 +265,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       }
     },
 
-    demandSurrender: (targetFactionId) => {
+    demandSurrender: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city) return;
@@ -246,7 +274,14 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.politics > curr.politics ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (messenger.acted) {
         get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(messenger.name) }));

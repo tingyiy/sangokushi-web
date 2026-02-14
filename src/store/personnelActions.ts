@@ -291,7 +291,13 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
       const maxDraft = Math.floor(city.population * 0.1);
-      const actual = Math.min(amount, maxDraft);
+      const troopCap = Math.floor(city.population * 0.12);
+      const roomForTroops = Math.max(0, troopCap - city.troops);
+      const actual = Math.min(amount, maxDraft, roomForTroops);
+      if (actual <= 0) {
+        get().addLog(i18next.t('logs:error.troopCapReached'));
+        return;
+      }
       set({
         cities: state.cities.map(c =>
           c.id === cityId

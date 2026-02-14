@@ -9,7 +9,7 @@ type Get = () => GameState;
 
 export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumor' | 'counterEspionage' | 'inciteRebellion' | 'arson' | 'spy' | 'gatherIntelligence'> {
   return {
-    rumor: (targetCityId: number) => {
+    rumor: (targetCityId: number, officerId?: number) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 500) {
@@ -22,7 +22,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       // Phase 1.1: Check for 流言 skill
       if (!hasSkill(messenger, 'rumor')) {
@@ -82,7 +89,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       }
     },
 
-    counterEspionage: (_targetCityId, targetOfficerId) => {
+    counterEspionage: (_targetCityId, targetOfficerId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 800) {
@@ -94,7 +101,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (!hasSkill(messenger, 'provoke')) {
         get().addLog(i18next.t('logs:error.noSkillProvoke', { name: localizedName(messenger.name) }));
@@ -127,7 +141,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       }
     },
 
-    inciteRebellion: (targetCityId) => {
+    inciteRebellion: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 1000) {
@@ -139,7 +153,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (!hasSkill(messenger, 'tigerTrap')) {
         get().addLog(i18next.t('logs:error.noSkillTigerTrap', { name: localizedName(messenger.name) }));
@@ -171,7 +192,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       get().addLog(i18next.t('logs:strategy.tigerTrapSuccess', { messenger: localizedName(messenger.name), city: localizedName(targetCity.name) }));
     },
 
-    arson: (targetCityId) => {
+    arson: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 500) {
@@ -183,7 +204,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (!hasSkill(messenger, 'arson')) {
         get().addLog(i18next.t('logs:error.noSkillArson', { name: localizedName(messenger.name) }));
@@ -218,7 +246,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       }
     },
 
-    spy: (targetCityId) => {
+    spy: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 500) {
@@ -230,7 +258,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (!hasSkill(messenger, 'intelligence') && !hasSkill(messenger, 'espionage')) {
         get().addLog(i18next.t('logs:error.noSkillEspionage', { name: localizedName(messenger.name) }));
@@ -277,7 +312,7 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       }
     },
 
-    gatherIntelligence: (targetCityId) => {
+    gatherIntelligence: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.gold < 300) {
@@ -289,7 +324,14 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
-      const messenger = messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+      const messenger = officerId
+        ? messengers.find(o => o.id === officerId)
+        : messengers.reduce((prev, curr) => (prev.intelligence > curr.intelligence ? prev : curr));
+
+      if (!messenger) {
+        get().addLog(i18next.t('logs:error.officerNotInCity'));
+        return;
+      }
 
       if (!hasSkill(messenger, 'intelligence')) {
         get().addLog(i18next.t('logs:error.noSkillIntelligence', { name: localizedName(messenger.name) }));

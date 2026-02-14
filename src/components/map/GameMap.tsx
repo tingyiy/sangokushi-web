@@ -102,6 +102,7 @@ export function GameMap() {
 
     setPan(prev => clampPan(prev.x - dx, prev.y - dy, zoom));
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, zoom]);
 
   const handleMouseUp = useCallback(() => {

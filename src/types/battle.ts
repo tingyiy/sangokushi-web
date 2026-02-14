@@ -85,4 +85,6 @@ export interface BattleState {
   turnPhase: TurnPhase;
   /** Which faction the human player controls in this battle */
   playerFactionId: number;
+  /** City terrain defense coefficient (0.90-1.35) — defenders take reduced damage */
+  defenseCoefficient: number;
 }

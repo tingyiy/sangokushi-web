@@ -135,7 +135,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
       prevActiveUnitId.current = activeUnit.id;
       // Only auto-center if zoomed in enough that the unit might be off-screen
       if (zoom > 1.2) {
-        centerOnHex(activeUnit.x, activeUnit.y);
+        centerOnHex(activeUnit.x, activeUnit.y); // eslint-disable-line react-hooks/set-state-in-effect
       }
     }
   }, [activeUnit, zoom, centerOnHex]);

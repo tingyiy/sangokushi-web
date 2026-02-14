@@ -34,26 +34,32 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
         'common': 30,
       };
 
-      // 1. All faction income & Phase 6.7 Population/Tax
+      // 1. All faction income & economy
       let updatedCities = state.cities.map(c => {
         if (c.factionId !== null) {
           const loyaltyMultiplier = c.peopleLoyalty / 100;
           let taxMultiplier = 1.0;
           let loyaltyChange = 0;
-          let popChangeRate = 0.005; // Base 0.5% growth
+
+          // Population growth: base 2%/year ≈ 0.00165/month, tax modifies ±1%/year
+          let annualGrowthRate = 0.02; // 2% / year
 
           if (c.taxRate === 'low') {
             taxMultiplier = 0.5;
             loyaltyChange = 2;
-            popChangeRate = 0.01;
+            annualGrowthRate = 0.03; // 3% / year
           } else if (c.taxRate === 'high') {
             taxMultiplier = 1.5;
             loyaltyChange = -2;
-            popChangeRate = -0.005;
+            annualGrowthRate = 0.01; // 1% / year
           }
 
-          const goldIncome = Math.floor(c.commerce * 0.5 * loyaltyMultiplier * taxMultiplier);
-          const foodIncome = Math.floor(c.agriculture * 0.8 * loyaltyMultiplier * taxMultiplier);
+          const monthlyGrowthRate = annualGrowthRate / 12;
+
+          // Tax: population × (commerce/1000) × 0.15 × loyalty × taxRate
+          const goldIncome = Math.floor(c.population * (c.commerce / 1000) * 0.15 * loyaltyMultiplier * taxMultiplier);
+          // Food: population × (agriculture/1000) × 0.3 × loyalty × taxRate
+          const foodIncome = Math.floor(c.population * (c.agriculture / 1000) * 0.3 * loyaltyMultiplier * taxMultiplier);
 
           // Salary deduction
           const cityOfficers = state.officers.filter(o => o.cityId === c.id && o.factionId === c.factionId);
@@ -64,7 +70,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
             gold: Math.max(0, c.gold + goldIncome - totalSalary),
             food: c.food + foodIncome,
             peopleLoyalty: Math.min(100, Math.max(0, c.peopleLoyalty + loyaltyChange)),
-            population: Math.floor(c.population * (1 + popChangeRate))
+            population: Math.floor(c.population * (1 + monthlyGrowthRate))
           };
         }
         return c;

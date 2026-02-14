@@ -20,6 +20,7 @@ import {
 import { getDistance } from '../utils/hex';
 import { hasSkill } from '../utils/skills';
 import { getMoveRange } from '../utils/pathfinding';
+import { cityBaseStats } from '../data/cities';
 
 interface BattleActions {
   initBattle: (
@@ -84,6 +85,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   inspectedUnitId: null,
   turnPhase: 'player',
   playerFactionId: 0,
+  defenseCoefficient: 1.0,
 
   addBattleLog: (msg) => set(s => ({ battleLog: [...s.battleLog.slice(-49), msg] })),
 
@@ -247,6 +249,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       inspectedUnitId: null,
       turnPhase: 'player',
       playerFactionId,
+      defenseCoefficient: cityBaseStats[defenderCityId]?.defenseCoefficient ?? 1.0,
     });
 
     // Check if battle should end immediately (e.g. all defenders have 0 troops)
@@ -319,7 +322,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const trainingBonus = 1 + (attacker.training / 200);
     const baseDamage = (attacker.officer.war * attacker.troops) / 1000;
     const targetDefense = (target.officer.leadership * target.troops) / 1000;
-    const modDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus * attackMod / defenseMod;
+    // City defense coefficient reduces damage dealt to defending faction's units
+    const cityDefCoeff = (target.factionId === state.defenderId)
+      ? state.defenseCoefficient
+      : 1.0;
+    const modDamage = (baseDamage / Math.max(1, targetDefense)) * 500 * trainingBonus * attackMod / (defenseMod * cityDefCoeff);
     const damage = Math.floor(Math.max(50, modDamage));
 
     const targetRange = getAttackRange(target.type);
@@ -407,7 +414,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const gateIndex = state.gates.findIndex(g => g.q === gateQ && g.r === gateR);
     if (gateIndex === -1) return;
 
-    const damage = Math.floor((attacker.officer.war * attacker.troops) / 1500);
+    const damage = Math.floor((attacker.officer.war * attacker.troops) / 1500 / state.defenseCoefficient);
 
     const newGates = [...state.gates];
     newGates[gateIndex] = { ...newGates[gateIndex], hp: Math.max(0, newGates[gateIndex].hp - damage) };

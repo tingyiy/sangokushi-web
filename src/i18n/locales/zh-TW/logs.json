@@ -20,6 +20,7 @@
     "goldInsufficient": "金不足，無法{{action}}。需要 {{required}}（現有 {{current}}）。",
     "foodInsufficient": "糧不足，無法訓練。需要 {{required}}（現有 {{current}}）。",
     "noTroops": "城中無兵，無法訓練。",
+    "troopCapReached": "城中兵力已達上限，無法再徵兵。",
     "officerNotInCity": "指派武將不在該城，無法執行指令。",
     "noOfficerInCity": "城中無武將，無法執行指令。",
     "officerActed": "{{name}} 本月已行動，無法再執行指令。",
