@@ -99,7 +99,9 @@ export function getMoveRange(
   width: number,
   height: number,
   terrain: TerrainType[][],
-  blockedHexes: Set<string>
+  blockedHexes: Set<string>,
+  /** Hexes that can be traversed but NOT stopped on (e.g. friendly units) */
+  occupiedHexes?: Set<string>
 ): Map<string, number> {
   const visited = new Map<string, number>();
   const queue: { hex: Hex; cost: number }[] = [{ hex: start, cost: 0 }];
@@ -125,6 +127,13 @@ export function getMoveRange(
           queue.push({ hex: neighbor, cost: totalCost });
         }
       }
+    }
+  }
+
+  // Remove friendly-occupied hexes: traversable but not valid destinations
+  if (occupiedHexes) {
+    for (const key of occupiedHexes) {
+      visited.delete(key);
     }
   }
 

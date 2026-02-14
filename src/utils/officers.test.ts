@@ -8,6 +8,7 @@ import {
   getTotalStats,
   getCombatStats,
   getMentalStats,
+  getMaxTroops,
 } from './officers';
 
 const baseOfficer: Officer = {
@@ -28,6 +29,8 @@ const baseOfficer: Officer = {
   loyalty: 80,
   isGovernor: false,
   treasureId: null,
+  rank: 'common',
+  relationships: [],
 };
 
 describe('officers', () => {
@@ -174,6 +177,79 @@ describe('officers', () => {
     test('includes treasure bonuses', () => {
       const officerWithBook = { ...baseOfficer, treasureId: 1 }; // int +5, pol +5
       expect(getMentalStats(officerWithBook)).toBe(75 + 70); // 145
+    });
+  });
+
+  describe('getMaxTroops', () => {
+    test('common rank: leadership × 1000 × 1.0', () => {
+      // leadership 80, rank common → 80 × 1000 × 1.0 = 80000
+      expect(getMaxTroops(baseOfficer)).toBe(80000);
+    });
+
+    test('ruler: leadership × 1000 × 1.30', () => {
+      // leadership 80, isRuler → 80 × 1000 × 1.30 = 104000
+      expect(getMaxTroops(baseOfficer, true)).toBe(104000);
+    });
+
+    test('governor: leadership × 1000 × 1.10', () => {
+      const governor = { ...baseOfficer, rank: 'governor' as const };
+      // 80 × 1000 × 1.10 = 88000
+      expect(getMaxTroops(governor)).toBe(88000);
+    });
+
+    test('viceroy: leadership × 1000 × 1.20', () => {
+      const viceroy = { ...baseOfficer, rank: 'viceroy' as const };
+      // 80 × 1000 × 1.20 = 96000
+      expect(getMaxTroops(viceroy)).toBe(96000);
+    });
+
+    test('general: leadership × 1000 × 1.00', () => {
+      const general = { ...baseOfficer, rank: 'general' as const };
+      expect(getMaxTroops(general)).toBe(80000);
+    });
+
+    test('advisor: leadership × 1000 × 0.80', () => {
+      const advisor = { ...baseOfficer, rank: 'advisor' as const };
+      // 80 × 1000 × 0.80 = 64000
+      expect(getMaxTroops(advisor)).toBe(64000);
+    });
+
+    test('attendant: leadership × 1000 × 0.90', () => {
+      const attendant = { ...baseOfficer, rank: 'attendant' as const };
+      // 80 × 1000 × 0.90 = 72000
+      expect(getMaxTroops(attendant)).toBe(72000);
+    });
+
+    test('ruler overrides any rank', () => {
+      // Even an advisor who is ruler gets the ruler multiplier
+      const rulerAdvisor = { ...baseOfficer, rank: 'advisor' as const };
+      expect(getMaxTroops(rulerAdvisor, true)).toBe(104000);
+    });
+
+    test('applies treasure leadership bonus', () => {
+      // Horse treasure (id=13) gives +leadership
+      const withHorse = { ...baseOfficer, treasureId: 13 };
+      const maxNoHorse = getMaxTroops(baseOfficer);
+      const maxWithHorse = getMaxTroops(withHorse);
+      expect(maxWithHorse).toBeGreaterThan(maxNoHorse);
+    });
+
+    test('realistic example: 曹操 (leadership 95, ruler)', () => {
+      const caoCao = { ...baseOfficer, leadership: 95 };
+      // 95 × 1000 × 1.30 = 123500
+      expect(getMaxTroops(caoCao, true)).toBe(123500);
+    });
+
+    test('realistic example: 關羽 (leadership 96, governor)', () => {
+      const guanYu = { ...baseOfficer, leadership: 96, rank: 'governor' as const };
+      // 96 × 1000 × 1.10 = 105600
+      expect(getMaxTroops(guanYu)).toBe(105600);
+    });
+
+    test('realistic example: 諸葛亮 (leadership 82, advisor)', () => {
+      const zhugeLiang = { ...baseOfficer, leadership: 82, rank: 'advisor' as const };
+      // 82 × 1000 × 0.80 = 65600
+      expect(getMaxTroops(zhugeLiang)).toBe(65600);
     });
   });
 });

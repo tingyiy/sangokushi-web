@@ -264,19 +264,25 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     if (unit.hasMoved) return;
 
     if (q < 0 || q >= state.battleMap.width || r < 0 || r >= state.battleMap.height) return;
+    // Cannot stop on any occupied hex (friend or foe)
     if (state.units.some(u => u.id !== unitId && u.x === q && u.y === r && u.troops > 0)) return;
 
-    // Validate target is in BFS move range (respects terrain costs, walls, gates)
+    // Enemy units block the path entirely; friendly units are passable but not destinations
     const blocked = new Set(
-      state.units.filter(u => u.troops > 0 && u.id !== unitId).map(u => `${u.x},${u.y}`)
+      state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId !== unit.factionId)
+        .map(u => `${u.x},${u.y}`)
     );
     state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+    const occupied = new Set(
+      state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId === unit.factionId)
+        .map(u => `${u.x},${u.y}`)
+    );
 
     const range = getMovementRange(unit.type);
     const validMoves = getMoveRange(
       { q: unit.x, r: unit.y }, range,
       state.battleMap.width, state.battleMap.height,
-      state.battleMap.terrain, blocked
+      state.battleMap.terrain, blocked, occupied
     );
     if (!validMoves.has(`${q},${r}`)) return;
 

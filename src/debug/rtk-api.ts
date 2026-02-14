@@ -917,9 +917,17 @@ export const rtkApi = {
       if (!unit) return [];
 
       const range = getMovementRange(unit.type);
+      // Enemy units block BFS; friendly units are passable but not destinations
       const blocked = new Set<string>();
+      const occupied = new Set<string>();
       battle.units.forEach(u => {
-        if (u.id !== unitId && u.troops > 0) blocked.add(`${u.x},${u.y}`);
+        if (u.id !== unitId && u.troops > 0) {
+          if (u.factionId !== unit.factionId) {
+            blocked.add(`${u.x},${u.y}`);
+          } else {
+            occupied.add(`${u.x},${u.y}`);
+          }
+        }
       });
       battle.gates.forEach(g => {
         if (g.hp > 0) blocked.add(`${g.q},${g.r}`);
@@ -931,7 +939,8 @@ export const rtkApi = {
         battle.battleMap.width,
         battle.battleMap.height,
         battle.battleMap.terrain,
-        blocked
+        blocked,
+        occupied
       );
 
       return Array.from(map.keys()).map(k => {
