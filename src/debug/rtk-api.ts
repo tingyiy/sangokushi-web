@@ -74,6 +74,23 @@ function cityName(id: number | undefined): string {
   return c ? c.name : `#${id}`;
 }
 
+/** Check that a city belongs to the player faction. Returns error Result or null if ok. */
+function requireOwnCity(cat: LogCategory, label: string, cityId: number): Result | null {
+  const state = useGameStore.getState();
+  const city = state.cities.find(c => c.id === cityId);
+  if (!city) return logCmd(cat, label, { ok: false, error: 'City not found' });
+  if (city.factionId !== state.playerFaction?.id) return logCmd(cat, label, { ok: false, error: 'Not your city' });
+  return null;
+}
+
+/** Check that the selectedCityId belongs to the player faction. Returns error Result or null if ok. */
+function requireSelectedCity(cat: LogCategory, label: string): Result | null {
+  const state = useGameStore.getState();
+  const cityId = state.selectedCityId;
+  if (cityId == null) return logCmd(cat, label, { ok: false, error: 'No city selected' });
+  return requireOwnCity(cat, label, cityId);
+}
+
 /**
  * RTK Automation API implementation
  * v2.3 (2026-02-09) - Full Console Logging
@@ -387,8 +404,9 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('🏛', `reinforceDefense(${cn})`, { ok: false, error: 'Not in playing phase' });
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('🏛', `reinforceDefense(${cn})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('🏛', `reinforceDefense(${cn})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
     const before = city.defense;
     state.reinforceDefense(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -400,8 +418,9 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('🏛', `developFloodControl(${cn})`, { ok: false, error: 'Not in playing phase' });
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('🏛', `developFloodControl(${cn})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('🏛', `developFloodControl(${cn})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
     const before = city.floodControl;
     state.developFloodControl(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -413,8 +432,9 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('🏛', `developTechnology(${cn})`, { ok: false, error: 'Not in playing phase' });
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('🏛', `developTechnology(${cn})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('🏛', `developTechnology(${cn})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
     const before = city.technology;
     state.developTechnology(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -452,8 +472,9 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('🏛', `manufacture(${cn}, ${weaponType})`, { ok: false, error: 'Not in playing phase' });
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('🏛', `manufacture(${cn}, ${weaponType})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('🏛', `manufacture(${cn}, ${weaponType})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
     const before = city[weaponType];
     state.manufacture(cityId, weaponType, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -465,8 +486,9 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('🏛', `disasterRelief(${cn})`, { ok: false, error: 'Not in playing phase' });
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('🏛', `disasterRelief(${cn})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('🏛', `disasterRelief(${cn})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
     const before = city.peopleLoyalty;
     state.disasterRelief(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -476,9 +498,14 @@ export const rtkApi = {
 
   setTaxRate(cityId: number, rate: 'low' | 'medium' | 'high'): Result {
     const state = useGameStore.getState();
-    if (state.phase !== 'playing') return logCmd('🏛', `setTaxRate(${cityName(cityId)})`, { ok: false, error: 'Not in playing phase' });
+    const label = `setTaxRate(${cityName(cityId)}, ${rate})`;
+    if (state.phase !== 'playing') return logCmd('🏛', label, { ok: false, error: 'Not in playing phase' });
+    const err = requireOwnCity('🏛', label, cityId);
+    if (err) return err;
     state.setTaxRate(cityId, rate);
-    return logCmd('🏛', `setTaxRate(${cityName(cityId)}, ${rate})`, { ok: true });
+    const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
+    if (after.taxRate === rate) return logCmd('🏛', label, { ok: true });
+    return logCmd('🏛', label, { ok: false, error: 'Action failed' });
   },
 
   // Personnel
@@ -499,8 +526,9 @@ export const rtkApi = {
     const cn = cityName(cityId);
     if (state.phase !== 'playing') return logCmd('👤', `searchOfficer(${cn})`, { ok: false, error: 'Not in playing phase' });
 
-    const city = state.cities.find(c => c.id === cityId);
-    if (!city) return logCmd('👤', `searchOfficer(${cn})`, { ok: false, error: 'City not found' });
+    const err = requireOwnCity('👤', `searchOfficer(${cn})`, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
 
     const logBefore = state.log.length;
     state.searchOfficer(cityId, officerId);
@@ -736,9 +764,8 @@ export const rtkApi = {
     const player = state.playerFaction;
     if (!player) return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: 'No player faction' });
 
-    const myCities = state.cities.filter(c => c.factionId === player.id);
-    const totalGold = myCities.reduce((s, c) => s + c.gold, 0);
-    if (totalGold < 1000) return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: `Insufficient total gold across cities (Current: ${totalGold}, Required: 1000)` });
+    const err = requireSelectedCity('🤝', `improveRelations(${tName})`);
+    if (err) return err;
 
     const hostilityBefore = player.relations[targetFactionId] ?? 60;
     state.improveRelations(targetFactionId, officerId);
@@ -752,6 +779,8 @@ export const rtkApi = {
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `formAlliance(${tName})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🤝', `formAlliance(${tName})`);
+    if (err) return err;
     const alliesBefore = state.playerFaction?.allies || [];
     state.formAlliance(targetFactionId, officerId);
     const after = useGameStore.getState().playerFaction;
@@ -763,8 +792,12 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const label = `requestJointAttack(ally:#${allyFactionId}, ${cityName(targetCityId)})`;
     if (state.phase !== 'playing') return logCmd('🤝', label, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🤝', label);
+    if (err) return err;
+    const logBefore = state.log.length;
     state.requestJointAttack(allyFactionId, targetCityId, officerId);
-    return logCmd('🤝', label, { ok: true });
+    const logsAfter = useGameStore.getState().log.slice(logBefore);
+    return logCmd('🤝', label, { ok: true, data: { logs: logsAfter } });
   },
 
   proposeCeasefire(targetFactionId: number, officerId?: number): Result {
@@ -772,6 +805,8 @@ export const rtkApi = {
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `proposeCeasefire(${tName})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🤝', `proposeCeasefire(${tName})`);
+    if (err) return err;
     const ceasefiresBefore = state.playerFaction?.ceasefires.length || 0;
     state.proposeCeasefire(targetFactionId, officerId);
     const after = useGameStore.getState().playerFaction;
@@ -784,6 +819,8 @@ export const rtkApi = {
     const tf = state.factions.find(f => f.id === targetFactionId);
     const tName = tf?.name ?? `#${targetFactionId}`;
     if (state.phase !== 'playing') return logCmd('🤝', `demandSurrender(${tName})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🤝', `demandSurrender(${tName})`);
+    if (err) return err;
     state.demandSurrender(targetFactionId, officerId);
     const after = useGameStore.getState().factions;
     if (!after.find(f => f.id === targetFactionId)) return logCmd('🤝', `demandSurrender(${tName})`, { ok: true, data: { success: true } });
@@ -815,6 +852,8 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `rumor(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', `rumor(${cn})`);
+    if (err) return err;
     const targetCity = state.cities.find(c => c.id === targetCityId);
     if (!targetCity) return logCmd('🕵', `rumor(${cn})`, { ok: false, error: 'City not found' });
     const loyaltyBefore = targetCity.peopleLoyalty;
@@ -828,6 +867,8 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const label = `counterEspionage(${cityName(targetCityId)}, ${officerName(targetOfficerId)})`;
     if (state.phase !== 'playing') return logCmd('🕵', label, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', label);
+    if (err) return err;
     const officer = state.officers.find(o => o.id === targetOfficerId);
     if (!officer) return logCmd('🕵', label, { ok: false, error: 'Officer not found' });
     const loyaltyBefore = officer.loyalty;
@@ -841,22 +882,32 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `inciteRebellion(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', `inciteRebellion(${cn})`);
+    if (err) return err;
+    const logBefore = state.log.length;
     state.inciteRebellion(targetCityId, officerId);
-    return logCmd('🕵', `inciteRebellion(${cn})`, { ok: true });
+    const logsAfter = useGameStore.getState().log.slice(logBefore);
+    return logCmd('🕵', `inciteRebellion(${cn})`, { ok: true, data: { logs: logsAfter } });
   },
 
   arson(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `arson(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', `arson(${cn})`);
+    if (err) return err;
+    const logBefore = state.log.length;
     state.arson(targetCityId, officerId);
-    return logCmd('🕵', `arson(${cn})`, { ok: true });
+    const logsAfter = useGameStore.getState().log.slice(logBefore);
+    return logCmd('🕵', `arson(${cn})`, { ok: true, data: { logs: logsAfter } });
   },
 
   spy(targetCityId: number, officerId?: number): Result {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `spy(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', `spy(${cn})`);
+    if (err) return err;
     state.spy(targetCityId, officerId);
     if (useGameStore.getState().isCityRevealed(targetCityId)) return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: true } });
     return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: false } });
@@ -866,6 +917,8 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🕵', `gatherIntelligence(${cn})`);
+    if (err) return err;
     state.gatherIntelligence(targetCityId, officerId);
     if (useGameStore.getState().isCityRevealed(targetCityId)) return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: true });
     return logCmd('🕵', `gatherIntelligence(${cn})`, { ok: false, error: 'Action failed' });

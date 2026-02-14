@@ -337,11 +337,17 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 
 **Design Philosophy:** Faithfully replicate RTK IV (三國志IV) mechanics. When implementing new features, reference the original game's systems.
 
+**Verified Rules:** See `docs/rtk4-rules.md` for rules verified against the original game with sources and enforcement tests. Always add new verified rules there.
+
 **Core Systems:**
-- **Officers:** Have stamina (depletes on action, recovers on turn end) and loyalty
+- **Officers:** Have one action per turn (`acted` flag, reset on turn end) and loyalty
 - **Cities:** Track population, gold, food, commerce, agriculture, defense, troops
 - **Factions:** Relations use hostility scale (0-100); alliances tracked separately
 - **Turn-Based:** Player commands execute immediately; AI factions act on turn end
+
+### Ruler-Governor Rule (R-001)
+
+**RTK IV rule: the ruler (君主) IS the governor (太守) of their city.** When the ruler is present in a city, they hold the governor role directly. No other officer can be appointed governor in that city. When the ruler transfers, they become governor at the destination and the old city gets a new governor via auto-assignment. Enforced by `src/store/rulerGovernor.test.ts`.
 
 ### Battle Mechanics (RTK IV Rules)
 
@@ -383,12 +389,14 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 383 tests across 31 test files
+- Current test suite: 461 tests across 34 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
+- Ruler-governor rule tests: `src/store/rulerGovernor.test.ts` (9 tests enforcing R-001)
 - Fog-of-war tests: `src/store/fogOfWar.test.ts` (23 tests covering isCityRevealed, getCityView, getOfficerView, getNeighborSummary, getFactionSummaries)
 - i18n regression tests: `src/store/i18n-logs.test.ts` (13 tests scanning for Chinese leaks)
 - City data coherence tests: `src/data/cities.test.ts` (21 tests covering adjacency, connectivity, coordinate bounds)
+- Officer data coherence tests: `src/data/officers.test.ts` (3 tests ensuring every skill is assigned, no invalid skills, no duplicates)
 
 ---
 
@@ -510,6 +518,12 @@ These are potential improvements that are not blocking any features:
 - **StorageAdapter interface:** Unify browser `localStorage` (in `src/store/saveLoadActions.ts`) and CLI filesystem-based `saveState`/`loadState` behind a common `StorageAdapter` interface. Would allow tests to use an in-memory adapter.
 - **Rule engine extraction:** Extract duplicated game rules (combat formulas, economy rules, capture chance) into `src/engine/rules/` for a single source of truth.
 - **Core engine extraction:** Convert stores to thin wrappers over pure `apply(state, action) → newState` functions for deterministic replay and time-travel debugging. Large effort (3-5 days).
+
+---
+
+## References
+
+- **RTK IV Wikipedia (JP):** https://ja.wikipedia.org/wiki/%E4%B8%89%E5%9C%8B%E5%BF%97IV — Contains detailed descriptions of all 24 特殊能力 (special abilities) in the original game, including which skills were default vs learnable, skill effects, and game mechanics. Key section: `特殊能力`. Useful for verifying skill assignments and game-faithful behavior.
 
 ---
 

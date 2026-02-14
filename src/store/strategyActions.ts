@@ -12,8 +12,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     rumor: (targetCityId: number, officerId?: number) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.rumor_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.rumor_action'), required: 500, current: city.gold }));
         return;
       }
 
@@ -92,8 +93,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     counterEspionage: (_targetCityId, targetOfficerId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 800) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.provoke_action'), required: 800, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 800) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.provoke_action'), required: 800, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -144,8 +146,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     inciteRebellion: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 1000) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.tigerTrap_action'), required: 1000, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 1000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.tigerTrap_action'), required: 1000, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -195,8 +198,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     arson: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.arson_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.arson_action'), required: 500, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -249,8 +253,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     spy: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.espionage_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.espionage_action'), required: 500, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -315,8 +320,9 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
     gatherIntelligence: (targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 300) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.intelligence_action'), required: 300, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 300) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:strategy.intelligence_action'), required: 300, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);

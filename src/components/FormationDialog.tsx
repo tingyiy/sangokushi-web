@@ -21,6 +21,10 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   
   const cityOfficers = officers.filter(o => o.cityId === selectedCityId && o.factionId === playerFaction?.id && !o.acted);
   
+  // Total officers in city (including acted) — at least one must remain to defend
+  const totalCityOfficers = officers.filter(o => o.cityId === selectedCityId && o.factionId === playerFaction?.id).length;
+  const maxSelectable = Math.min(5, totalCityOfficers - 1);
+  
   const [selectedOfficerIds, setSelectedOfficerIds] = useState<number[]>([]);
   const [unitTypes, setUnitTypes] = useState<Record<number, UnitType>>({});
   const [troopCounts, setTroopCounts] = useState<Record<number, number>>({});
@@ -74,7 +78,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
       setSelectedOfficerIds(newIds);
       // Recalculate defaults for remaining officers
       setTroopCounts(recalcDefaults(newIds));
-    } else if (selectedOfficerIds.length < 5) {
+    } else if (selectedOfficerIds.length < maxSelectable) {
       const newIds = [...selectedOfficerIds, id];
       setSelectedOfficerIds(newIds);
       if (!unitTypes[id]) {

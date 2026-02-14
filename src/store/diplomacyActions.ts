@@ -11,8 +11,9 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
     improveRelations: (targetFactionId: number, officerId?: number) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 1000) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.gift_action'), required: 1000, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 1000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.gift_action'), required: 1000, current: city.gold }));
         return;
       }
 
@@ -74,8 +75,9 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
     formAlliance: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 2000) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.alliance_action'), required: 2000, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 2000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.alliance_action'), required: 2000, current: city.gold }));
         return;
       }
 
@@ -156,7 +158,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
     requestJointAttack: (allyFactionId, targetCityId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city) return;
+      if (!city || city.factionId !== state.playerFaction?.id) return;
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
       if (messengers.length === 0) {
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));
@@ -202,8 +204,9 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
     proposeCeasefire: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city || city.gold < 1000) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.ceasefire_action'), required: 1000, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 1000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.ceasefire_action'), required: 1000, current: city.gold }));
         return;
       }
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
@@ -268,7 +271,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
     demandSurrender: (targetFactionId, officerId?) => {
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
-      if (!city) return;
+      if (!city || city.factionId !== state.playerFaction?.id) return;
       const messengers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
       if (messengers.length === 0) {
         get().addLog(i18next.t('logs:error.noOfficerAvailable'));

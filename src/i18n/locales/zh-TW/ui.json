@@ -85,7 +85,9 @@
     "catapults": "投石機",
     "officers": "武將",
     "governorBadge": "太守",
-    "unaffiliatedOfficers": "在野武將"
+    "unaffiliatedOfficers": "在野武將",
+    "actedYes": "行×",
+    "actedNo": "行未"
   },
   "stat": {
     "leadership": "統",
@@ -123,7 +125,7 @@
       "strategy": "謀略",
       "end": "結束"
     },
-    "notYourCity": "這不是你的城市。",
+    "notYourCity": "{{city}}不是你的城市。",
     "noOfficersAvailable": "本城無可用武將。",
     "officerExecute": "{{name}} 執行「{{action}}」。",
     "domestic": {
@@ -157,11 +159,16 @@
       "manufactureCatapults": "製造投石機",
       "disasterRelief": "賑災",
       "draft1000": "徵兵 1000",
-      "draft5000": "徵兵 5000"
+      "draft5000": "徵兵 5000",
+      "draft": "徵兵"
     },
     "military": {
-      "draft1000": "徵兵 1000",
-      "draft5000": "徵兵 5000",
+      "draft": "徵兵",
+      "draftMax": "最大",
+      "draftCost": "（每兵 2金+3糧）",
+      "draftConfirm": "徵兵",
+      "draftCapInfo": "兵力上限 {{cap}} / 現有 {{current}} / 餘 {{room}}",
+      "draftAtCap": "兵力已達上限",
       "transport": "輸送",
       "transportTo": "至 {{cityName}}",
       "attack": "出征",
@@ -179,7 +186,8 @@
       "appointGovernor": "太守",
       "appointAdvisor": "軍師",
       "transfer": "移動",
-      "dismiss": "追放"
+      "dismiss": "追放",
+      "rulerLabel": "君主"
     },
     "diplomacy": {
       "hostility": "敵對: {{value}}",

@@ -15,14 +15,24 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
     const officersInCity = factionOfficers.filter((o: Officer) => o.cityId === city.id && !o.acted);
     if (officersInCity.length === 0) continue;
 
-    // 1. Draft troops if city is under-defended
-    if (city.troops < 5000 && city.gold >= 1000 && city.population > 10000) {
-      decisions.push({
-        action: 'draftTroops',
-        params: [city.id, 2000],
-        description: i18next.t('logs:ai.draftTroops', { city: localizedName(city.name) })
-      });
-      continue;
+    // 1. Draft troops if city garrison is below 30% of its population-based troop cap
+    const troopCap = Math.floor(city.population * 0.12);
+    const draftThreshold = Math.floor(troopCap * 0.3);
+    if (city.troops < draftThreshold && city.gold >= 1000 && city.population > 10000) {
+      // Draft up to 10% of population, constrained by gold/food
+      const maxByPop = Math.floor(city.population * 0.1);
+      const maxByGold = Math.floor(city.gold / 2);
+      const maxByFood = Math.floor(city.food / 3);
+      const room = Math.max(0, troopCap - city.troops);
+      const draftAmount = Math.min(maxByPop, maxByGold, maxByFood, room);
+      if (draftAmount > 0) {
+        decisions.push({
+          action: 'draftTroops',
+          params: [city.id, draftAmount],
+          description: i18next.t('logs:ai.draftTroops', { city: localizedName(city.name) })
+        });
+        continue;
+      }
     }
 
     // 2. Train troops

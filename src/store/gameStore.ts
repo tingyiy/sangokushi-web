@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import i18next from 'i18next';
 import { localizedName } from '../i18n/dataNames';
+import { autoAssignGovernorInPlace } from './storeHelpers';
 import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings } from '../types';
 import type { UnitType } from '../types/battle';
 import type { AIDecision } from '../ai/types';
@@ -66,6 +67,8 @@ export interface OfficerView {
   birthYear: number;
   /** Governor flag: visible if own or revealed */
   isGovernor: boolean | null;
+  /** Whether this officer is the ruler of their faction: visible if own or revealed */
+  isRuler: boolean | null;
   /** Rank: visible if own or in a revealed city */
   rank: string | null;
   /** City name: visible if own or in a revealed city */
@@ -323,10 +326,44 @@ export const useGameStore = create<GameState>((set, get) => ({
       allies: f.allies || [],
     }));
 
+    // Build a set of ruler IDs for rank assignment
+    const rulerIds = new Set(initializedFactions.map(f => f.rulerId));
+
+    const initializedOfficers = scenario.officers.map(o => ({
+      ...o,
+      // Rulers automatically get 'viceroy' rank (highest rank)
+      rank: rulerIds.has(o.id) ? 'viceroy' as const : o.rank,
+      // RTK IV: ruler IS the governor of their city
+      isGovernor: rulerIds.has(o.id) ? true : o.isGovernor,
+    }));
+
+    // Strip isGovernor from non-rulers in the ruler's city (ruler takes over)
+    const initializedCities = scenario.cities.map(c => ({ ...c }));
+    for (const faction of initializedFactions) {
+      const rulerOfficer = initializedOfficers.find(o => o.id === faction.rulerId);
+      if (rulerOfficer && rulerOfficer.cityId !== null) {
+        // Remove governor flag from anyone else in the ruler's city
+        for (let i = 0; i < initializedOfficers.length; i++) {
+          const o = initializedOfficers[i];
+          if (o.cityId === rulerOfficer.cityId && o.factionId === faction.id && o.id !== faction.rulerId && o.isGovernor) {
+            initializedOfficers[i] = { ...o, isGovernor: false };
+          }
+        }
+      }
+    }
+
+    // Auto-assign governors for cities without the ruler and without a governor
+    for (const faction of initializedFactions) {
+      const factionCityIds = new Set(initializedCities.filter(c => c.factionId === faction.id).map(c => c.id));
+      for (const cityId of factionCityIds) {
+        autoAssignGovernorInPlace(initializedOfficers, cityId, faction.id, initializedFactions);
+      }
+    }
+
     set({
       scenario,
-      cities: scenario.cities.map(c => ({ ...c })),
-      officers: scenario.officers.map(o => ({ ...o })),
+      cities: initializedCities,
+      officers: initializedOfficers,
       factions: initializedFactions,
       year: scenario.year,
       month: 1,
@@ -407,8 +444,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const locationVisible = isOwn || cityRevealed;
     const faction = officer.factionId !== null && officer.factionId !== -1
       ? state.factions.find(f => f.id === officer.factionId) : null;
-    const affiliation = officer.factionId === -1 ? 'POW'
-      : officer.factionId === null ? '在野'
+    const affiliation = officer.factionId === -1 ? i18next.t('data:affiliation.pow')
+      : officer.factionId === null ? i18next.t('data:affiliation.unaffiliated')
         : faction?.name ?? '?';
 
     return {
@@ -425,6 +462,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       relationships: [...officer.relationships],
       birthYear: officer.birthYear,
       isGovernor: locationVisible ? officer.isGovernor : null,
+      isRuler: locationVisible ? (faction?.rulerId === officer.id) : null,
       rank: locationVisible ? officer.rank : null,
       cityName: locationVisible ? (city?.name ?? null) : null,
       cityId: locationVisible ? officer.cityId : null,

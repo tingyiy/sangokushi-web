@@ -9,6 +9,9 @@ import {
   getCombatStats,
   getMentalStats,
   getMaxTroops,
+  getRankSlots,
+  meetsRankRequirements,
+  hasRankSlot,
 } from './officers';
 
 const baseOfficer: Officer = {
@@ -250,6 +253,89 @@ describe('officers', () => {
       const zhugeLiang = { ...baseOfficer, leadership: 82, rank: 'advisor' as const };
       // 82 × 1000 × 0.80 = 65600
       expect(getMaxTroops(zhugeLiang)).toBe(65600);
+    });
+  });
+
+  describe('R-006: Rank Slot Limits & Eligibility', () => {
+    describe('getRankSlots', () => {
+      test('1 city: 1 advisor, 1 viceroy, 2 generals, 1 attendant', () => {
+        const slots = getRankSlots(1);
+        expect(slots.advisor).toBe(1);
+        expect(slots.viceroy).toBe(1);
+        expect(slots.general).toBe(2);
+        expect(slots.attendant).toBe(1);
+        expect(slots.governor).toBe(0);
+        expect(slots.common).toBeNull();
+      });
+
+      test('5 cities: 1 advisor, 2 viceroy, 10 generals, 5 attendants', () => {
+        const slots = getRankSlots(5);
+        expect(slots.advisor).toBe(1);
+        expect(slots.viceroy).toBe(2);
+        expect(slots.general).toBe(10);
+        expect(slots.attendant).toBe(5);
+      });
+
+      test('12 cities: 1 advisor, 3 viceroy, 24 generals, 12 attendants', () => {
+        const slots = getRankSlots(12);
+        expect(slots.advisor).toBe(1);
+        expect(slots.viceroy).toBe(3);
+        expect(slots.general).toBe(24);
+        expect(slots.attendant).toBe(12);
+      });
+    });
+
+    describe('meetsRankRequirements', () => {
+      test('advisor requires intelligence >= 90', () => {
+        expect(meetsRankRequirements({ ...baseOfficer, intelligence: 89 }, 'advisor')).toBe(false);
+        expect(meetsRankRequirements({ ...baseOfficer, intelligence: 90 }, 'advisor')).toBe(true);
+      });
+
+      test('viceroy requires leadership >= 85', () => {
+        expect(meetsRankRequirements({ ...baseOfficer, leadership: 84 }, 'viceroy')).toBe(false);
+        expect(meetsRankRequirements({ ...baseOfficer, leadership: 85 }, 'viceroy')).toBe(true);
+      });
+
+      test('general requires leadership >= 70 OR war >= 75', () => {
+        expect(meetsRankRequirements({ ...baseOfficer, leadership: 69, war: 74 }, 'general')).toBe(false);
+        expect(meetsRankRequirements({ ...baseOfficer, leadership: 70, war: 50 }, 'general')).toBe(true);
+        expect(meetsRankRequirements({ ...baseOfficer, leadership: 50, war: 75 }, 'general')).toBe(true);
+      });
+
+      test('common and attendant have no requirements', () => {
+        const weak = { ...baseOfficer, leadership: 10, war: 10, intelligence: 10, politics: 10 };
+        expect(meetsRankRequirements(weak, 'common')).toBe(true);
+        expect(meetsRankRequirements(weak, 'attendant')).toBe(true);
+      });
+    });
+
+    describe('hasRankSlot', () => {
+      const faction1Officers = [
+        { ...baseOfficer, id: 1, factionId: 1, rank: 'advisor' as const },
+        { ...baseOfficer, id: 2, factionId: 1, rank: 'general' as const },
+        { ...baseOfficer, id: 3, factionId: 1, rank: 'common' as const },
+      ];
+
+      test('advisor slot full when 1 already assigned (1-city faction)', () => {
+        expect(hasRankSlot('advisor', 1, faction1Officers, 1)).toBe(false);
+      });
+
+      test('advisor slot open when excluding current holder', () => {
+        expect(hasRankSlot('advisor', 1, faction1Officers, 1, 1)).toBe(true);
+      });
+
+      test('general slot open when under limit', () => {
+        // 1 city → 2 general slots, only 1 used
+        expect(hasRankSlot('general', 1, faction1Officers, 1)).toBe(true);
+      });
+
+      test('governor is never promotable', () => {
+        expect(hasRankSlot('governor', 1, faction1Officers, 5)).toBe(false);
+      });
+
+      test('common is always open', () => {
+        expect(hasRankSlot('common', 1, faction1Officers, 1)).toBe(true);
+      });
     });
   });
 });

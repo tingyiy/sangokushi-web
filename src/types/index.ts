@@ -1,5 +1,5 @@
 /**
- * RTK IV Officer Skills (22 skills total)
+ * RTK IV Officer Skills (27 skills total)
  * Group 1: Strategy (外交, 情報, 人才, 製造, 做敵, 驅虎, 流言, 燒討)
  * Group 2: Military Types (諜報, 步兵, 騎兵, 弓兵, 海戰)
  * Group 3: Battle Tactics (火計, 落石, 同討, 天變, 風變, 混亂, 連環, 落雷)

@@ -193,7 +193,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       if (state.playerFaction) {
         const playerCities = finalCities.filter(c => c.factionId === state.playerFaction?.id);
         for (const pc of playerCities) {
-          autoAssignGovernorInPlace(finalOfficers, pc.id, state.playerFaction.id);
+          autoAssignGovernorInPlace(finalOfficers, pc.id, state.playerFaction.id, state.factions);
         }
       }
 

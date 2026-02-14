@@ -71,7 +71,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
     searchOfficer: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city) return;
+      if (!city || city.factionId !== state.playerFaction?.id) return;
 
       let recruiter: Officer | undefined;
       if (officerId) {
@@ -174,7 +174,10 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
 
     rewardOfficer: (officerId, type, amount = 1000) => {
       const state = get();
+      const rewardTarget = state.officers.find(o => o.id === officerId);
+      if (!rewardTarget || rewardTarget.factionId !== state.playerFaction?.id) return;
       const city = state.cities.find(c => c.id === state.selectedCityId);
+      if (!city || city.factionId !== state.playerFaction?.id) return;
 
       if (type === 'treasure') {
         get().addLog(i18next.t('logs:error.treasureRewardNotImplemented'));
@@ -195,14 +198,13 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
           return o;
         })
       });
-      const officer = state.officers.find(o => o.id === officerId);
-      get().addLog(i18next.t('logs:personnel.reward', { officer: localizedName(officer?.name ?? ''), amount }));
+      get().addLog(i18next.t('logs:personnel.reward', { officer: localizedName(rewardTarget.name), amount }));
     },
 
     executeOfficer: (officerId) => {
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
-      if (!officer) return;
+      if (!officer || officer.factionId !== -1) return;
 
       set({
         officers: state.officers.filter(o => o.id !== officerId)
@@ -213,7 +215,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
     dismissOfficer: (officerId) => {
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
-      if (!officer || officer.id === state.playerFaction?.rulerId) return;
+      if (!officer || officer.factionId !== state.playerFaction?.id || officer.id === state.playerFaction?.rulerId) return;
 
       set({
         officers: state.officers.map(o => o.id === officerId ? { ...o, factionId: null, isGovernor: false, loyalty: 30 } : o)
@@ -232,6 +234,12 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         get().addLog(i18next.t('logs:error.notOurFaction', { name: localizedName(appointee.name) }));
         return;
       }
+      // RTK IV R-001: ruler IS the governor of their city — no other governor can be appointed
+      const faction = state.factions.find(f => f.id === appointee.factionId);
+      const rulerInCity = faction && state.officers.some(
+        o => o.id === faction.rulerId && o.cityId === cityId && o.factionId === faction.id
+      );
+      if (rulerInCity) return;
       if (appointee.cityId !== cityId) {
         const targetCity = state.cities.find(c => c.id === cityId);
         get().addLog(i18next.t('logs:error.notInTargetCity', { name: localizedName(appointee.name), city: localizedName(targetCity?.name || '') }));
@@ -254,6 +262,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const state = get();
       if (!state.playerFaction) return;
       const advisor = state.officers.find(o => o.id === officerId);
+      if (!advisor || advisor.factionId !== state.playerFaction.id) return;
 
       set({
         factions: state.factions.map(f => f.id === state.playerFaction?.id ? { ...f, advisorId: officerId } : f),
@@ -265,10 +274,10 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
     draftTroops: (cityId, amount, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city) return;
+      if (!city || city.factionId !== state.playerFaction?.id) return;
 
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -324,12 +333,14 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const fromCity = state.cities.find(c => c.id === fromCityId);
       const toCity = state.cities.find(c => c.id === toCityId);
       if (!fromCity || !toCity) return;
+      if (fromCity.factionId !== state.playerFaction?.id) return;
+      if (toCity.factionId !== state.playerFaction?.id) return;
 
       // Find the escort officer: use specified officerId, or auto-pick first available
-      const factionId = fromCity.factionId ?? state.playerFaction?.id;
+      const playerFactionId = state.playerFaction!.id;
       const escort = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
-        : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
+        ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === playerFactionId)
+        : state.officers.find(o => o.cityId === fromCityId && o.factionId === playerFactionId && !o.acted);
       if (!escort) {
         get().addLog(i18next.t('logs:error.transportNoOfficer'));
         return;
@@ -397,8 +408,8 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
     transferOfficer: (officerId, targetCityId) => {
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
-      if (!officer) {
-        get().addLog(i18next.t('logs:error.moveOfficerStamina', { name: '' }));
+      if (!officer || officer.factionId !== state.playerFaction?.id) {
+        get().addLog(i18next.t('logs:error.officerNotFound'));
         return;
       }
       if (officer.acted) {
@@ -413,9 +424,22 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
 
       const wasGovernor = officer.isGovernor;
       const sourceCityId = officer.cityId;
-      const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, cityId: targetCityId, isGovernor: false, acted: true } : o);
+      const isRuler = state.playerFaction!.rulerId === officerId;
+
+      const updatedOfficers = state.officers.map(o => {
+        if (o.id === officerId) {
+          // RTK IV R-001: ruler is always governor of their city
+          return { ...o, cityId: targetCityId, isGovernor: isRuler ? true : false, acted: true };
+        }
+        // If ruler is moving in, strip governor from existing governor at destination
+        if (isRuler && o.cityId === targetCityId && o.factionId === state.playerFaction!.id && o.isGovernor) {
+          return { ...o, isGovernor: false };
+        }
+        return o;
+      });
+      // Auto-assign governor for source city if it lost its governor
       if (wasGovernor && sourceCityId !== null) {
-        autoAssignGovernorInPlace(updatedOfficers, sourceCityId, state.playerFaction!.id);
+        autoAssignGovernorInPlace(updatedOfficers, sourceCityId, state.playerFaction!.id, state.factions);
       }
       set({ officers: updatedOfficers });
       const finalDestCity = state.cities.find(c => c.id === targetCityId);

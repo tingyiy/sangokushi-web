@@ -32,6 +32,7 @@
     "noOfficerForSurrender": "城內無將領可執行勸降。",
     "officerNotFound": "找不到該武將。",
     "noCommanders": "無將領可統兵。",
+    "mustLeaveOfficer": "至少須留一名武將守城，無法全軍出擊。",
     "noCityOfficers": "城中無將！",
     "noEnemyNearby": "四周無敵軍。",
     "emptyCityDuel": "{{city}} 是一座空城。",
@@ -58,7 +59,9 @@
     "noSkillEspionage": "{{name}} 不具備諜報技能。",
     "noSkillIntelligence": "{{name}} 不具備情報技能。",
     "alreadyHostage": "{{name}} 已經是人質了。",
-    "alreadyAllied": "我方與 {{faction}} 已經是同盟了。"
+    "alreadyAllied": "我方與 {{faction}} 已經是同盟了。",
+    "rankRequirementsNotMet": "{{name}} 不符合{{rank}}的任命條件。",
+    "rankSlotFull": "{{rank}}的名額已滿。"
   },
   "domestic": {
     "taxRateChanged": "{{city}} 稅率已變更為 {{rate}}。",

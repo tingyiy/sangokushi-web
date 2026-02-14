@@ -1,7 +1,7 @@
 /**
  * i18next init for Node.js / CLI environment.
- * No browser language detector — defaults to zh-TW.
- * Language can be overridden via LANG_RTK env variable.
+ * No browser language detector — defaults to English.
+ * Language can be overridden via LANG_RTK env variable or --lang CLI flag.
  */
 import i18next from 'i18next';
 
@@ -16,7 +16,7 @@ import en_battle from './locales/en/battle.json';
 import en_logs from './locales/en/logs.json';
 import en_cli from './locales/en/cli.json';
 
-const lang = process.env.LANG_RTK === 'en' ? 'en' : 'zh-TW';
+const lang = process.env.LANG_RTK === 'zh-TW' ? 'zh-TW' : 'en';
 
 i18next.init({
   lng: lang,

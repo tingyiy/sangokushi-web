@@ -179,6 +179,17 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('startBattle with formation works', () => {
+      // Need at least 2 officers in city so one can remain behind
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 10, name: '守城將', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 10, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
       useGameStore.getState().setBattleFormation({
         officerIds: [1],
         unitTypes: ['cavalry']
@@ -327,7 +338,12 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
 
   describe('Military (軍事) - Edge Cases', () => {
     it('transport fails if resources or officer already acted', () => {
-      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c) });
+      // Make city 2 player-owned so transport ownership check passes
+      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => {
+        if (c.id === 1) return { ...c, gold: 100 };
+        if (c.id === 2) return { ...c, factionId: 1 };
+        return c;
+      }) });
       useGameStore.getState().transport(1, 2, { gold: 1000 });
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('金不足，無法輸送'));
 
@@ -346,7 +362,18 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('startBattle fails if weapon insufficient', () => {
-      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, warHorses: 0 } : c) });
+      // Need at least 2 officers so the "must leave one" check passes first
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 10, name: '守城將', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 10, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+        cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, warHorses: 0 } : c),
+      });
       useGameStore.getState().setBattleFormation({ officerIds: [1], unitTypes: ['cavalry'] });
       useGameStore.getState().startBattle(2);
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('武器不足'));
@@ -399,7 +426,23 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
 
   describe('Bug Fixes & Validations', () => {
     it('startBattle requires troops', () => {
-      useGameStore.setState({ cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, troops: 0 } : c) });
+      // Need at least 2 officers so the "must leave one" check passes first
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 10, name: '守城將', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 10, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+        cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, troops: 0 } : c),
+      });
+      // Use formation to select only 1 of 2 officers, so "must leave one" passes
+      useGameStore.getState().setBattleFormation({
+        officerIds: [1],
+        unitTypes: ['infantry'],
+      });
       useGameStore.getState().startBattle(2);
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('兵力不足'));
     });
@@ -462,6 +505,279 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     it('rewardOfficer handles treasure stub', () => {
       useGameStore.getState().rewardOfficer(1, 'treasure');
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('尚未實裝'));
+    });
+
+    describe('startBattle must leave at least one officer in city', () => {
+      it('rejects when city has only one officer (store API)', () => {
+        // Default setup: city 1 has one officer (id=1). Sending that officer leaves city empty.
+        useGameStore.getState().setBattleFormation({
+          officerIds: [1],
+          unitTypes: ['infantry'],
+        });
+        useGameStore.getState().startBattle(2);
+        // Battle should NOT start
+        expect(useGameStore.getState().phase).toBe('playing');
+        expect(useGameStore.getState().log).toContainEqual(
+          expect.stringContaining('至少須留一名武將守城')
+        );
+      });
+
+      it('rejects when formation selects all officers in city (store API)', () => {
+        // Add a second officer to city 1
+        useGameStore.setState({
+          officers: [
+            ...useGameStore.getState().officers,
+            {
+              id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+              skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+              factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+          ],
+        });
+        // Select both officers for battle — none would remain
+        useGameStore.getState().setBattleFormation({
+          officerIds: [1, 3],
+          unitTypes: ['infantry', 'infantry'],
+        });
+        useGameStore.getState().startBattle(2);
+        expect(useGameStore.getState().phase).toBe('playing');
+        expect(useGameStore.getState().log).toContainEqual(
+          expect.stringContaining('至少須留一名武將守城')
+        );
+      });
+
+      it('succeeds when at least one officer remains in city (store API)', () => {
+        // Add two more officers to city 1 (total: 3 officers)
+        useGameStore.setState({
+          officers: [
+            ...useGameStore.getState().officers,
+            {
+              id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+              skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+              factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+            {
+              id: 4, name: '夏侯惇', leadership: 88, war: 90, intelligence: 50, politics: 40, charisma: 70,
+              skills: [] as RTK4Skill[], portraitId: 4, birthYear: 160, deathYear: 220, treasureId: null,
+              factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+          ],
+        });
+        // Send 2 of 3 officers — one remains
+        useGameStore.getState().setBattleFormation({
+          officerIds: [1, 3],
+          unitTypes: ['infantry', 'infantry'],
+        });
+        useGameStore.getState().startBattle(2);
+        expect(useGameStore.getState().phase).toBe('battle');
+      });
+
+      it('counts acted officers as remaining (store API)', () => {
+        // Add a second officer who has already acted — they still count as "remaining"
+        useGameStore.setState({
+          officers: [
+            ...useGameStore.getState().officers,
+            {
+              id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+              skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+              factionId: 1, cityId: 1, acted: true, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+          ],
+        });
+        // Send officer 1 (the only non-acted one), officer 3 stays (acted but still in city)
+        useGameStore.getState().setBattleFormation({
+          officerIds: [1],
+          unitTypes: ['infantry'],
+        });
+        useGameStore.getState().startBattle(2);
+        expect(useGameStore.getState().phase).toBe('battle');
+      });
+
+      it('aiStartBattle skips when city has only one officer', () => {
+        // City 2 has only officer 2 (enemy faction)
+        const logBefore = useGameStore.getState().log.length;
+        useGameStore.getState().aiStartBattle(2, 1);
+        // Should not start a battle — no officers sent
+        expect(useGameStore.getState().phase).toBe('playing');
+        // No new log about a march or battle should appear
+        const logsAfter = useGameStore.getState().log;
+        const battleLogs = logsAfter.slice(logBefore).filter(l =>
+          l.includes('出征') || l.includes('march') || l.includes('進攻')
+        );
+        expect(battleLogs.length).toBe(0);
+      });
+
+      it('aiStartBattle sends at most N-1 officers when city has multiple', () => {
+        // Give faction 2 three officers in city 2
+        useGameStore.setState({
+          officers: [
+            ...useGameStore.getState().officers,
+            {
+              id: 5, name: '張遼AI', leadership: 88, war: 85, intelligence: 70, politics: 60, charisma: 75,
+              skills: [] as RTK4Skill[], portraitId: 5, birthYear: 165, deathYear: 230, treasureId: null,
+              factionId: 2, cityId: 2, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+            {
+              id: 6, name: '高順AI', leadership: 80, war: 80, intelligence: 60, politics: 50, charisma: 60,
+              skills: [] as RTK4Skill[], portraitId: 6, birthYear: 165, deathYear: 220, treasureId: null,
+              factionId: 2, cityId: 2, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+            },
+          ],
+        });
+        // AI attacks from city 2 (3 officers) → city 1
+        useGameStore.getState().aiStartBattle(2, 1);
+        // After battle setup, at least one officer from city 2 should remain
+        const state = useGameStore.getState();
+        const faction2OfficersInCity2 = state.officers.filter(
+          o => o.cityId === 2 && o.factionId === 2
+        );
+        expect(faction2OfficersInCity2.length).toBeGreaterThanOrEqual(1);
+      });
+    });
+  });
+
+  describe('Ruler & Appointment Guards', () => {
+    it('promoteOfficer rejects rank change for ruler', () => {
+      // Officer 1 (荀彧) is ruler in test setup (rulerId: 1)
+      useGameStore.getState().promoteOfficer(1, 'advisor');
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      // Rank should remain unchanged (whatever it was)
+      expect(officer!.rank).not.toBe('advisor');
+    });
+
+    it('promoteOfficer works for non-ruler officers', () => {
+      // Add a non-ruler officer
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      useGameStore.getState().promoteOfficer(3, 'general');
+      const officer = useGameStore.getState().officers.find(o => o.id === 3);
+      expect(officer!.rank).toBe('general');
+    });
+
+    it('appointGovernor rejects appointment in ruler city (R-001)', () => {
+      // Officer 1 is the ruler and already governor of city 1.
+      // Trying to appoint anyone in this city should be rejected.
+      useGameStore.setState({
+        officers: [
+          // Ruler is governor
+          { ...useGameStore.getState().officers[0], isGovernor: true },
+          useGameStore.getState().officers[1],
+          {
+            id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      useGameStore.getState().appointGovernor(1, 3);
+      const ruler = useGameStore.getState().officers.find(o => o.id === 1);
+      const other = useGameStore.getState().officers.find(o => o.id === 3);
+      expect(ruler!.isGovernor).toBe(true);  // ruler stays governor
+      expect(other!.isGovernor).toBe(false);  // appointment rejected
+    });
+
+    it('appointGovernor works in city without ruler', () => {
+      // Add a non-ruler officer to city 2 (no ruler there)
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 2, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      useGameStore.getState().appointGovernor(2, 3);
+      const officer = useGameStore.getState().officers.find(o => o.id === 3);
+      expect(officer!.isGovernor).toBe(true);
+    });
+  });
+
+  describe('R-006: Rank Slot Limits', () => {
+    it('promoteOfficer rejects governor rank (auto-assigned only)', () => {
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      useGameStore.getState().promoteOfficer(3, 'governor');
+      const officer = useGameStore.getState().officers.find(o => o.id === 3);
+      expect(officer!.rank).toBe('common');
+    });
+
+    it('promoteOfficer rejects advisor when slot is full', () => {
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '郭嘉', leadership: 60, war: 45, intelligence: 96, politics: 80, charisma: 70,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 170, deathYear: 207, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'advisor' as const, relationships: []
+          },
+          {
+            id: 4, name: '荀攸', leadership: 65, war: 40, intelligence: 93, politics: 85, charisma: 72,
+            skills: [] as RTK4Skill[], portraitId: 4, birthYear: 157, deathYear: 214, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      // 郭嘉 is already advisor. Promoting 荀攸 to advisor should fail (1 slot max).
+      useGameStore.getState().promoteOfficer(4, 'advisor');
+      const xunYou = useGameStore.getState().officers.find(o => o.id === 4);
+      expect(xunYou!.rank).toBe('common');
+    });
+
+    it('promoteOfficer rejects when stat requirements not met', () => {
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '文官', leadership: 40, war: 30, intelligence: 60, politics: 80, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 170, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      // Low intelligence → can't be advisor
+      useGameStore.getState().promoteOfficer(3, 'advisor');
+      expect(useGameStore.getState().officers.find(o => o.id === 3)!.rank).toBe('common');
+      // Low leadership and war → can't be general
+      useGameStore.getState().promoteOfficer(3, 'general');
+      expect(useGameStore.getState().officers.find(o => o.id === 3)!.rank).toBe('common');
+      // Low leadership → can't be viceroy
+      useGameStore.getState().promoteOfficer(3, 'viceroy');
+      expect(useGameStore.getState().officers.find(o => o.id === 3)!.rank).toBe('common');
+    });
+
+    it('promoteOfficer allows promotion when eligible and slot available', () => {
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 3, name: '張遼', leadership: 90, war: 92, intelligence: 80, politics: 75, charisma: 85,
+            skills: [] as RTK4Skill[], portraitId: 3, birthYear: 160, deathYear: 230, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
+      // Leadership 90 >= 70 → eligible for general
+      useGameStore.getState().promoteOfficer(3, 'general');
+      expect(useGameStore.getState().officers.find(o => o.id === 3)!.rank).toBe('general');
     });
   });
 });

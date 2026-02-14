@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { localizedName } from '../../i18n/dataNames';
-import type { CommandCategory } from '../../types';
+import type { CommandCategory, OfficerRank } from '../../types';
 import { FormationDialog } from '../FormationDialog';
 import { TransportDialog } from '../TransportDialog';
 import { OfficerSelectionOverlay } from '../OfficerSelectionOverlay';
 import { hasSkill } from '../../utils/skills';
+import { meetsRankRequirements, hasRankSlot } from '../../utils/officers';
 
 const categories: CommandCategory[] = ['domestic', 'military', 'personnel', 'diplomacy', 'strategy', 'end'];
 
@@ -29,6 +30,7 @@ export function CommandMenu() {
     title: string;
     onSelect: (officerId: number) => void;
   } | null>(null);
+  const [draftAmount, setDraftAmount] = useState<number>(0);
 
   const city = cities.find(c => c.id === selectedCityId);
   const isOwnCity = city?.factionId === playerFaction?.id;
@@ -39,10 +41,7 @@ export function CommandMenu() {
       endTurn();
       return;
     }
-    if (!isOwnCity) {
-      addLog(t('command.notYourCity'));
-      return;
-    }
+    if (!isOwnCity) return;
     setActiveCommandCategory(cat === activeCommandCategory ? null : cat);
   };
 
@@ -80,15 +79,19 @@ export function CommandMenu() {
   return (
     <div className="command-menu">
       <div className="command-categories">
-        {categories.map(cat => (
+        {categories.map(cat => {
+          const disabled = cat !== 'end' && !isOwnCity;
+          return (
           <button
             key={cat}
             className={`btn btn-cmd ${activeCommandCategory === cat ? 'active' : ''}`}
             onClick={() => handleCategory(cat)}
+            disabled={disabled}
           >
             {t(`command.category.${cat}`)}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {activeCommandCategory && isOwnCity && city && (
@@ -125,8 +128,64 @@ export function CommandMenu() {
 
           {activeCommandCategory === 'military' && (
             <>
-              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.draft1000'), (oid) => draftTroops(city.id, 1000, oid))}>{t('command.military.draft1000')}</button>
-              <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.draft5000'), (oid) => draftTroops(city.id, 5000, oid))}>{t('command.military.draft5000')}</button>
+              {(() => {
+                const maxDraft = Math.floor(city.population * 0.1);
+                const troopCap = Math.floor(city.population * 0.12);
+                const room = Math.max(0, troopCap - city.troops);
+                const maxAllowed = Math.min(maxDraft, room);
+                const goldMax = Math.floor(city.gold / 2);
+                const foodMax = Math.floor(city.food / 3);
+                const effectiveMax = Math.max(0, Math.min(maxAllowed, goldMax, foodMax));
+                const atCap = room <= 0;
+                const goldCost = draftAmount * 2;
+                const foodCost = draftAmount * 3;
+                return (
+                  <div className="sub-menu">
+                    <h5>{t('command.military.draft')}</h5>
+                    <div style={{ fontSize: '0.75em', color: '#999', marginBottom: '4px' }}>
+                      {t('command.military.draftCapInfo', { cap: troopCap.toLocaleString(), current: city.troops.toLocaleString(), room: room.toLocaleString() })}
+                    </div>
+                    {atCap ? (
+                      <div style={{ fontSize: '0.85em', color: '#ff6b6b' }}>{t('command.military.draftAtCap')}</div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={effectiveMax}
+                            step={1000}
+                            value={draftAmount}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              setDraftAmount(isNaN(v) ? 0 : Math.max(0, Math.min(v, effectiveMax)));
+                            }}
+                            className="draft-input"
+                          />
+                          <button className="btn-tiny" onClick={() => setDraftAmount(effectiveMax)}>
+                            {t('command.military.draftMax')}
+                          </button>
+                        </div>
+                        <div style={{ fontSize: '0.7em', color: '#888', margin: '3px 0' }}>
+                          {t('command.military.draftCost')}
+                          {draftAmount > 0 && ` → ${goldCost.toLocaleString()}${t('city.gold')} ${foodCost.toLocaleString()}${t('city.food')}`}
+                        </div>
+                        <button
+                          className="btn btn-action"
+                          disabled={draftAmount <= 0}
+                          onClick={() => {
+                            const amount = draftAmount;
+                            executeWithOfficer(t('command.action.draft'), (oid) => draftTroops(city.id, amount, oid));
+                            setDraftAmount(0);
+                          }}
+                        >
+                          {t('command.military.draftConfirm')}{draftAmount > 0 ? ` ${draftAmount.toLocaleString()}` : ''}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
               
               <div className="sub-menu">
                 <h5>{t('command.military.transport')}</h5>
@@ -193,19 +252,48 @@ export function CommandMenu() {
               <div className="sub-menu">
                 <h5>{t('command.personnel.appointTransfer')}</h5>
                 <div className="scroll-box">
-                  {ownOfficers.map(o => (
+                  {ownOfficers.map(o => {
+                    const isRuler = o.id === playerFaction?.rulerId;
+                    const isAdvisor = o.id === playerFaction?.advisorId;
+                    const isGovernor = o.isGovernor;
+                    // RTK IV R-001: ruler is always governor in their city — no other governor can be appointed
+                    const rulerInCity = ownOfficers.some(off => off.id === playerFaction?.rulerId);
+                    return (
                     <div key={o.id} className="officer-row">
                       <span>{localizedName(o.name)}</span>
                       <div className="btn-group">
-                        {!o.isGovernor && <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>{t('command.personnel.appointGovernor')}</button>}
-                        <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>{t('command.personnel.appointAdvisor')}</button>
-                        <select className="select-tiny" value={o.rank} onChange={(e) => promoteOfficer(o.id, e.target.value as import('../../types').OfficerRank)}>
-                           <option value="common">{t('data:rank.common')}</option>
-                           <option value="attendant">{t('data:rank.attendant')}</option>
-                           <option value="advisor">{t('data:rank.advisor')}</option>
-                           <option value="general">{t('data:rank.general')}</option>
-                           <option value="viceroy">{t('data:rank.viceroy')}</option>
-                        </select>
+                        {isRuler ? (
+                          <>
+                            <span className="ruler-badge">{t('command.personnel.rulerLabel')}</span>
+                            <span className="role-badge governor">{t('command.personnel.appointGovernor')}</span>
+                          </>
+                        ) : (
+                          <>
+                            {rulerInCity
+                              ? null  /* Can't appoint governor when ruler is in city */
+                              : isGovernor
+                                ? <span className="role-badge governor">{t('command.personnel.appointGovernor')}</span>
+                                : <button className="btn-tiny" onClick={() => appointGovernor(city.id, o.id)}>{t('command.personnel.appointGovernor')}</button>
+                            }
+                            {isAdvisor
+                              ? <span className="role-badge advisor">{t('command.personnel.appointAdvisor')}</span>
+                              : <button className="btn-tiny" onClick={() => appointAdvisor(o.id)}>{t('command.personnel.appointAdvisor')}</button>
+                            }
+                            <select className="select-tiny" value={o.rank} onChange={(e) => promoteOfficer(o.id, e.target.value as OfficerRank)}>
+                               {(['common', 'attendant', 'advisor', 'general', 'viceroy'] as OfficerRank[]).map(rank => {
+                                 const factionCityCount = cities.filter(c => c.factionId === playerFaction?.id).length;
+                                 const eligible = meetsRankRequirements(o, rank);
+                                 const slotOpen = hasRankSlot(rank, playerFaction?.id ?? 0, officers, factionCityCount, o.id);
+                                 const disabled = !eligible || !slotOpen;
+                                 return (
+                                   <option key={rank} value={rank} disabled={disabled}>
+                                     {t(`data:rank.${rank}`)}{disabled && rank !== o.rank ? ' ✕' : ''}
+                                   </option>
+                                 );
+                               })}
+                            </select>
+                          </>
+                        )}
                         <select className="select-tiny" onChange={(e) => {
                           if (!e.target.value) return;
                           transferOfficer(o.id, parseInt(e.target.value));
@@ -219,10 +307,11 @@ export function CommandMenu() {
                               return null;
                            })}
                         </select>
-                        {o.id !== playerFaction?.rulerId && <button className="btn-tiny btn-danger" onClick={() => dismissOfficer(o.id)}>{t('command.personnel.dismiss')}</button>}
+                        {!isRuler && <button className="btn-tiny btn-danger" onClick={() => dismissOfficer(o.id)}>{t('command.personnel.dismiss')}</button>}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -321,10 +410,16 @@ export function CommandMenu() {
         .btn-tiny:hover { background: #555; }
         .active-tax { background: #2a6a4a !important; border-color: #4a8a6a !important; }
         .btn-tiny:disabled { opacity: 0.4; cursor: not-allowed; }
+        .draft-input { width: 80px; background: #222; color: #eee; border: 1px solid #666; padding: 3px 6px; font-size: 0.85em; border-radius: 2px; }
         .btn-danger { color: #ff6b6b; border-color: #633; }
-        .scroll-box { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
-        .officer-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; border-bottom: 1px solid #333; font-size: 0.9em; }
+        .scroll-box { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+        .officer-row { display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #333; font-size: 0.9em; flex-wrap: wrap; gap: 2px; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
         .select-tiny { font-size: 0.75em; background: #333; color: #eee; border: 1px solid #666; }
+        .ruler-badge { font-size: 0.75em; padding: 2px 6px; background: #8b6914; color: #ffd700; border: 1px solid #ffd700; border-radius: 2px; font-weight: bold; }
+        .role-badge { font-size: 0.75em; padding: 2px 6px; border-radius: 2px; font-weight: bold; }
+        .role-badge.governor { background: #2a5a2a; color: #6fbf6f; border: 1px solid #6fbf6f; }
+        .role-badge.advisor { background: #2a3a5a; color: #6f9fbf; border: 1px solid #6f9fbf; }
         .diplomacy-list, .strategy-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
         .faction-item, .strategy-city-item { background: rgba(0,0,0,0.2); padding: 6px; border-radius: 4px; }
         .faction-header, .strategy-city-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }

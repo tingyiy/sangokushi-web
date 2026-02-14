@@ -214,6 +214,13 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
+      // Must leave at least one officer in the source city — otherwise it becomes unoccupied
+      const allCityOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+      if (attackerOfficers.length >= allCityOfficers.length) {
+        get().addLog(i18next.t('logs:error.mustLeaveOfficer'));
+        return;
+      }
+
       // Calculate actual troop allocation per officer (capped by rank-based MaxTroops)
       const playerTroops = state.battleFormation?.troops;
       const attackerRulerId = state.playerFaction?.rulerId;
@@ -294,7 +301,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         // Auto-assign governor for the source city if the governor left
         {
           const officers = get().officers.slice();
-          const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id);
+          const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id, state.factions);
           if (promoted) set({ officers });
         }
         get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
@@ -368,7 +375,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       const availableOfficers = state.officers.filter(o => o.cityId === city.id && o.factionId === city.factionId).sort((a, b) => b.leadership - a.leadership);
       if (availableOfficers.length === 0) return;
 
-      const attackerOfficers = availableOfficers.slice(0, 5);
+      // Must leave at least one officer to defend the source city
+      const maxToSend = Math.min(5, availableOfficers.length - 1);
+      if (maxToSend <= 0) return;
+      const attackerOfficers = availableOfficers.slice(0, maxToSend);
 
       // Select unit types based on officer skills and available resources
       let crossbowsAvailable = city.crossbows;
@@ -686,7 +696,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       for (const fid of affectedFactionIds) {
         const factionCities = updatedCities.filter(c => c.factionId === fid);
         for (const fc of factionCities) {
-          autoAssignGovernorInPlace(updatedOfficers, fc.id, fid);
+          autoAssignGovernorInPlace(updatedOfficers, fc.id, fid, get().factions);
         }
       }
 

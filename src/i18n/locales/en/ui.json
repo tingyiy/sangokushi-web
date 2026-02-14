@@ -85,7 +85,9 @@
     "catapults": "Catapults",
     "officers": "Officers",
     "governorBadge": "Gov.",
-    "unaffiliatedOfficers": "Free Officers"
+    "unaffiliatedOfficers": "Free Officers",
+    "actedYes": "Acted",
+    "actedNo": "Ready"
   },
   "stat": {
     "leadership": "Ldr",
@@ -123,7 +125,7 @@
       "strategy": "Strategy",
       "end": "End Turn"
     },
-    "notYourCity": "This is not your city.",
+    "notYourCity": "{{city}} is not your city.",
     "noOfficersAvailable": "No officers available in this city.",
     "officerExecute": "{{name}} performed \"{{action}}\".",
     "domestic": {
@@ -157,11 +159,16 @@
       "manufactureCatapults": "Mfg. Catapults",
       "disasterRelief": "Disaster Relief",
       "draft1000": "Draft 1000",
-      "draft5000": "Draft 5000"
+      "draft5000": "Draft 5000",
+      "draft": "Draft"
     },
     "military": {
-      "draft1000": "Draft 1000",
-      "draft5000": "Draft 5000",
+      "draft": "Draft",
+      "draftMax": "Max",
+      "draftCost": "(2g + 3f per troop)",
+      "draftConfirm": "Draft",
+      "draftCapInfo": "Cap {{cap}} / Current {{current}} / Room {{room}}",
+      "draftAtCap": "Garrison at capacity",
       "transport": "Transport",
       "transportTo": "To {{cityName}}",
       "attack": "Attack",
@@ -179,7 +186,8 @@
       "appointGovernor": "Governor",
       "appointAdvisor": "Advisor",
       "transfer": "Transfer",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "rulerLabel": "Ruler"
     },
     "diplomacy": {
       "hostility": "Hostility: {{value}}",

@@ -135,7 +135,7 @@ export function CityPanel() {
 function OfficerRow({ officer: o, isOwn, t, unaffiliated }: {
   officer: OfficerView;
   isOwn: boolean;
-  t: (key: string) => string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
   unaffiliated?: boolean;
 }) {
   return (
@@ -147,6 +147,7 @@ function OfficerRow({ officer: o, isOwn, t, unaffiliated }: {
         className="officer-portrait"
       />
       <span className="officer-name">
+        {o.isRuler && <span className="ruler-badge">{t('command.personnel.rulerLabel')}</span>}
         {o.isGovernor && <span className="governor-badge">{t('city.governorBadge')}</span>}
         {localizedName(o.name)}
       </span>
@@ -154,18 +155,18 @@ function OfficerRow({ officer: o, isOwn, t, unaffiliated }: {
         {t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war} {t('stat.intelligence')}{o.intelligence} {t('stat.politics')}{o.politics} {t('stat.charisma')}{o.charisma}
       </span>
       <span className="officer-skills">
-        {o.skills.slice(0, 3).join('\u00B7')}
+        {o.skills.slice(0, 3).map(s => t(`data:skill.${s}`)).join('\u00B7')}
         {o.skills.length > 3 && `+${o.skills.length - 3}`}
       </span>
       {o.treasureId !== null && (
         <span className="officer-treasure">
-          {treasures.find(t => t.id === o.treasureId)?.name}
+          {localizedName(treasures.find(tr => tr.id === o.treasureId)?.name ?? '')}
         </span>
       )}
       {isOwn && o.acted !== null && (
         <>
           <span className="officer-loyalty">{t('stat.loyalty')}{o.loyalty}</span>
-          <span className="officer-stamina" style={{ color: o.acted ? '#ff6b6b' : '#4ade80' }}>{o.acted ? '行×' : '行未'}</span>
+          <span className="officer-stamina" style={{ color: o.acted ? '#ff6b6b' : '#4ade80' }}>{o.acted ? t('city.actedYes') : t('city.actedNo')}</span>
         </>
       )}
     </div>

@@ -32,6 +32,7 @@
     "noOfficerForSurrender": "No officer available for surrender negotiation.",
     "officerNotFound": "Officer not found.",
     "noCommanders": "No commanders available to lead troops.",
+    "mustLeaveOfficer": "At least one officer must remain to defend the city.",
     "noCityOfficers": "No officers in the city!",
     "noEnemyNearby": "No enemies nearby.",
     "emptyCityDuel": "{{city}} is an empty city.",
@@ -58,7 +59,9 @@
     "noSkillEspionage": "{{name}} does not have the Espionage skill.",
     "noSkillIntelligence": "{{name}} does not have the Intelligence skill.",
     "alreadyHostage": "{{name}} is already a hostage.",
-    "alreadyAllied": "We are already allied with {{faction}}."
+    "alreadyAllied": "We are already allied with {{faction}}.",
+    "rankRequirementsNotMet": "{{name}} does not meet the requirements for {{rank}}.",
+    "rankSlotFull": "No more {{rank}} slots available."
   },
   "domestic": {
     "taxRateChanged": "{{city}} tax rate changed to {{rate}}.",

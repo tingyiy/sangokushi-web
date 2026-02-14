@@ -259,7 +259,7 @@ const BattleScreen: React.FC = () => {
                     return (
                       <button key={tactic} onClick={() => handleTactic(tactic)}
                         className="tactic-btn" title={t('battle:tactic.successRate', { rate: Math.round(chance) })}>
-                        {tactic}<br /><span style={{ fontSize: '0.65rem', color: '#aaa' }}>{Math.round(chance)}%</span>
+                        {t(`data:skill.${tactic}`)}<br /><span style={{ fontSize: '0.65rem', color: '#aaa' }}>{Math.round(chance)}%</span>
                       </button>
                     );
                   })}

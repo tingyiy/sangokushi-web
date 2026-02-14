@@ -85,5 +85,14 @@
     "low": "Low (5%)",
     "medium": "Medium (10%)",
     "high": "High (15%)"
+  },
+  "affiliation": {
+    "pow": "POW",
+    "unaffiliated": "Unaffiliated"
+  },
+  "relationship": {
+    "father": "Father",
+    "spouse": "Spouse",
+    "sworn": "Sworn Brother"
   }
 }

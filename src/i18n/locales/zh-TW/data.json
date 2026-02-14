@@ -85,5 +85,14 @@
     "low": "低 (5%)",
     "medium": "中 (10%)",
     "high": "高 (15%)"
+  },
+  "affiliation": {
+    "pow": "俘虜",
+    "unaffiliated": "在野"
+  },
+  "relationship": {
+    "father": "父",
+    "spouse": "配偶",
+    "sworn": "義兄弟"
   }
 }

@@ -139,4 +139,135 @@ describe('CommandMenu', () => {
     }
     expect(mockDevelopCommerce).toHaveBeenCalledWith(1, 1);
   });
+
+  describe('Personnel UI: ruler/governor/advisor rendering', () => {
+    function renderPersonnel(overrides: Record<string, unknown> = {}) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'personnel',
+        selectedCityId: 1,
+        playerFaction: { id: 1, rulerId: 100, advisorId: 200, allies: [], relations: {} },
+        officers: [
+          { id: 100, name: '劉備', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 100, rank: 'viceroy', skills: [] },
+          { id: 200, name: '諸葛亮', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 100, rank: 'advisor', skills: [] },
+          { id: 300, name: '關羽', cityId: 1, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'general', skills: [] },
+          { id: 400, name: '張飛', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 90, rank: 'common', skills: [] },
+        ],
+        factions: [
+          { id: 1, name: '劉備', rulerId: 100, advisorId: 200, color: '#16a34a', relations: {}, allies: [] },
+        ],
+        ...overrides,
+      });
+      return render(<CommandMenu />);
+    }
+
+    it('ruler shows ruler badge AND governor badge, not other controls', () => {
+      renderPersonnel();
+      const rulerRow = screen.getByText('劉備').closest('.officer-row');
+      expect(rulerRow).toBeTruthy();
+      // Ruler badge should be present
+      expect(screen.getByText('command.personnel.rulerLabel')).toBeDefined();
+      // R-001: ruler IS the governor — governor badge should also appear
+      const govBadges = rulerRow!.querySelectorAll('.role-badge.governor');
+      expect(govBadges.length).toBe(1);
+      // No governor/advisor buttons in ruler row
+      const buttons = rulerRow!.querySelectorAll('button');
+      const btnTexts = Array.from(buttons).map(b => b.textContent);
+      expect(btnTexts).not.toContain('command.personnel.appointGovernor');
+      expect(btnTexts).not.toContain('command.personnel.appointAdvisor');
+      // No rank select in ruler row
+      const selects = rulerRow!.querySelectorAll('select');
+      // Only the transfer select should be present
+      expect(selects.length).toBe(1);
+      // No dismiss button for ruler
+      expect(btnTexts).not.toContain('command.personnel.dismiss');
+    });
+
+    it('R-001: no governor button for non-ruler officers when ruler is in city', () => {
+      renderPersonnel(); // ruler (id 100) is in city 1
+      // 張飛 is a regular officer in the same city as the ruler
+      const regularRow = screen.getByText('張飛').closest('.officer-row');
+      expect(regularRow).toBeTruthy();
+      const buttons = regularRow!.querySelectorAll('button');
+      const btnTexts = Array.from(buttons).map(b => b.textContent);
+      // Cannot appoint governor when ruler is in city
+      expect(btnTexts).not.toContain('command.personnel.appointGovernor');
+      // Should still have advisor button
+      expect(btnTexts).toContain('command.personnel.appointAdvisor');
+    });
+
+    it('governor shows governor badge instead of governor button', () => {
+      // Test in a city WITHOUT the ruler so governor badge/button logic applies
+      renderPersonnel({
+        playerFaction: { id: 1, rulerId: 100, advisorId: 200, allies: [], relations: {} },
+        officers: [
+          { id: 100, name: '劉備', cityId: 99, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'viceroy', skills: [] },
+          { id: 200, name: '諸葛亮', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 100, rank: 'advisor', skills: [] },
+          { id: 300, name: '關羽', cityId: 1, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'general', skills: [] },
+          { id: 400, name: '張飛', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 90, rank: 'common', skills: [] },
+        ],
+      });
+      const govRow = screen.getByText('關羽').closest('.officer-row');
+      expect(govRow).toBeTruthy();
+      // Should have a governor badge (span with role-badge class)
+      const badges = govRow!.querySelectorAll('.role-badge.governor');
+      expect(badges.length).toBe(1);
+      // Should NOT have a governor button
+      const buttons = govRow!.querySelectorAll('button');
+      const btnTexts = Array.from(buttons).map(b => b.textContent);
+      expect(btnTexts).not.toContain('command.personnel.appointGovernor');
+      // Should still have advisor button (關羽 is not the advisor)
+      expect(btnTexts).toContain('command.personnel.appointAdvisor');
+    });
+
+    it('advisor shows advisor badge instead of advisor button', () => {
+      // Test in a city WITHOUT the ruler so governor button logic applies
+      renderPersonnel({
+        playerFaction: { id: 1, rulerId: 100, advisorId: 200, allies: [], relations: {} },
+        officers: [
+          { id: 100, name: '劉備', cityId: 99, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'viceroy', skills: [] },
+          { id: 200, name: '諸葛亮', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 100, rank: 'advisor', skills: [] },
+          { id: 300, name: '關羽', cityId: 1, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'general', skills: [] },
+          { id: 400, name: '張飛', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 90, rank: 'common', skills: [] },
+        ],
+      });
+      const advisorRow = screen.getByText('諸葛亮').closest('.officer-row');
+      expect(advisorRow).toBeTruthy();
+      // Should have an advisor badge
+      const badges = advisorRow!.querySelectorAll('.role-badge.advisor');
+      expect(badges.length).toBe(1);
+      // Should NOT have advisor button
+      const buttons = advisorRow!.querySelectorAll('button');
+      const btnTexts = Array.from(buttons).map(b => b.textContent);
+      expect(btnTexts).not.toContain('command.personnel.appointAdvisor');
+      // Should still have governor button (諸葛亮 is not governor, ruler not in this city)
+      expect(btnTexts).toContain('command.personnel.appointGovernor');
+    });
+
+    it('regular officer shows both governor and advisor buttons', () => {
+      // Test in a city WITHOUT the ruler so governor button appears
+      renderPersonnel({
+        playerFaction: { id: 1, rulerId: 100, advisorId: 200, allies: [], relations: {} },
+        officers: [
+          { id: 100, name: '劉備', cityId: 99, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'viceroy', skills: [] },
+          { id: 200, name: '諸葛亮', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 100, rank: 'advisor', skills: [] },
+          { id: 300, name: '關羽', cityId: 1, factionId: 1, isGovernor: true, acted: false, loyalty: 100, rank: 'general', skills: [] },
+          { id: 400, name: '張飛', cityId: 1, factionId: 1, isGovernor: false, acted: false, loyalty: 90, rank: 'common', skills: [] },
+        ],
+      });
+      const regularRow = screen.getByText('張飛').closest('.officer-row');
+      expect(regularRow).toBeTruthy();
+      const buttons = regularRow!.querySelectorAll('button');
+      const btnTexts = Array.from(buttons).map(b => b.textContent);
+      expect(btnTexts).toContain('command.personnel.appointGovernor');
+      expect(btnTexts).toContain('command.personnel.appointAdvisor');
+      // Should have dismiss button
+      expect(btnTexts).toContain('command.personnel.dismiss');
+      // Should have rank select + transfer select = 2 selects
+      const selects = regularRow!.querySelectorAll('select');
+      expect(selects.length).toBe(2);
+    });
+  });
 });

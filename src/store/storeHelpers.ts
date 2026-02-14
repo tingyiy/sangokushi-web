@@ -1,12 +1,23 @@
-import type { Officer, City } from '../types';
+import type { Officer, City, Faction } from '../types';
 
 /**
- * Auto-assign the best available officer as governor for a city that has none.
+ * Auto-assign a governor for a city that has none.
+ * RTK IV rule: if the ruler is present in the city, they ARE the governor.
+ * Otherwise picks the best officer by politics + leadership.
  * Mutates the officers array in-place and returns the promoted officer (or null).
  */
-export function autoAssignGovernorInPlace(officers: Officer[], cityId: number, factionId: number): Officer | null {
+export function autoAssignGovernorInPlace(officers: Officer[], cityId: number, factionId: number, factions?: Faction[]): Officer | null {
   const hasGov = officers.some(o => o.cityId === cityId && o.factionId === factionId && o.isGovernor);
   if (hasGov) return null;
+  const rulerId = factions?.find(f => f.id === factionId)?.rulerId;
+  // RTK IV: ruler present in city → ruler is the governor
+  if (rulerId != null) {
+    const rulerIdx = officers.findIndex(o => o.id === rulerId && o.cityId === cityId && o.factionId === factionId);
+    if (rulerIdx >= 0) {
+      officers[rulerIdx] = { ...officers[rulerIdx], isGovernor: true };
+      return officers[rulerIdx];
+    }
+  }
   const candidates = officers
     .filter(o => o.cityId === cityId && o.factionId === factionId)
     .sort((a, b) => (b.politics + b.leadership) - (a.politics + a.leadership));

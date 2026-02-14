@@ -84,8 +84,68 @@ npm run dev       # Start dev server at http://localhost:5173
 | `npm run coverage` | Generate test coverage report |
 | `npm run lint` | Run ESLint |
 | `npm run preview` | Preview production build |
+| `npm run cli -- [options]` | Run the CLI game (see below) |
 
-## Project Structure
+## CLI (Terminal Edition) / 終端版
+
+The game can be played entirely from the terminal without a browser. The CLI uses the same Zustand game engine as the browser UI.
+
+本遊戲也可完全在終端中遊玩，無需瀏覽器。CLI 使用與瀏覽器 UI 相同的 Zustand 遊戲引擎。
+
+### Modes / 模式
+
+| Mode | Description |
+|------|-------------|
+| **Interactive** (default) | Full campaign with readline prompts / 完整戰役模式 |
+| **Single battle** (`--attack`) | Auto-play one battle and exit / 自動執行單場戰鬥後退出 |
+| **Exec mode** (`--exec`) | Non-interactive, for scripts and AI agents / 非互動模式，供腳本或 AI 使用 |
+
+### Quick Start / 快速開始
+
+```bash
+# Interactive campaign (default: scenario 0, English)
+npm run cli -- --scenario 0 --faction 袁紹
+
+# Traditional Chinese
+npm run cli -- --scenario 0 --faction 袁紹 --lang zh-TW
+
+# Single battle mode
+npm run cli -- --scenario 0 --faction 曹操 --attack 濮陽
+
+# Exec mode (non-interactive, for scripts/agents)
+npx tsx src/cli/play.ts --scenario 0 --faction 袁紹 --savefile /tmp/g.json --exec "status"
+npx tsx src/cli/play.ts --savefile /tmp/g.json --exec "commerce 鄴; end; status"
+```
+
+### Options / 選項
+
+| Option | Description |
+|--------|-------------|
+| `--help` | Show help message |
+| `--scenario <n>` | Scenario index 0-5 (default: 0) |
+| `--faction <name\|id>` | Faction to play (e.g. `袁紹` or `5`) |
+| `--lang <zh-TW\|en>` | Language (default: `en`). Also respects `LANG_RTK` env var |
+| `--attack <city>` | Single-battle mode: auto-attack then exit |
+| `--savefile <path>` | JSON state file for exec mode persistence |
+| `--exec "<cmds>"` | Run semicolon-delimited commands then exit |
+
+### In-Game Commands / 遊戲指令
+
+Type `help` in-game for the full command list. Summary:
+
+| Category | Commands |
+|----------|----------|
+| **Query** | `status`, `world`, `city <name>`, `officer <name>`, `officers`, `factions`, `log` |
+| **Domestic** | `commerce`, `agriculture`, `defense`, `train`, `technology`, `flood`, `manufacture`, `relief`, `tax` |
+| **Personnel** | `recruit`, `recruitpow`, `search`, `reward`, `governor`, `advisor`, `promote`, `transfer`, `execute`, `dismiss` |
+| **Military** | `draft`, `attack`, `transport`, `retreat` |
+| **Diplomacy** | `relations`, `alliance`, `breakalliance`, `jointattack`, `ceasefire`, `surrender`, `hostage` |
+| **Strategy** | `spy`, `intel`, `rumor`, `arson`, `rebel`, `counter` |
+| **Turn** | `end`, `help`, `quit` |
+
+Officers are identified by **name** in all commands (e.g. `recruit 趙雲`, `transport 鄴 濮陽 officer=張遼`). The `attack` command also accepts comma-separated names or 1-based indices for multiple officers (e.g. `attack 平原 張遼,關羽 i,c`).
+
+---
 
 ```
 src/
@@ -118,6 +178,7 @@ The game supports **Traditional Chinese (繁體中文)** and **English**.
 - [AGENTS.md](./AGENTS.md) -- Guidelines for AI coding assistants / AI 程式助手指引
 - [GEMINI.md](./GEMINI.md) -- Project overview for Gemini / 專案概述（Gemini 用）
 - [BrowserAPI.md](./BrowserAPI.md) -- Client-side game automation API (`window.rtk`) / 客戶端遊戲自動化 API
+- **CLI:** See the [CLI section](#cli-terminal-edition--終端版) above, or run `npm run cli -- --help` / CLI 說明請見上方段落，或執行 `npm run cli -- --help`
 
 ## License / 授權聲明
 

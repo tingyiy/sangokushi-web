@@ -453,6 +453,17 @@
   font-weight: normal;
 }
 
+.ruler-badge {
+  background: #8b6914;
+  color: #ffd700;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid #ffd700;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+  font-weight: bold;
+}
+
 .officer-stats {
   color: #9ca3af;
   font-size: 0.75rem;
@@ -495,6 +506,12 @@
   background: #5a3a1a;
   border-color: #c4a44a;
   color: #fbbf24;
+}
+
+.btn-cmd:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #6a7a6a;
 }
 
 .command-actions {

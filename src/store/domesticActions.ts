@@ -2,6 +2,7 @@ import i18next from 'i18next';
 import { localizedName } from '../i18n/dataNames';
 import type { GameState } from './gameStore';
 import { hasSkill } from '../utils/skills';
+import { meetsRankRequirements, hasRankSlot } from '../utils/officers';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
@@ -13,31 +14,52 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
 > {
   return {
     setTaxRate: (cityId: number, rate: 'low' | 'medium' | 'high') => {
-      set(state => ({
+      const state = get();
+      const targetCity = state.cities.find(c => c.id === cityId);
+      if (!targetCity || targetCity.factionId !== state.playerFaction?.id) return;
+      set({
         cities: state.cities.map(c => c.id === cityId ? { ...c, taxRate: rate } : c)
-      }));
-      const city = get().cities.find(c => c.id === cityId);
+      });
       const rateText = i18next.t(`data:taxRate.${rate}`);
-      get().addLog(i18next.t('logs:domestic.taxRateChanged', { city: localizedName(city?.name ?? ''), rate: rateText }));
+      get().addLog(i18next.t('logs:domestic.taxRateChanged', { city: localizedName(targetCity.name), rate: rateText }));
     },
 
     promoteOfficer: (officerId: number, rank: import('../types').OfficerRank) => {
-      set(state => ({
+      const state = get();
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!officer || officer.factionId !== state.playerFaction?.id) return;
+      // Rulers cannot have their rank changed — they are always 'viceroy'
+      const faction = state.factions.find(f => f.id === officer.factionId);
+      if (faction && faction.rulerId === officerId) return;
+      // Governor rank is auto-assigned only, not manually promotable
+      if (rank === 'governor') return;
+      // R-006: Check stat eligibility
+      if (!meetsRankRequirements(officer, rank)) {
+        get().addLog(i18next.t('logs:error.rankRequirementsNotMet', { name: localizedName(officer.name), rank: i18next.t(`data:rank.${rank}`) }));
+        return;
+      }
+      // R-006: Check faction slot limits
+      const factionCityCount = state.cities.filter(c => c.factionId === officer.factionId).length;
+      if (!hasRankSlot(rank, officer.factionId!, state.officers, factionCityCount, officer.id)) {
+        get().addLog(i18next.t('logs:error.rankSlotFull', { rank: i18next.t(`data:rank.${rank}`) }));
+        return;
+      }
+      set({
         officers: state.officers.map(o => o.id === officerId ? { ...o, rank } : o)
-      }));
-      const officer = get().officers.find(o => o.id === officerId);
-      get().addLog(i18next.t('logs:domestic.promoted', { name: localizedName(officer?.name ?? ''), rank: i18next.t(`data:rank.${rank}`) }));
+      });
+      get().addLog(i18next.t('logs:domestic.promoted', { name: localizedName(officer.name), rank: i18next.t(`data:rank.${rank}`) }));
     },
 
     developCommerce: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developCommerce_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developCommerce_action'), required: 500, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -68,12 +90,13 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     developAgriculture: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developAgriculture_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developAgriculture_action'), required: 500, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -104,12 +127,13 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     reinforceDefense: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 300) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.reinforceDefense_action'), required: 300, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 300) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.reinforceDefense_action'), required: 300, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -139,12 +163,13 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     developFloodControl: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 500) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developFlood_action'), required: 500, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developFlood_action'), required: 500, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -175,12 +200,13 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     developTechnology: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 800) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developTech_action'), required: 800, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 800) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.developTech_action'), required: 800, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -211,8 +237,9 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     trainTroops: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.food < 500) {
-        if (city) get().addLog(i18next.t('logs:error.foodInsufficient', { required: 500, current: city.food }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.food < 500) {
+        get().addLog(i18next.t('logs:error.foodInsufficient', { required: 500, current: city.food }));
         return;
       }
       if (city.troops <= 0) {
@@ -220,7 +247,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -256,12 +283,13 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     manufacture: (cityId, weaponType, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 1000) {
-        if (city) get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.manufacture_action'), required: 1000, current: city.gold }));
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 1000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.manufacture_action'), required: 1000, current: city.gold }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 
@@ -305,17 +333,16 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
     disasterRelief: (cityId, officerId) => {
       const state = get();
       const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.gold < 500 || city.food < 1000) {
-        if (city) {
-          const shortages: string[] = [];
-          if (city.gold < 500) shortages.push(`金 需 500（現有 ${city.gold}）`);
-          if (city.food < 1000) shortages.push(`糧 需 1000（現有 ${city.food}）`);
-          get().addLog(i18next.t('logs:error.resourceInsufficient', { action: i18next.t('logs:domestic.relief_action'), details: shortages.join(i18next.t('logs:common.comma')) }));
-        }
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 500 || city.food < 1000) {
+        const shortages: string[] = [];
+        if (city.gold < 500) shortages.push(`金 需 500（現有 ${city.gold}）`);
+        if (city.food < 1000) shortages.push(`糧 需 1000（現有 ${city.food}）`);
+        get().addLog(i18next.t('logs:error.resourceInsufficient', { action: i18next.t('logs:domestic.relief_action'), details: shortages.join(i18next.t('logs:common.comma')) }));
         return;
       }
       const executor = officerId
-        ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+        ? state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id)
         : state.officers.find(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && o.isGovernor && !o.acted)
           || state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted).sort((a, b) => b.politics - a.politics)[0];
 

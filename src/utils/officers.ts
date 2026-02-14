@@ -99,3 +99,88 @@ export function getMentalStats(officer: Officer): number {
   const stats = getEffectiveStats(officer);
   return stats.intelligence + stats.politics;
 }
+
+// ---------------------------------------------------------------------------
+// Rank Slot Limits & Eligibility (R-006)
+// ---------------------------------------------------------------------------
+
+/**
+ * RTK IV–inspired rank slot limits per faction.
+ * - advisor (軍師):   1 per faction
+ * - viceroy (都督):   ceil(cities / 4), min 1
+ * - governor (太守):  auto-assigned, not manually promotable
+ * - general (將軍):   cities × 2
+ * - attendant (侍中): cities
+ * - common (一般):    unlimited
+ */
+export function getRankSlots(factionCityCount: number): Record<OfficerRank, number | null> {
+  return {
+    advisor:   1,
+    viceroy:   Math.max(1, Math.ceil(factionCityCount / 4)),
+    governor:  0,  // auto-assigned only, not promotable
+    general:   factionCityCount * 2,
+    attendant: factionCityCount,
+    common:    null,  // unlimited
+  };
+}
+
+/**
+ * Stat requirements for promotion to a given rank.
+ * Returns null if no stat requirements (common, attendant, governor).
+ */
+export function getRankRequirements(rank: OfficerRank): { stat: string; field: keyof Officer; threshold: number }[] | null {
+  switch (rank) {
+    case 'advisor':
+      return [{ stat: 'intelligence', field: 'intelligence', threshold: 90 }];
+    case 'viceroy':
+      return [
+        { stat: 'leadership', field: 'leadership', threshold: 85 },
+      ];
+    case 'general':
+      return [{ stat: 'leadership_or_war', field: 'leadership', threshold: 70 }]; // special: leadership >= 70 OR war >= 75
+    default:
+      return null;
+  }
+}
+
+/**
+ * Check if an officer meets the stat requirements for a rank.
+ */
+export function meetsRankRequirements(officer: Officer, rank: OfficerRank): boolean {
+  if (rank === 'general') {
+    // Special: leadership >= 70 OR war >= 75
+    const stats = getEffectiveStats(officer);
+    return stats.leadership >= 70 || stats.war >= 75;
+  }
+  if (rank === 'advisor') {
+    const stats = getEffectiveStats(officer);
+    return stats.intelligence >= 90;
+  }
+  if (rank === 'viceroy') {
+    const stats = getEffectiveStats(officer);
+    return stats.leadership >= 85;
+  }
+  return true; // common, attendant, governor have no stat requirements
+}
+
+/**
+ * Check if a rank has available slots for a faction.
+ * Returns true if the rank can accept one more officer (or is unlimited).
+ * The officer being promoted is excluded from the count (to allow re-assignment).
+ */
+export function hasRankSlot(
+  rank: OfficerRank,
+  factionId: number,
+  officers: Officer[],
+  factionCityCount: number,
+  excludeOfficerId?: number,
+): boolean {
+  const slots = getRankSlots(factionCityCount);
+  const max = slots[rank];
+  if (max === null) return true;  // unlimited
+  if (max === 0) return false;    // governor: not promotable
+  const currentCount = officers.filter(
+    o => o.factionId === factionId && o.rank === rank && o.id !== excludeOfficerId
+  ).length;
+  return currentCount < max;
+}
