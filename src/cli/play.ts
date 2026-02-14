@@ -392,15 +392,16 @@ function showHelp() {
   log('  log | l                    — Show recent game log (last 20)');
   log('');
   log('  --- 內政 (Domestic) ---');
-  log('  commerce <city> [officer]       — Develop commerce (+10~20, costs 500g, stamina -20)');
-  log('  agriculture <city> [officer]    — Develop agriculture (+10~20, costs 500g, stamina -20)');
-  log('  defense <city> [officer]        — Reinforce defense (+5, costs 300g, stamina -20)');
-  log('  train <city> [officer]          — Train troops (+training/morale, costs 500f, stamina -20)');
-  log('  technology <city> [officer]     — Develop technology (+5~10, costs 800g, stamina -25)');
-  log('  flood <city> [officer]          — Flood control (+8~14, costs 500g, stamina -20)');
+  log('  commerce <city> [officer]       — Develop commerce (+10~20, costs 500g)');
+  log('  agriculture <city> [officer]    — Develop agriculture (+10~20, costs 500g)');
+  log('  defense <city> [officer]        — Reinforce defense (+5, costs 300g)');
+  log('  train <city> [officer]          — Train troops (+training/morale, costs 500f)');
+  log('  technology <city> [officer]     — Develop technology (+5~10, costs 800g)');
+  log('  flood <city> [officer]          — Flood control (+8~14, costs 500g)');
   log('  manufacture <city> <type> [off] — Manufacture weapons (crossbows|horses|rams|catapults, 1000g)');
-  log('  relief <city> [officer]         — Disaster relief (+loyalty, costs 500g+1000f, stamina -15)');
+  log('  relief <city> [officer]         — Disaster relief (+loyalty, costs 500g+1000f)');
   log('  tax <city> <low|med|high>       — Set tax rate');
+  log('  NOTE: Each officer can perform ONE action per turn (acted = done for the turn)');
   log('');
   log('  --- 人事 (Personnel) ---');
   log('  recruit <officer name>          — Recruit unaffiliated officer (在野)');
@@ -420,7 +421,7 @@ function showHelp() {
   log('    officers: "all" or 1,2,3 (index from status) | types: i,c,a or "auto" | troops: 5000 or 5000,3000');
   log('    e.g. attack 平原                              — auto everything');
   log('    e.g. attack 平原 1,2 i,c 5000,4000           — officers 1&2, infantry+cavalry, 5000+4000 troops');
-  log('  transport <from> <to> [gold=N] [food=N] [troops=N] — Transport resources between cities');
+  log('  transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name] — Transport resources');
   log('  retreat                                         — Retreat from current battle');
   log('');
   log('  --- 外交 (Diplomacy) ---');
@@ -441,7 +442,7 @@ function showHelp() {
   log('  counter <city> <officer>        — Counter-espionage (requires 做敵 skill)');
   log('');
   log('  --- Turn ---');
-  log('  end                             — End turn (AI acts, income, stamina +20, next month)');
+  log('  end                             — End turn (AI acts, income, resets acted, next month)');
   log('  help | h | ?                    — Show this help');
   log('  quit | q                        — Exit');
   log('');
@@ -1004,11 +1005,12 @@ function handleCommand(input: string, factionId: number): boolean {
       const from = findCityByIdOrName(parts[1] || '');
       const to = findCityByIdOrName(parts[2] || '');
       if (!from || !to) {
-        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N]');
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name]');
         log('  e.g. transport 鄴 濮陽 gold=5000 food=3000');
+        log('  e.g. transport 鄴 濮陽 gold=5000 officer=張遼');
         return false;
       }
-      // Parse resource specs from remaining parts: gold=N, food=N, troops=N
+      // Parse resource specs and officer from remaining parts
       // Also support old format: transport <from> <to> <resource> <amount>
       const resources: { gold?: number; food?: number; troops?: number } = {};
       const resMap: Record<string, 'gold' | 'food' | 'troops'> = {
@@ -1017,22 +1019,29 @@ function handleCommand(input: string, factionId: number): boolean {
         troops: 'troops', '兵': 'troops',
       };
       const remaining = parts.slice(3);
+      let escortOfficerId: number | undefined;
       if (remaining.length === 2 && resMap[remaining[0].toLowerCase()]) {
         // Old format: transport <from> <to> gold 5000
         resources[resMap[remaining[0].toLowerCase()]] = parseInt(remaining[1], 10);
       } else {
-        // New format: transport <from> <to> gold=5000 food=3000
+        // New format: transport <from> <to> gold=5000 food=3000 officer=張遼
         for (const spec of remaining) {
           const [key, val] = spec.split('=');
+          if ((key || '').toLowerCase() === 'officer' && val) {
+            const escort = findOfficerByName(val, factionId);
+            if (escort) escortOfficerId = escort.id;
+            else { log(`  Officer "${val}" not found in your faction.`); return false; }
+            continue;
+          }
           const res = resMap[(key || '').toLowerCase()];
           if (res && val) resources[res] = parseInt(val, 10);
         }
       }
       if (Object.keys(resources).length === 0) {
-        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N]');
+        log('  Usage: transport <from> <to> [gold=N] [food=N] [troops=N] [officer=Name]');
         return false;
       }
-      game.getState().transport(from.id, to.id, resources);
+      game.getState().transport(from.id, to.id, resources, escortOfficerId);
       return false;
     }
 

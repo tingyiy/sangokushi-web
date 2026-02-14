@@ -73,7 +73,7 @@ interface RTKApi {
     selectedCity(): City | null;
     /** Game log messages */
     log(n?: number): string[];
-    /** Check which officers in a city have stamina remaining */
+    /** Check which officers in a city have not acted this turn */
     availableOfficers(cityId: number): Officer[];
     /** Check if a city is revealed (fog of war) */
     isCityRevealed(cityId: number): boolean;
@@ -115,7 +115,7 @@ interface RTKApi {
 
   // Military (軍事)
   draftTroops(cityId: number, amount: number, officerId?: number): Result;
-  transport(fromCityId: number, toCityId: number, resource: 'gold' | 'food' | 'troops', amount: number): Result;
+  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number): Result;
   transferOfficer(officerId: number, targetCityId: number): Result;
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result;
   startBattle(targetCityId: number): Result;
@@ -259,7 +259,7 @@ developCommerce(cityId: number): Result {
   const state = useGameStore.getState();
   // 1. Validate phase
   if (state.phase !== 'playing') return { ok: false, error: 'Not in playing phase' };
-  // 2. Validate preconditions (city ownership, gold, stamina, etc.)
+  // 2. Validate preconditions (city ownership, gold, acted status, etc.)
   const city = state.cities.find(c => c.id === cityId);
   if (!city) return { ok: false, error: `City ${cityId} not found` };
   if (city.factionId !== state.playerFaction?.id) return { ok: false, error: 'Not your city' };
@@ -364,7 +364,7 @@ Phase: playing | 189年 3月
 Faction: 曹操 (id=1) | Advisor: 荀彧
 Cities (3): 陳留, 許昌, 洛陽
 Gold: 12,000 | Food: 24,000 | Troops: 35,000
-Officers: 8 (5 with stamina) | POWs: 1
+Officers: 8 (5 available) | POWs: 1
 Tax: 中 | Tech avg: 45
 Pending events: 0 | Governor gaps: 0
 ═══════════════════
@@ -439,8 +439,13 @@ rtk.searchOfficer(4);
 // Draft troops
 rtk.draftTroops(4, 5000);
 
-// Transport gold to another city
-rtk.transport(4, 5, 'gold', 3000);
+// Transport gold and food to another city (requires an available officer as escort)
+rtk.transport(4, 5, { gold: 3000, food: 2000 });
+// → { ok: true, data: { escort: '夏侯惇' } }
+
+// Transport with a specific escort officer
+rtk.transport(4, 5, { gold: 3000 }, 42);
+// → { ok: true, data: { escort: '典韋' } }
 
 // Check adjacent enemies for attack
 rtk.query.adjacentEnemyCities(4);
@@ -550,6 +555,15 @@ rtk.save(1);
 ---
 
 ## Changelog
+
+**v2.5 (2026-02-13):** Sync API with one-action-per-turn, multi-resource transport, and rank-based troop caps.
+
+- **`transport()` signature changed:** Now `transport(fromCityId, toCityId, resources: { gold?, food?, troops? }, officerId?)`. Accepts multi-resource object + optional escort officer. The store requires an available officer to escort — auto-picks if not specified.
+- **`setBattleFormation()` type fixed:** Formation type now includes `troops?: number[]` for per-officer troop allocation.
+- **Stamina → acted:** All error messages updated from "stamina" to "acted this turn" to reflect the one-action-per-turn system (Officer.acted replaces old Officer.stamina).
+- **`availableOfficers()` description:** Updated from "stamina remaining" to "have not acted this turn".
+- **Pre-validation updated:** `canAffordDomestic()` and `canDraftTroops()` error messages now reference the acted system.
+- **`startBattle()` / `improveRelations()`:** Error messages updated from "check stamina" to "officers may have acted".
 
 **v2.4 (2026-02-10):** Phase-Based Battle Turn System (RTK IV style).
 

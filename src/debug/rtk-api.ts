@@ -195,7 +195,7 @@ export const rtkApi = {
 
       const hasOfficer = this.availableOfficers(cityId).length > 0;
       if (!hasOfficer) {
-        return { ok: false, error: 'No officers with stamina in city' };
+        return { ok: false, error: 'No available officers in city (all have acted this turn)' };
       }
 
       return { ok: true, data: { gold: city.gold, canAfford: true } };
@@ -228,7 +228,7 @@ export const rtkApi = {
         return { ok: false, error: `Amount exceeds population limit (Requested: ${amount}, Max: ${maxDraft})`, data: checks };
       }
       if (!checks.hasOfficer) {
-        return { ok: false, error: 'No officers with stamina', data: checks };
+        return { ok: false, error: 'No available officers (all have acted this turn)', data: checks };
       }
 
       return { ok: true, data: checks };
@@ -636,15 +636,25 @@ export const rtkApi = {
     return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: 'Draft failed unexpectedly in logic' });
   },
 
-  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }): Result {
+  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number): Result {
     const state = useGameStore.getState();
     const details = Object.entries(resources).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ');
     const label = `transport(${cityName(fromCityId)} → ${cityName(toCityId)}, ${details})`;
     if (state.phase !== 'playing') return logCmd('⚔', label, { ok: false, error: 'Not in playing phase' });
     const fromCity = state.cities.find(c => c.id === fromCityId);
     if (!fromCity) return logCmd('⚔', label, { ok: false, error: 'Origin city not found' });
-    state.transport(fromCityId, toCityId, resources);
-    return logCmd('⚔', label, { ok: true });
+    if (fromCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: 'Not your city' });
+
+    // Check escort officer availability
+    const factionId = state.playerFaction?.id;
+    const escort = officerId
+      ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
+      : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
+    if (!escort) return logCmd('⚔', label, { ok: false, error: officerId ? `Officer ${officerName(officerId)} not found or not in city` : 'No available officer to escort transport' });
+    if (escort.acted) return logCmd('⚔', label, { ok: false, error: `${escort.name} has already acted this turn` });
+
+    state.transport(fromCityId, toCityId, resources, officerId);
+    return logCmd('⚔', label, { ok: true, data: { escort: escort.name } });
   },
 
   transferOfficer(officerId: number, targetCityId: number): Result {
@@ -657,12 +667,12 @@ export const rtkApi = {
     return logCmd('⚔', label, { ok: false, error: 'Action failed' });
   },
 
-  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[] } | null): Result {
+  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return logCmd('⚔', 'setBattleFormation', { ok: false, error: 'Not in playing phase' });
     state.setBattleFormation(formation);
     const names = formation?.officerIds.map(id => officerName(id)) ?? [];
-    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes } });
+    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes, troops: formation?.troops } });
   },
 
   startBattle(targetCityId: number): Result {
@@ -678,9 +688,9 @@ export const rtkApi = {
     const targetNow = useGameStore.getState().cities.find(c => c.id === targetCityId);
     if (targetNow?.factionId === state.playerFaction?.id) {
       logEvent(`Auto-captured ${cn}! (undefended)`);
-      return { ok: false, error: 'Battle failed to start (check requirements/stamina)' };
+      return { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' };
     }
-    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (check requirements/stamina)' });
+    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' });
   },
 
   retreat(): Result {
@@ -734,7 +744,7 @@ export const rtkApi = {
     state.improveRelations(targetFactionId);
     const hostilityAfter = useGameStore.getState().playerFaction?.relations[targetFactionId] ?? 60;
     if (hostilityAfter < hostilityBefore) return logCmd('🤝', `improveRelations(${tName})`, { ok: true, data: { before: hostilityBefore, after: hostilityAfter } });
-    return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: 'Action failed (check stamina of ruler/advisor)' });
+    return logCmd('🤝', `improveRelations(${tName})`, { ok: false, error: 'Action failed (ruler/advisor may have acted this turn)' });
   },
 
   formAlliance(targetFactionId: number): Result {
