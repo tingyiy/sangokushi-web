@@ -54,13 +54,13 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
     if (activeUnit && activeUnit.status === 'active' && !activeUnit.hasMoved && isPlayerUnit) {
       // Enemy units and intact gates are impassable (block BFS)
       const blocked = new Set(
-        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.status !== 'arriving')
           .map(u => `${u.x},${u.y}`)
       );
       battle.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
       // Friendly units are passable but not valid destinations
       const occupied = new Set(
-        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+        battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId && u.status !== 'arriving')
           .map(u => `${u.x},${u.y}`)
       );
       return getMoveRange(
@@ -82,7 +82,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
     const range = getAttackRange(activeUnit.type);
     const enemies = new Set<string>();
     battle.units.forEach(u => {
-      if (u.factionId !== activeUnit.factionId && u.troops > 0 && u.status !== 'routed') {
+      if (u.factionId !== activeUnit.factionId && u.troops > 0 && u.status !== 'routed' && u.status !== 'arriving') {
         const dist = getDistance({ q: activeUnit.x, r: activeUnit.y }, { q: u.x, r: u.y });
         if (dist <= range) enemies.add(u.id);
       }
@@ -211,7 +211,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
   const handleHexClick = (q: number, r: number) => {
     if (isDragging) return; // Ignore clicks after a drag
 
-    const unitAtHex = battle.units.find(u => u.x === q && u.y === r && u.troops > 0);
+    const unitAtHex = battle.units.find(u => u.x === q && u.y === r && u.troops > 0 && u.status !== 'arriving');
 
     // If in move/attack mode, handle those first
     if (activeUnit && isPlayerUnit && battle.mode === 'move') {
@@ -245,7 +245,7 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
     const terrain = battle.battleMap.terrain[q][r];
     const { x, y } = hexToPixel({ q, r }, HEX_SIZE);
     const isInMoveRange = battle.mode === 'move' && moveRange.has(`${q},${r}`);
-    const unit = battle.units.find(u => u.x === q && u.y === r && u.troops > 0);
+    const unit = battle.units.find(u => u.x === q && u.y === r && u.troops > 0 && u.status !== 'arriving');
     const fire = battle.fireHexes.find(f => f.q === q && f.r === r);
     const gate = battle.gates.find(g => g.q === q && g.r === r);
     const isActive = unit && unit.id === battle.activeUnitId;

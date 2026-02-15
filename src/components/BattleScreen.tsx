@@ -19,7 +19,7 @@ const WIND_KEYS = [
 ];
 
 const STATUS_KEYS: Record<string, string> = {
-  active: 'battle:status.active', done: 'battle:status.done', routed: 'battle:status.routed', confused: 'battle:status.confused'
+  active: 'battle:status.active', done: 'battle:status.done', routed: 'battle:status.routed', confused: 'battle:status.confused', arriving: 'battle:status.arriving'
 };
 
 const BattleScreen: React.FC = () => {
@@ -38,6 +38,8 @@ const BattleScreen: React.FC = () => {
   const playerUnits = battle.units.filter(u => u.factionId === playerFactionId && u.troops > 0 && u.status !== 'routed');
   const activePlayerUnits = playerUnits.filter(u => u.status === 'active');
   const donePlayerUnits = playerUnits.filter(u => u.status === 'done');
+  const arrivingPlayerUnits = playerUnits.filter(u => u.status === 'arriving');
+  const arrivingEnemyUnits = battle.units.filter(u => u.factionId !== playerFactionId && u.troops > 0 && u.status === 'arriving');
 
   // Auto-scroll battle log
   useEffect(() => {
@@ -186,6 +188,12 @@ const BattleScreen: React.FC = () => {
           {/* Unit roster summary */}
           <div style={{ padding: '6px 8px', borderBottom: '1px solid #444', fontSize: '0.75rem', color: '#aaa' }}>
             {t('battle:roster.playerSummary', { active: activePlayerUnits.length, done: donePlayerUnits.length })}
+            {arrivingPlayerUnits.length > 0 && (
+              <div style={{ color: '#6cf' }}>{t('battle:roster.arriving', { count: arrivingPlayerUnits.length })}</div>
+            )}
+            {arrivingEnemyUnits.length > 0 && (
+              <div style={{ color: '#f88' }}>{t('battle:roster.enemyArriving', { count: arrivingEnemyUnits.length })}</div>
+            )}
           </div>
           <div style={{ padding: '6px 8px', borderBottom: '1px solid #444', fontSize: '0.8rem', fontWeight: 'bold' }}>{t('battle:log.title')}</div>
           <div ref={logRef} style={{ flex: 1, overflow: 'auto', padding: '4px 8px', fontSize: '0.75rem', lineHeight: 1.4 }}>

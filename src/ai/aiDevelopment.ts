@@ -22,7 +22,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
     // Priority 1: Disaster relief if people loyalty is low
     if (city.peopleLoyalty < 50 && city.gold >= 500) {
       decisions.push({
-        action: 'disasterRelief',
+        action: 'aiDisasterRelief',
         params: [city.id],
         description: i18next.t('logs:ai.disasterRelief', { city: localizedName(city.name) })
       });
@@ -32,7 +32,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
     // Priority 2: Flood control if low
     if (city.floodControl < 60 && city.gold >= 500) {
       decisions.push({
-        action: 'developFloodControl',
+        action: 'aiDevelopFloodControl',
         params: [city.id],
         description: i18next.t('logs:ai.developFlood', { city: localizedName(city.name) })
       });
@@ -47,7 +47,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
 
     if (isBorderCity && city.defense < 150 && city.gold >= 500) {
       decisions.push({
-        action: 'reinforceDefense',
+        action: 'aiReinforceDefense',
         params: [city.id],
         description: i18next.t('logs:ai.reinforceDefense', { city: localizedName(city.name) })
       });
@@ -59,13 +59,13 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
       if (city.commerce < 999 || city.agriculture < 999) {
         if (city.commerce < city.agriculture) {
           decisions.push({
-            action: 'developCommerce',
+            action: 'aiDevelopCommerce',
             params: [city.id],
             description: i18next.t('logs:ai.developCommerce', { city: localizedName(city.name) })
           });
         } else {
           decisions.push({
-            action: 'developAgriculture',
+            action: 'aiDevelopAgriculture',
             params: [city.id],
             description: i18next.t('logs:ai.developAgriculture', { city: localizedName(city.name) })
           });
@@ -77,7 +77,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
     // Priority 5: Technology
     if (city.gold >= 2000 && city.technology < 100) {
       decisions.push({
-        action: 'developTechnology',
+        action: 'aiDevelopTechnology',
         params: [city.id],
         description: i18next.t('logs:ai.developTech', { city: localizedName(city.name) })
       });
@@ -91,7 +91,7 @@ export function evaluateDevelopment(context: AIFactionContext): AIDecision[] {
           ? i18next.t('logs:ai.weaponCrossbows')
           : i18next.t('logs:ai.weaponWarHorses');
         decisions.push({
-            action: 'manufacture',
+            action: 'aiManufacture',
             params: [city.id, weapon],
             description: i18next.t('logs:ai.manufacture', { city: localizedName(city.name), weapon: weaponLabel })
         });

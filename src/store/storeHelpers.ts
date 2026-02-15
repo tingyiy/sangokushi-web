@@ -37,3 +37,33 @@ export function getAttackDirection(fromCity: City, toCity: City): 'north' | 'sou
     return dy > 0 ? 'south' : 'north';
   }
 }
+
+/**
+ * Compute Euclidean distance between two cities using map coordinates (0-100 scale).
+ */
+export function getCityDistance(cityA: { x: number; y: number }, cityB: { x: number; y: number }): number {
+  const dx = cityA.x - cityB.x;
+  const dy = cityA.y - cityB.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Compute the arrival day for reinforcements marching from a source city to a battle at the target city.
+ * Adjacent cities = 1 day delay, farther cities scale linearly.
+ * Units from the attacking city itself arrive on day 1 (no delay).
+ *
+ * Formula: arrivalDay = 1 + floor(distance / 15)
+ * - Adjacent cities (distance ~10-20): 1-2 days
+ * - Moderate distance (~30): 3 days
+ * - Far away (~60): 5 days
+ * - Cross-map (~100): 7-8 days
+ */
+export function computeArrivalDay(
+  sourceCity: { x: number; y: number },
+  targetCity: { x: number; y: number },
+  isSameCity: boolean,
+): number {
+  if (isSameCity) return 1;
+  const distance = getCityDistance(sourceCity, targetCity);
+  return 1 + Math.floor(distance / 15);
+}

@@ -4,7 +4,7 @@ export type TerrainType = 'plain' | 'forest' | 'mountain' | 'river' | 'city' | '
 
 export type UnitType = 'infantry' | 'cavalry' | 'archer';
 
-export type UnitStatus = 'active' | 'done' | 'routed' | 'confused';
+export type UnitStatus = 'active' | 'done' | 'routed' | 'confused' | 'arriving';
 
 /** Player interaction mode during their turn */
 export type BattleMode = 'idle' | 'move' | 'attack' | 'tactic';
@@ -28,6 +28,10 @@ export interface BattleUnit {
   chained?: boolean;
   /** Whether the unit has moved this turn (can still attack after moving) */
   hasMoved?: boolean;
+  /** Day on which this unit arrives on the battlefield (1 = immediate) */
+  arrivalDay: number;
+  /** City this unit is marching from (for spawn position calculation on arrival) */
+  sourceCityId?: number;
 }
 
 export interface BattleMap {

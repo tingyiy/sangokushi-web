@@ -189,15 +189,11 @@ export function CommandMenu() {
               
               <div className="sub-menu">
                 <h5>{t('command.military.transport')}</h5>
-                {city.adjacentCityIds.map(adjId => {
-                  const adjCity = cities.find(c => c.id === adjId);
-                  if (!adjCity || adjCity.factionId !== playerFaction?.id) return null;
-                  return (
-                    <button key={adjId} className="btn btn-action btn-small" onClick={() => setDialog({ type: 'transport', targetCityId: adjId })}>
-                      {t('command.military.transportTo', { cityName: localizedName(adjCity.name) })}
-                    </button>
-                  );
-                })}
+                {cities.filter(c => c.factionId === playerFaction?.id && c.id !== city.id).map(friendlyCity => (
+                  <button key={friendlyCity.id} className="btn btn-action btn-small" onClick={() => setDialog({ type: 'transport', targetCityId: friendlyCity.id })}>
+                    {t('command.military.transportTo', { cityName: localizedName(friendlyCity.name) })}
+                  </button>
+                ))}
               </div>
 
               <div className="sub-menu">

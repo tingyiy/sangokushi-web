@@ -16,8 +16,8 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     const cityOfOfficer = state.cities.find((c: City) => c.id === officer.cityId);
     if (officer.loyalty < 80 && context.faction.rulerId !== officer.id && cityOfOfficer && cityOfOfficer.gold >= 500) {
       decisions.push({
-        action: 'rewardOfficer',
-        params: [officer.id, 'gold', 500],
+        action: 'aiRewardOfficer',
+        params: [officer.id, cityOfOfficer.id, 500],
         description: i18next.t('logs:ai.rewardOfficer', { officer: localizedName(officer.name) })
       });
     }
@@ -44,8 +44,8 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     if (powOfficers.length > 0) {
         const target = powOfficers[0];
         decisions.push({
-            action: 'recruitPOW',
-            params: [target.id],
+            action: 'aiRecruitPOW',
+            params: [city.id, target.id],
             description: i18next.t('logs:ai.recruitPOW', { city: localizedName(city.name), officer: localizedName(target.name) })
         });
         continue;
@@ -66,7 +66,7 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
     if (!hasGovernor && officersInCity.length > 0) {
         const candidate = officersInCity.reduce((prev: Officer, curr: Officer) => prev.leadership > curr.leadership ? prev : curr);
         decisions.push({
-            action: 'appointGovernor',
+            action: 'aiAppointGovernor',
             params: [city.id, candidate.id],
             description: i18next.t('logs:ai.appointGovernor', { city: localizedName(city.name), officer: localizedName(candidate.name) })
         });

@@ -89,6 +89,21 @@ describe('AI Engine', () => {
     aiSearchOfficer: vi.fn(),
     aiSpy: vi.fn(),
     aiRumor: vi.fn(),
+    aiDevelopCommerce: vi.fn(),
+    aiDevelopAgriculture: vi.fn(),
+    aiReinforceDefense: vi.fn(),
+    aiDevelopFloodControl: vi.fn(),
+    aiDevelopTechnology: vi.fn(),
+    aiTrainTroops: vi.fn(),
+    aiManufacture: vi.fn(),
+    aiDisasterRelief: vi.fn(),
+    aiDraftTroops: vi.fn(),
+    aiTransport: vi.fn(),
+    aiRewardOfficer: vi.fn(),
+    aiAppointGovernor: vi.fn(),
+    aiRecruitPOW: vi.fn(),
+    aiFormAlliance: vi.fn(),
+    aiImproveRelations: vi.fn(),
   };
 
   it('should generate decisions for AI factions', () => {
@@ -115,7 +130,7 @@ describe('AI Engine', () => {
       cities: mockState.cities.map(c => c.id === 2 ? { ...c, troops: 1000 } : c)
     };
     const decisions = runAI(lowTroopState);
-    expect(decisions.some(d => d.action === 'draftTroops')).toBe(true);
+    expect(decisions.some(d => d.action === 'aiDraftTroops')).toBe(true);
   });
 
   it('should generate offensive decisions when troop advantage is high', () => {

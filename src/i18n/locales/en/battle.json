@@ -17,7 +17,8 @@
     "active": "Ready",
     "done": "Done",
     "routed": "Routed",
-    "confused": "Confused"
+    "confused": "Confused",
+    "arriving": "Marching"
   },
   "terrain": {
     "plain": "Plain",
@@ -61,7 +62,9 @@
   },
   "enemyPhase": "Enemy phase...",
   "roster": {
-    "playerSummary": "Allies: {{active}} ready / {{done}} done"
+    "playerSummary": "Allies: {{active}} ready / {{done}} done",
+    "arriving": "Reinforcements en route: {{count}}",
+    "enemyArriving": "Enemy reinforcements en route: {{count}}"
   },
   "side": {
     "player": "Allies",

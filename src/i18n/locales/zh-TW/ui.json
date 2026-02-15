@@ -210,9 +210,9 @@
   },
   "formation": {
     "title": "出征準備：{{cityName}}",
-    "selectPrompt": "選擇參戰武將（最多5人，體力需30以上）",
+    "selectPrompt": "選擇參戰武將（最多5人，須未行動）",
     "officerStats": "統 {{leadership}} 武 {{war}} 智 {{intelligence}}",
-    "noOfficers": "城中無可用將領（體力不足或無人在城）。",
+    "noOfficers": "城中無可用將領（已行動或無人在城）。",
     "garrisonTroops": "城內駐兵：{{count}}",
     "allocatedRemaining": "出征：{{allocated}} / 餘：{{remaining}}",
     "weaponsHeld": "持有武器：",

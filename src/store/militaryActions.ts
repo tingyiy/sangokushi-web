@@ -245,7 +245,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       // Check commander availability (highest leadership officer)
       const commander = attackerOfficers.reduce((prev, curr) => (prev.leadership > curr.leadership ? prev : curr));
       if (commander.acted) {
-        get().addLog(i18next.t('logs:error.commanderStamina', { name: localizedName(commander.name) }));
+        get().addLog(i18next.t('logs:error.commanderActed', { name: localizedName(commander.name) }));
         return;
       }
 
@@ -323,6 +323,46 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return Math.min(equalShare, maxForOfficer);
       });
       const defenderTroopsDeployed = defenderTroopsPerOfficer.reduce((sum, t) => sum + t, 0);
+
+      // ── Auto-overrun: defenders have officers but 0 troops ──
+      // Skip the battle screen entirely. Use resolveBattle for proper flee/capture logic.
+      if (defenderTroopsDeployed === 0) {
+        set({
+          cities: state.cities.map(c => {
+            if (c.id === city.id) return {
+              ...c,
+              troops: c.troops - totalTroopsToDeploy,
+              crossbows: c.crossbows - crossbowsUsed,
+              warHorses: c.warHorses - warHorsesUsed,
+            };
+            return c;
+          }),
+          officers: state.officers.map(o =>
+            attackerOfficers.some(ao => ao.id === o.id)
+              ? { ...o, acted: true }
+              : o
+          ),
+          battleFormation: null,
+          battleResolved: false,
+        });
+        get().addLog(i18next.t('logs:military.overrunCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
+        get().resolveBattle(
+          state.playerFaction!.id,
+          targetCity.factionId || 0,
+          targetCityId,
+          [
+            ...attackerOfficers.map((o, i) => ({ officerId: o.id, troops: troopsPerOfficer[i], factionId: state.playerFaction!.id, status: 'active' })),
+            ...defenderOfficers.map(o => ({ officerId: o.id, troops: 0, factionId: targetCity.factionId || 0, status: 'active' })),
+          ],
+        );
+        // Auto-assign governor for the source city if the governor left
+        {
+          const officers = get().officers.slice();
+          const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id, state.factions);
+          if (promoted) set({ officers });
+        }
+        return;
+      }
 
       set({
         cities: state.cities.map(c => {
@@ -415,6 +455,40 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return Math.min(equalShare, maxForOfficer);
       });
       const defenderTroopsDeployed = defenderTroopsPerOfficer.reduce((sum, t) => sum + t, 0);
+
+      // ── Auto-overrun: defenders have officers but 0 troops ──
+      // Skip the battle screen. Use resolveBattle for proper flee/capture logic.
+      if (defenderTroopsDeployed === 0 && defenderOfficers.length > 0) {
+        set({
+          cities: state.cities.map(c => {
+            if (c.id === city.id) return {
+              ...c,
+              troops: Math.max(0, c.troops - totalTroopsToDeploy),
+              crossbows: c.crossbows - crossbowsUsed,
+              warHorses: c.warHorses - warHorsesUsed,
+            };
+            return c;
+          }),
+          officers: state.officers.map(o =>
+            attackerOfficers.some(ao => ao.id === o.id)
+              ? { ...o, acted: true }
+              : o
+          ),
+          battleResolved: false,
+        });
+        const aiFaction = state.factions.find(f => f.id === city.factionId);
+        get().addLog(i18next.t('logs:military.overrunCity', { city: localizedName(targetCity.name), commander: localizedName(aiFaction?.name ?? '') }));
+        get().resolveBattle(
+          city.factionId || 0,
+          targetCity.factionId || 0,
+          targetCityId,
+          [
+            ...attackerOfficers.map((o, i) => ({ officerId: o.id, troops: troopsPerOfficer[i], factionId: city.factionId || 0, status: 'active' })),
+            ...defenderOfficers.map(o => ({ officerId: o.id, troops: 0, factionId: targetCity.factionId || 0, status: 'active' })),
+          ],
+        );
+        return;
+      }
 
       set({
         cities: state.cities.map(c => {

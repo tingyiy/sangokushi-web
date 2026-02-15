@@ -210,9 +210,9 @@
   },
   "formation": {
     "title": "Battle Preparation: {{cityName}}",
-    "selectPrompt": "Select officers (max 5, stamina 30+)",
+    "selectPrompt": "Select officers (max 5, must not have acted)",
     "officerStats": "Ldr {{leadership}} War {{war}} Int {{intelligence}}",
-    "noOfficers": "No officers available (insufficient stamina or none present).",
+    "noOfficers": "No officers available (already acted or none present).",
     "garrisonTroops": "Garrison: {{count}}",
     "allocatedRemaining": "Deployed: {{allocated}} / Remaining: {{remaining}}",
     "weaponsHeld": "Weapons:",

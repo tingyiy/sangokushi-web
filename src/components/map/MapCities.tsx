@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { City, Officer, Faction } from '../../types';
 import type { Season } from './mapData';
@@ -50,12 +50,25 @@ export function MapCities({
   isCityRevealed,
 }: MapCitiesProps) {
   const labelColor = SEASON_LABEL_COLOR[season];
+  const [hoveredCityId, setHoveredCityId] = useState<number | null>(null);
+
+  // Sort cities so the hovered city renders last (SVG paints later elements on top).
+  // This ensures the hover tooltip is never occluded by neighboring city markers.
+  const sortedCities = useMemo(() => {
+    if (hoveredCityId === null) return cities;
+    return [...cities].sort((a, b) => {
+      if (a.id === hoveredCityId) return 1;
+      if (b.id === hoveredCityId) return -1;
+      return 0;
+    });
+  }, [cities, hoveredCityId]);
 
   return (
     <g className="map-cities">
-      {cities.map(city => {
+      {sortedCities.map(city => {
         const isSelected = city.id === selectedCityId;
         const revealed = isCityRevealed(city.id);
+        const isHovered = city.id === hoveredCityId;
         if (city.factionId === null) {
           return (
             <NeutralMarker
@@ -79,9 +92,11 @@ export function MapCities({
             faction={faction}
             ruler={ruler}
             isSelected={isSelected}
+            isHovered={isHovered}
             labelColor={labelColor}
             revealed={revealed}
             onClick={() => onSelectCity(city.id)}
+            onHover={setHoveredCityId}
           />
         );
       })}
@@ -96,14 +111,15 @@ interface CityFlagProps {
   faction: Faction | null;
   ruler: Officer | null;
   isSelected: boolean;
+  isHovered: boolean;
   labelColor: string;
   revealed: boolean;
   onClick: () => void;
+  onHover: (cityId: number | null) => void;
 }
 
-function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onClick }: CityFlagProps) {
+function CityFlag({ city, faction, ruler, isSelected, isHovered, labelColor, revealed, onClick, onHover }: CityFlagProps) {
   const { t } = useTranslation();
-  const [hovered, setHovered] = useState(false);
   const color = faction?.color ?? '#6b7280';
   const displayName = localizedName(ruler?.name ?? '');
   const surname = displayName.charAt(0) ?? '';
@@ -120,8 +136,8 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
   return (
     <g
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => onHover(city.id)}
+      onMouseLeave={() => onHover(null)}
       style={{ cursor: 'pointer' }}
     >
       {/* Invisible hit area — ensures small cities are easy to click */}
@@ -212,7 +228,7 @@ function CityFlag({ city, faction, ruler, isSelected, labelColor, revealed, onCl
       </text>
 
       {/* Hover tooltip — shows actual stats only if revealed */}
-      {hovered && (
+      {isHovered && (
         <g className="city-tooltip">
           <rect
             x={city.x + 3}

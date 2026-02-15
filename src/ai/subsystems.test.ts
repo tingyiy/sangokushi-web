@@ -37,7 +37,7 @@ describe('AI Subsystems', () => {
         ownedCities: [{ ...context.ownedCities[0], peopleLoyalty: 30 }]
       };
       const decisions = evaluateDevelopment(lowLoyaltyContext);
-      expect(decisions.some(d => d.action === 'disasterRelief')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiDisasterRelief')).toBe(true);
     });
 
     it('should develop flood control if low', () => {
@@ -46,7 +46,7 @@ describe('AI Subsystems', () => {
         ownedCities: [{ ...context.ownedCities[0], floodControl: 30 }]
       };
       const decisions = evaluateDevelopment(lowFloodContext);
-      expect(decisions.some(d => d.action === 'developFloodControl')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiDevelopFloodControl')).toBe(true);
     });
 
     it('should reinforce defense if border city', () => {
@@ -55,7 +55,7 @@ describe('AI Subsystems', () => {
         ownedCities: [{ ...context.ownedCities[0], defense: 50 }]
       };
       const decisions = evaluateDevelopment(lowDefenseContext);
-      expect(decisions.some(d => d.action === 'reinforceDefense')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiReinforceDefense')).toBe(true);
     });
 
     it('should develop technology if wealthy and tech is low', () => {
@@ -64,7 +64,7 @@ describe('AI Subsystems', () => {
             ownedCities: [{ ...context.ownedCities[0], gold: 5000, technology: 20, commerce: 999, agriculture: 999, defense: 200, peopleLoyalty: 100, floodControl: 100 }]
         };
         const decisions = evaluateDevelopment(techContext);
-        expect(decisions.some(d => d.action === 'developTechnology')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiDevelopTechnology')).toBe(true);
     });
 
     it('should manufacture if has skill and tech and others maxed', () => {
@@ -73,7 +73,7 @@ describe('AI Subsystems', () => {
             ownedCities: [{ ...context.ownedCities[0], gold: 5000, technology: 100, commerce: 999, agriculture: 999, defense: 200, peopleLoyalty: 100, floodControl: 100 }]
         };
         const decisions = evaluateDevelopment(manufactureContext);
-        expect(decisions.some(d => d.action === 'manufacture')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiManufacture')).toBe(true);
     });
   });
 
@@ -84,7 +84,7 @@ describe('AI Subsystems', () => {
         ownedCities: [{ ...context.ownedCities[0], morale: 30 }]
       };
       const decisions = evaluateMilitary(lowMoraleContext);
-      expect(decisions.some(d => d.action === 'trainTroops')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiTrainTroops')).toBe(true);
     });
 
     it('should transport troops to border', () => {
@@ -102,7 +102,7 @@ describe('AI Subsystems', () => {
         };
         const decisions = evaluateMilitary(interiorContext);
         // Interior city should match transport because it's not border and has many troops
-        expect(decisions.some(d => d.action === 'transport')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiTransport')).toBe(true);
     });
   });
 
@@ -113,7 +113,7 @@ describe('AI Subsystems', () => {
         factionOfficers: [{ ...context.factionOfficers[0], loyalty: 50 }]
       };
       const decisions = evaluatePersonnel(disloyalContext);
-      expect(decisions.some(d => d.action === 'rewardOfficer')).toBe(true);
+      expect(decisions.some(d => d.action === 'aiRewardOfficer')).toBe(true);
     });
 
     it('should recruit POW if any', () => {
@@ -128,7 +128,7 @@ describe('AI Subsystems', () => {
             } as unknown as GameState
         };
         const decisions = evaluatePersonnel(powContext as unknown as AIFactionContext);
-        expect(decisions.some(d => d.action === 'recruitPOW')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiRecruitPOW')).toBe(true);
     });
 
     it('should appoint governor if missing', () => {
@@ -147,7 +147,7 @@ describe('AI Subsystems', () => {
         noGovernorContext.factionOfficers.push({ ...mockState.officers[0], id: 3, cityId: 1, isGovernor: false, relationships: [] });
         
         const decisions = evaluatePersonnel(noGovernorContext);
-        expect(decisions.some(d => d.action === 'appointGovernor')).toBe(true);
+        expect(decisions.some(d => d.action === 'aiAppointGovernor')).toBe(true);
     });
   });
 

@@ -195,6 +195,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         status: 'active',
         direction: 0,
         hasMoved: false,
+        arrivalDay: 1,
       });
     });
 
@@ -219,6 +220,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         status: 'active',
         direction: isSiege ? 0 : 3,
         hasMoved: false,
+        arrivalDay: 1,
       });
     });
 
@@ -679,7 +681,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       return;
     }
 
-    const enemies = state.units.filter(u => u.factionId !== activeUnit.factionId && u.troops > 0 && u.status !== 'routed');
+    const enemies = state.units.filter(u => u.factionId !== activeUnit.factionId && u.troops > 0 && u.status !== 'routed' && u.status !== 'arriving');
     if (enemies.length === 0) {
       set(s => ({
         units: s.units.map(u => u.id === activeUnit.id ? { ...u, status: 'done' as const } : u),
@@ -719,7 +721,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
         const terrain = state.battleMap.terrain[candidate.q][candidate.r];
         if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) break;
-        if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0)) break;
+        if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0 && u.status !== 'arriving')) break;
         if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
 
         const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
@@ -828,6 +830,14 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const resetUnits = unitsWithFireDamage.map(u => {
       if (u.status === 'routed' && u.troops <= 0) return { ...u, status: 'done' as const };
       if (u.status === 'routed') return u;
+      if (u.status === 'arriving') {
+        // Check if this unit arrives on the new day
+        if (u.arrivalDay <= newDay) {
+          get().addBattleLog(i18next.t('logs:battle.reinforcements', { name: localizedName(u.officer.name) }));
+          return { ...u, status: 'active' as const, hasMoved: false };
+        }
+        return u; // still arriving
+      }
       if (u.troops <= 0) return { ...u, status: 'done' as const };
       return {
         ...u,
@@ -849,8 +859,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
   checkBattleEnd: () => {
     const state = get();
-    const attackers = state.units.filter(u => u.factionId === state.attackerId && u.troops > 0 && u.status !== 'routed');
-    const defenders = state.units.filter(u => u.factionId === state.defenderId && u.troops > 0 && u.status !== 'routed');
+    // Include 'arriving' units — reinforcements on the way prevent elimination
+    const attackers = state.units.filter(u => u.factionId === state.attackerId && u.troops > 0 && u.status !== 'routed' && u.status !== 'done');
+    const defenders = state.units.filter(u => u.factionId === state.defenderId && u.troops > 0 && u.status !== 'routed' && u.status !== 'done');
 
     if (attackers.length === 0) {
       set({ isFinished: true, winnerFactionId: state.defenderId });

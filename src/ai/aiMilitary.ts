@@ -27,7 +27,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
       const draftAmount = Math.min(maxByPop, maxByGold, maxByFood, room);
       if (draftAmount > 0) {
         decisions.push({
-          action: 'draftTroops',
+          action: 'aiDraftTroops',
           params: [city.id, draftAmount],
           description: i18next.t('logs:ai.draftTroops', { city: localizedName(city.name) })
         });
@@ -38,7 +38,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
     // 2. Train troops
     if (city.troops > 2000 && (city.training < 60 || city.morale < 60) && city.food >= 1000) {
       decisions.push({
-        action: 'trainTroops',
+        action: 'aiTrainTroops',
         params: [city.id],
         description: i18next.t('logs:ai.trainTroops', { city: localizedName(city.name) })
       });
@@ -82,7 +82,7 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
         
         if (targetBorderCity) {
             decisions.push({
-                action: 'transport',
+                action: 'aiTransport',
                 params: [city.id, targetBorderCity.id, { troops: 5000 }],
                 description: i18next.t('logs:ai.transport', { city: localizedName(city.name), target: localizedName(targetBorderCity.name) })
             });

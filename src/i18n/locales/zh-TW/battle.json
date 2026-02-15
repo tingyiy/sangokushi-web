@@ -17,7 +17,8 @@
     "active": "可行動",
     "done": "已行動",
     "routed": "潰走",
-    "confused": "混亂"
+    "confused": "混亂",
+    "arriving": "行軍中"
   },
   "terrain": {
     "plain": "平",
@@ -61,7 +62,9 @@
   },
   "enemyPhase": "敵方行動中...",
   "roster": {
-    "playerSummary": "我方：{{active}} 可行動 / {{done}} 已行動"
+    "playerSummary": "我方：{{active}} 可行動 / {{done}} 已行動",
+    "arriving": "援軍行軍中：{{count}} 隊",
+    "enemyArriving": "敵方援軍行軍中：{{count}} 隊"
   },
   "side": {
     "player": "我方",

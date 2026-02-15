@@ -262,6 +262,20 @@ export interface GameState {
   aiSearchOfficer: (cityId: number) => void;
   aiSpy: (cityId: number, targetCityId: number) => void;
   aiRumor: (cityId: number, targetCityId: number) => void;
+  // AI domestic actions
+  aiDevelopCommerce: (cityId: number) => void;
+  aiDevelopAgriculture: (cityId: number) => void;
+  aiReinforceDefense: (cityId: number) => void;
+  aiDevelopFloodControl: (cityId: number) => void;
+  aiDevelopTechnology: (cityId: number) => void;
+  aiTrainTroops: (cityId: number) => void;
+  aiManufacture: (cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults') => void;
+  aiDisasterRelief: (cityId: number) => void;
+  // AI military/personnel actions
+  aiDraftTroops: (cityId: number, amount: number) => void;
+  aiTransport: (fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }) => void;
+  aiRewardOfficer: (officerId: number, cityId: number, amount: number) => void;
+  aiAppointGovernor: (cityId: number, officerId: number) => void;
 
   // ── Save/Load Actions ──
   saveGame: (slot: number) => boolean;
