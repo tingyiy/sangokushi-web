@@ -109,18 +109,21 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         }
       }
 
+      // Mark recruiter as acted, and recruit the found officer if any
       set({
-        officers: state.officers.map(o => o.id === recruiter!.id ? { ...o, acted: true } : o)
+        officers: state.officers.map(o => {
+          if (o.id === recruiter!.id) return { ...o, acted: true };
+          if (found && foundOfficer && o.id === foundOfficer.id) {
+            return { ...o, factionId: state.playerFaction!.id, loyalty: 60 };
+          }
+          return o;
+        })
       });
 
       if (found && foundOfficer) {
         get().addLog(i18next.t('logs:personnel.searchFoundOfficer', { recruiter: localizedName(recruiter.name), city: localizedName(city.name), officer: localizedName(foundOfficer.name) }));
       } else {
-        if (Math.random() < 0.15) {
-          get().addLog(i18next.t('logs:personnel.searchFoundTreasure', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
-        } else {
-          get().addLog(i18next.t('logs:personnel.searchNothing', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
-        }
+        get().addLog(i18next.t('logs:personnel.searchNothing', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
       }
     },
 

@@ -55,6 +55,10 @@ describe('Battle Store', () => {
       fireHexes: [],
       capturedOfficerIds: [],
       routedOfficerIds: [],
+      attackerFood: 0,
+      defenderFood: 0,
+      attackerStarveDays: 0,
+      defenderStarveDays: 0,
     });
   });
 
@@ -240,7 +244,9 @@ describe('Battle Store', () => {
 
   test('endPlayerPhase runs enemy AI and advances to next day', () => {
     const { initBattle, endPlayerPhase } = useBattleStore.getState();
-    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+    // Give attacker many more troops so defender sortie doesn't end the battle
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy], 60, 60, 40,
+      ['infantry'], ['infantry'], [20000], [5000]);
     
     endPlayerPhase();
     // endPlayerPhase only sets turnPhase to 'enemy'; step through enemy units

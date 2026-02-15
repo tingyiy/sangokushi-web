@@ -68,8 +68,9 @@ export interface BattleState {
   attackerId: number;
   defenderId: number;
   defenderCityId: number;
-  maxDays: number;
   isFinished: boolean;
+  /** Battle paused at end of month (day 30) — waiting for month transition before resuming */
+  battlePaused: boolean;
   winnerFactionId: number | null;
   battleMap: BattleMap;
   isSiege: boolean;
@@ -91,4 +92,12 @@ export interface BattleState {
   playerFactionId: number;
   /** City terrain defense coefficient (0.90-1.35) — defenders take reduced damage */
   defenseCoefficient: number;
+  /** Food supply for the attacker side (consumed daily: 1 food per soldier) */
+  attackerFood: number;
+  /** Food supply for the defender side (replenished from city, but finite) */
+  defenderFood: number;
+  /** Consecutive days the attacker has had 0 food (for escalating morale drain) */
+  attackerStarveDays: number;
+  /** Consecutive days the defender has had 0 food (for escalating morale drain) */
+  defenderStarveDays: number;
 }

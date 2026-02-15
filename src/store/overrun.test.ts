@@ -372,6 +372,74 @@ describe('Zero-Troop Overrun (no battle screen)', () => {
       // Should enter battle phase normally
       expect(useGameStore.getState().phase).toBe('battle');
     });
+
+    it('deducts food from source city when starting battle', () => {
+      const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, food: 100000, adjacentCityIds: [2] });
+      const tgtCity = makeCity({ id: 2, name: '洛陽', factionId: 2, troops: 5000, food: 30000, adjacentCityIds: [1] });
+
+      const attacker1 = makeOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true, leadership: 80 });
+      const attacker2 = makeOfficer({ id: 2, name: '荀彧', factionId: 1, cityId: 1 });
+      const defender = makeOfficer({ id: 10, name: '袁紹', factionId: 2, cityId: 2, isGovernor: true });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, tgtCity],
+        officers: [attacker1, attacker2, defender],
+        factions: [
+          makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+          makeFaction({ id: 2, name: '袁紹', rulerId: 10, relations: { 1: 60 } }),
+        ],
+        playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+        battleFormation: { officerIds: [1], unitTypes: ['infantry'], troops: [5000] },
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().startBattle(2);
+
+      const state = useGameStore.getState();
+      const src = state.cities.find(c => c.id === 1);
+      // Food should be deducted from source city (default: troops * 10 = 50000)
+      expect(src!.food).toBeLessThan(100000);
+      expect(src!.food).toBe(100000 - 50000); // 5000 troops * 10 = 50000
+
+      // Battle store should have received the food
+      const battle = useBattleStore.getState();
+      expect(battle.attackerFood).toBe(50000);
+      expect(battle.defenderFood).toBe(30000); // defender uses city food
+    });
+
+    it('deducts food from source city on overrun (0-troop defender)', () => {
+      const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, food: 80000, adjacentCityIds: [2] });
+      const tgtCity = makeCity({ id: 2, name: '洛陽', factionId: 2, troops: 0, adjacentCityIds: [1] });
+
+      const attacker1 = makeOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true, leadership: 80 });
+      const attacker2 = makeOfficer({ id: 2, name: '荀彧', factionId: 1, cityId: 1 });
+      const defender = makeOfficer({ id: 10, name: '袁紹', factionId: 2, cityId: 2, isGovernor: true });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, tgtCity],
+        officers: [attacker1, attacker2, defender],
+        factions: [
+          makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+          makeFaction({ id: 2, name: '袁紹', rulerId: 10, relations: { 1: 60 } }),
+        ],
+        playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+        battleFormation: { officerIds: [1], unitTypes: ['infantry'], troops: [5000] },
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().startBattle(2);
+
+      const state = useGameStore.getState();
+      const src = state.cities.find(c => c.id === 1);
+      // Food should still be deducted even on overrun
+      expect(src!.food).toBeLessThan(80000);
+    });
   });
 
   describe('AI aiStartBattle', () => {

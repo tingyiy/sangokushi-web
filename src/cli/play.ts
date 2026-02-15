@@ -300,33 +300,52 @@ function runBattle(): { winner: string; winnerFactionId: number | null; log: str
     log(t('battle.unitInfo', { side, name: ln(u.officer.name), troops: u.troops, war: u.officer.war, type: localizedUnitType(u.type) }));
   });
 
-  const maxDays = 30;
-  while (!battle.getState().isFinished && battle.getState().day <= maxDays) {
-    const state = battle.getState();
-    const day = state.day;
+  // Multi-month battle loop: battles can span multiple months (30 days each).
+  // When day 30 is reached, battle pauses → endTurn processes month → resumeBattle continues.
+  const MAX_MONTHS = 24; // Safety: prevent infinite battle loops
+  for (let monthCount = 0; monthCount < MAX_MONTHS; monthCount++) {
+    // Run days within a single month (up to 30 days)
+    while (!battle.getState().isFinished && !battle.getState().battlePaused) {
+      const state = battle.getState();
+      const day = state.day;
 
-    const playerUnits = state.units.filter(
-      u => u.factionId === playerFaction && u.troops > 0 && u.status === 'active'
-    );
-    for (const pu of playerUnits) {
+      const playerUnits = state.units.filter(
+        u => u.factionId === playerFaction && u.troops > 0 && u.status === 'active'
+      );
+      for (const pu of playerUnits) {
+        if (battle.getState().isFinished) break;
+        battle.getState().selectUnit(pu.id);
+        runUnitAI(pu.id);
+      }
       if (battle.getState().isFinished) break;
-      battle.getState().selectUnit(pu.id);
-      runUnitAI(pu.id);
+      battle.getState().endPlayerPhase();
+
+      let safety = 0;
+      while (battle.getState().stepEnemyPhase() && safety < 50) {
+        safety++;
+        if (battle.getState().isFinished) break;
+      }
+
+      const postDay = battle.getState();
+      if (postDay.day !== day || postDay.isFinished) {
+        const pa = postDay.units.filter(u => u.factionId === playerFaction && u.troops > 0);
+        const ea = postDay.units.filter(u => u.factionId !== playerFaction && u.troops > 0);
+        log(t('battle.dayReport', { day, atkUnits: pa.length, atkTroops: pa.reduce((s, u) => s + u.troops, 0), defUnits: ea.length, defTroops: ea.reduce((s, u) => s + u.troops, 0) }));
+      }
     }
+
+    // Exit if battle ended
     if (battle.getState().isFinished) break;
-    battle.getState().endPlayerPhase();
 
-    let safety = 0;
-    while (battle.getState().stepEnemyPhase() && safety < 50) {
-      safety++;
+    // Battle paused at month end — run strategic phase (endTurn processes month + resumes battle)
+    if (battle.getState().battlePaused) {
+      log(i18next.t('logs:battle.monthEnd'));
+      // endTurn handles month processing and calls resumeBattle automatically
+      game.getState().endTurn();
+      // After endTurn, battle should be resumed (battlePaused = false, day = 1)
+      // If battle ended during month processing, exit
       if (battle.getState().isFinished) break;
     }
-
-    const postDay = battle.getState();
-    if (postDay.day !== day || postDay.isFinished) {
-      const pa = postDay.units.filter(u => u.factionId === playerFaction && u.troops > 0);
-      const ea = postDay.units.filter(u => u.factionId !== playerFaction && u.troops > 0);
-      log(t('battle.dayReport', { day, atkUnits: pa.length, atkTroops: pa.reduce((s, u) => s + u.troops, 0), defUnits: ea.length, defTroops: ea.reduce((s, u) => s + u.troops, 0) }));    }
   }
 
   const result = battle.getState();
@@ -1447,7 +1466,7 @@ function saveState(filepath: string) {
       attackerId: bs.attackerId,
       defenderId: bs.defenderId,
       defenderCityId: bs.defenderCityId,
-      maxDays: bs.maxDays,
+      battlePaused: bs.battlePaused,
       isFinished: bs.isFinished,
       winnerFactionId: bs.winnerFactionId,
       battleMap: bs.battleMap,
@@ -1462,6 +1481,11 @@ function saveState(filepath: string) {
       inspectedUnitId: bs.inspectedUnitId,
       turnPhase: bs.turnPhase,
       playerFactionId: bs.playerFactionId,
+      defenseCoefficient: bs.defenseCoefficient,
+      attackerFood: bs.attackerFood,
+      defenderFood: bs.defenderFood,
+      attackerStarveDays: bs.attackerStarveDays,
+      defenderStarveDays: bs.defenderStarveDays,
     },
   };
 

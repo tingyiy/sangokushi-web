@@ -7,7 +7,7 @@
 
 import { useGameStore } from '../store/gameStore';
 import { useBattleStore } from '../store/battleStore';
-import { formatMemoryForPrompt } from './memory';
+import { formatMemoryForPrompt, getMemory } from './memory';
 
 // ── System Prompt (Strategic Phase) ─────────────────────
 
@@ -19,9 +19,16 @@ export const SYSTEM_PROMPT_STRATEGIC = `You are an expert AI player for Romance 
 - Drafting troops costs 2 gold + 3 food per soldier. Max draft = 10% of city population.
 - Tax revenue comes quarterly (months 1, 4, 7, 10). Food harvest in months 7 and 10.
 - Each city needs a governor. The ruler IS the governor of their city (cannot be reassigned).
+- Each city you own generates tax income and food, and may have recruitable officers.
+- Empty cities (factionId=null) have no garrison. Using startBattle on them results in instant capture with no tactical battle.
+- Cities with officers but 0 troops are auto-overrun — also instant capture.
+- Enemy city data (troops, officers, resources) is hidden unless you use the spy command to reveal it.
+- Troop training and morale affect combat effectiveness.
+
+## How This Works
+You issue ONE command at a time. After each command, you see the result and updated status, then decide your next command. When you are done, issue "endTurn".
 
 ## Available Commands
-Respond with a JSON array of commands to execute this turn. Each command is an object:
 
 ### Domestic (cost 500 gold each, need available officer)
 - { "cmd": "developCommerce", "cityId": <id>, "officerId": <id> }
@@ -31,14 +38,14 @@ Respond with a JSON array of commands to execute this turn. Each command is an o
 - { "cmd": "trainTroops", "cityId": <id>, "officerId": <id> }  (costs 500 food, not gold)
 - { "cmd": "manufacture", "cityId": <id>, "weaponType": "crossbows"|"warHorses"|"batteringRams"|"catapults", "officerId": <id> }
 - { "cmd": "setTaxRate", "cityId": <id>, "rate": "low"|"medium"|"high" }
+- { "cmd": "disasterRelief", "cityId": <id>, "officerId": <id> }
 
 ### Military
 - { "cmd": "draftTroops", "cityId": <id>, "amount": <number>, "officerId": <id> }
 - { "cmd": "transport", "fromCityId": <id>, "toCityId": <id>, "resources": { "gold": <n>, "food": <n>, "troops": <n> }, "officerId": <id> }
 - { "cmd": "transferOfficer", "officerId": <id>, "targetCityId": <id> }
-- { "cmd": "startBattle", "targetCityId": <id> }
-  NOTE: Before startBattle, you MUST set formation:
-  { "cmd": "setBattleFormation", "formation": { "officerIds": [<ids>], "unitTypes": ["infantry"|"cavalry"|"archer"], "troops": [<per-unit>] } }
+- { "cmd": "setBattleFormation", "formation": { "officerIds": [<ids>], "unitTypes": ["infantry"|"cavalry"|"archer"], "troops": [<per-unit>], "food": <total food to bring> } }
+- { "cmd": "startBattle", "cityId": <sourceCity>, "targetCityId": <id> }
 
 ### Personnel
 - { "cmd": "recruitOfficer", "officerId": <id>, "recruiterId": <id> }
@@ -47,53 +54,71 @@ Respond with a JSON array of commands to execute this turn. Each command is an o
 - { "cmd": "rewardOfficer", "officerId": <id>, "type": "gold", "amount": 100 }
 - { "cmd": "appointGovernor", "cityId": <id>, "officerId": <id> }
 
-### Diplomacy (requires selecting a city first)
-- { "cmd": "selectCity", "cityId": <id> }  (select your city before diplomacy)
-- { "cmd": "improveRelations", "targetFactionId": <id>, "officerId": <id> }
-- { "cmd": "formAlliance", "targetFactionId": <id>, "officerId": <id> }
-- { "cmd": "proposeCeasefire", "targetFactionId": <id>, "officerId": <id> }
+### Diplomacy
+- { "cmd": "improveRelations", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
+- { "cmd": "formAlliance", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
+- { "cmd": "proposeCeasefire", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 
-### Strategy (requires selecting a city first)
-- { "cmd": "spy", "targetCityId": <id>, "officerId": <id> }
-- { "cmd": "rumor", "targetCityId": <id>, "officerId": <id> }
-- { "cmd": "counterEspionage", "targetCityId": <id>, "targetOfficerId": <id>, "officerId": <id> }
+### Strategy
+- { "cmd": "spy", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
+- { "cmd": "rumor", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
+- { "cmd": "counterEspionage", "cityId": <yourCity>, "targetCityId": <id>, "targetOfficerId": <id>, "officerId": <id> }
 
 ### Turn End
 - { "cmd": "endTurn" }
 
 ## Response Format
-You MUST respond with valid JSON in this exact structure:
+You MUST respond with valid JSON:
 {
-  "thinking": "<your strategic reasoning for this turn>",
-  "commands": [ ...array of command objects... ],
-  "strategyNotes": "<notes for yourself about long-term plans, updated each turn>"
+  "thinking": "<brief reasoning for this action>",
+  "command": { ...one command object... }
 }
 
-WIN CONDITION: Conquer all 43 cities to win.
-Always end your command list with { "cmd": "endTurn" }.
-If a battle starts, you will be prompted separately for tactical decisions.
+On the FIRST action of a turn, also include:
+{
+  "thinking": "<reasoning>",
+  "plan": "<your conquest plan: which cities to take and when>",
+  "command": { ... },
+  "strategyNotes": "<long-term plans, updated each turn>"
+}
+
+## Example: Early game — capture an empty city
+
+Turn start context shows: You own CityA (id=1, 3 officers, 3000 troops). CityB (id=2) is empty and adjacent.
+
+Action 1:
+{ "thinking": "Set formation to send 2 officers to capture empty CityB", "plan": "Capture CityB now, then develop both cities", "command": { "cmd": "setBattleFormation", "formation": { "officerIds": [11, 12], "unitTypes": ["infantry", "infantry"], "troops": [1000, 1000], "food": 20000 } }, "strategyNotes": "Expanding into CityB first." }
+
+Action 2 (after seeing formation OK):
+{ "thinking": "Formation set, now attack the empty city", "command": { "cmd": "startBattle", "cityId": 1, "targetCityId": 2 } }
+
+Action 3 (after seeing capture OK, status shows 2 cities):
+{ "thinking": "CityB captured. Develop CityA commerce with remaining officer.", "command": { "cmd": "developCommerce", "cityId": 1, "officerId": 10 } }
+
+Action 4:
+{ "thinking": "All officers acted. End turn.", "command": { "cmd": "endTurn" } }
 
 KEY MECHANICS:
-- More cities → more tax income, more officers, more actions per turn. Expansion is the engine of growth.
-- Empty cities (factionId=null, 0 defenders) can be captured by startBattle — no tactical battle occurs, instant capture.
-- Cities with officers but 0 troops are auto-overrun — also instant, no tactical battle.
-- Officers are your most valuable resource. Each officer = 1 action per turn. searchOfficer discovers hidden unaffiliated officers.
-- Tax revenue arrives quarterly (months 1, 4, 7, 10). Food harvest in months 7, 10. Plan spending around these cycles.
-- Troop training and morale directly affect combat. Untrained troops are weak.
-- Diplomacy (alliances, ceasefires) lets you secure borders and focus force elsewhere.
-- Spy reveals hidden city data; intelligence is power.
+- Tax revenue arrives quarterly (months 1, 4, 7, 10). Food harvest in months 7, 10.
+- searchOfficer searches your own city for hidden unaffiliated officers. If found, the officer immediately joins your faction (loyalty 60). Only works if unaffiliated officers exist in that city. Check the "Unaffiliated:N" count in the status display — cities showing no count have zero searchable officers. Do NOT waste actions searching cities with 0 unaffiliated officers.
+- recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
+- rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
+- spy reveals an enemy city's data (troops, officers, resources) for several turns.
+- Diplomacy (alliances, ceasefires) can secure borders.
 
 BATTLE FORMATION RULES:
-- Before startBattle, you MUST: (1) selectCity with your source city, (2) setBattleFormation with officers/units/troops.
-- You MUST leave at least 1 officer behind in the source city. If you have 3 officers, send at most 2.
-- Only the commander (highest leadership) needs to be [READY]. Other officers can have acted.
+- Before startBattle, you MUST first issue setBattleFormation.
+- startBattle requires "cityId" (your source city) and "targetCityId" (the target).
+- You MUST leave at least 1 officer behind in the source city.
 - Each archer unit requires 1000 crossbows, each cavalry unit requires 1000 warHorses in the source city.
+- If you have no crossbows or warHorses, use "infantry" for all units.
+- "food" in formation = how much food to bring from the source city for the campaign. Default: totalTroops × 10 (enough for 10 days). Armies consume 1 food per soldier per day. When food runs out, morale drains escalatingly (-5 per consecutive starvation day). Low morale → rout.
+- Battles last up to 30 days per month. If neither side wins by day 30, the battle pauses and the game returns to the strategic phase for one month of processing (taxes, harvests, AI turns). After the month ends, the battle resumes with day reset to 1 and defender food resupplied from city stores. This can repeat indefinitely until one side wins or the attacker retreats.
 
 CONSTRAINTS:
 - Each officer acts ONCE per turn. Do not issue commands for [ACTED] officers.
 - Officers can only act in their stationed city.
-- selectCity is required before diplomacy, strategy, and startBattle commands.
-- If a command fails, read the error message, understand the cause, and adapt. Do not blindly retry.
+- If a command fails, read the error, understand the cause, and try something different.
 `;
 
 // ── System Prompt (Battle Phase) ────────────────────────
@@ -106,6 +131,7 @@ export const SYSTEM_PROMPT_BATTLE = `You are controlling units in a tactical hex
 - Each unit has: troops, morale, type (infantry/cavalry/archer/etc), position (hex q,r).
 - Cavalry is strong in open terrain, archers have range 2, infantry is balanced.
 - When a unit's troops reach 0, the officer may be captured.
+- Battles last 30 days per month. At day 30, battle pauses for month transition, then resumes. Defender food is resupplied from city stores each month.
 
 ## Available Commands
 Respond with a JSON object for the current unit's action:
@@ -146,6 +172,31 @@ export function resetLogTracking(): void {
 }
 
 /**
+ * Build a quick status summary after each action.
+ * Shows per-city: available officers, gold, troops so LLM can plan its next action.
+ */
+export function buildQuickStats(): string {
+  const state = useGameStore.getState();
+  const pf = state.playerFaction;
+  if (!pf) return '';
+
+  const myCities = state.cities.filter(c => c.factionId === pf.id);
+  const myOfficers = state.officers.filter(o => o.factionId === pf.id);
+  const lines: string[] = ['=== STATUS ==='];
+
+  for (const city of myCities) {
+    const officers = myOfficers.filter(o => o.cityId === city.id);
+    const ready = officers.filter(o => !o.acted);
+    const readyNames = ready.map(o => `${o.name}(${o.id})`).join(', ') || 'none';
+    const unaffiliated = state.officers.filter(o => o.cityId === city.id && o.factionId === null).length;
+    const unafStr = unaffiliated > 0 ? ` Unaffiliated:${unaffiliated}` : '';
+    lines.push(`${city.name}: ${ready.length}/${officers.length} officers ready [${readyNames}] | Gold:${city.gold} Food:${city.food} Troops:${city.troops}${unafStr}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Build a comprehensive state summary for the strategic phase.
  * Includes: date, faction info, all cities, officers, diplomacy, game events, memory.
  */
@@ -167,6 +218,51 @@ export function buildStrategicContext(): string {
   const totalFood = myCities.reduce((s, c) => s + c.food, 0);
   const totalTroops = myCities.reduce((s, c) => s + c.troops, 0);
   parts.push(`Total Gold: ${totalGold} | Food: ${totalFood} | Troops: ${totalTroops}`);
+  parts.push('');
+
+  // ── Situation Assessment ────────────────────────────────
+  parts.push('=== SITUATION ASSESSMENT ===');
+
+  // Faction power ranking
+  const factionPower = state.factions.map(f => ({
+    name: f.name,
+    id: f.id,
+    cities: state.cities.filter(c => c.factionId === f.id).length,
+    isPlayer: f.id === pf.id,
+  })).sort((a, b) => b.cities - a.cities);
+
+  const myRank = factionPower.findIndex(f => f.isPlayer) + 1;
+  const totalFactions = factionPower.length;
+  parts.push(`Your rank: #${myRank} of ${totalFactions} factions by city count`);
+  parts.push(`Power ranking: ${factionPower.map(f => `${f.name}=${f.cities}${f.isPlayer ? '(YOU)' : ''}`).join(', ')}`);
+
+  // Empty cities count
+  const emptyCities = state.cities.filter(c => c.factionId === null);
+  parts.push(`Empty cities on map: ${emptyCities.length}`);
+
+  // Adjacent empty cities — factual list with capture mechanics reminder
+  const adjacentEmptyAll = new Map<number, string>();
+  for (const city of myCities) {
+    for (const adjId of city.adjacentCityIds) {
+      const adj = state.cities.find(c => c.id === adjId);
+      if (adj && adj.factionId === null && !adjacentEmptyAll.has(adj.id)) {
+        adjacentEmptyAll.set(adj.id, `${adj.name}(id=${adj.id}) — reachable from ${city.name}`);
+      }
+    }
+  }
+  if (adjacentEmptyAll.size > 0) {
+    parts.push(`Adjacent empty cities (capturable via startBattle, no combat):`);
+    for (const desc of adjacentEmptyAll.values()) {
+      parts.push(`  ${desc}`);
+    }
+  }
+
+  // Turns played — let LLM see passage of time
+  const mem = getMemory();
+  if (mem.turnHistory.length > 0) {
+    parts.push(`Turns played so far: ${mem.turnHistory.length}`);
+  }
+
   parts.push('');
 
   // Each of our cities
@@ -298,6 +394,11 @@ export function buildBattleContext(): string {
   parts.push(`=== BATTLE STATE ===`);
   parts.push(`Day: ${battle.day} | Weather: ${battle.weather} | Wind: ${battle.windDirection}`);
   parts.push(`Siege: ${battle.isSiege ? 'Yes' : 'No'} | Turn Phase: ${battle.turnPhase}`);
+  const isAttacker = battle.playerFactionId === battle.attackerId;
+  const playerFood = isAttacker ? battle.attackerFood : battle.defenderFood;
+  const enemyFood = isAttacker ? battle.defenderFood : battle.attackerFood;
+  const playerStarveDays = isAttacker ? battle.attackerStarveDays : battle.defenderStarveDays;
+  parts.push(`Our Food: ${playerFood} | Enemy Food: ${enemyFood}${playerStarveDays > 0 ? ` | STARVING (day ${playerStarveDays})` : ''}`);
   parts.push('');
 
   // Active unit

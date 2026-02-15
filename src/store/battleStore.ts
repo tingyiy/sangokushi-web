@@ -37,7 +37,9 @@ interface BattleActions {
     attackerTroops?: number[],
     defenderTroops?: number[],
     playerFactionId?: number,
-    attackDirection?: 'north' | 'south' | 'east' | 'west'
+    attackDirection?: 'north' | 'south' | 'east' | 'west',
+    attackerFood?: number,
+    defenderFood?: number,
   ) => void;
   selectUnit: (unitId: string | null) => void;
   setMode: (mode: BattleMode) => void;
@@ -52,6 +54,8 @@ interface BattleActions {
   stepEnemyPhase: () => boolean;
   runEnemyTurn: () => void;
   nextDay: () => void;
+  /** Resume battle after month transition: reset day to 1, resupply defender food */
+  resumeBattle: (defenderFoodResupply: number) => void;
   checkBattleEnd: () => void;
   addBattleLog: (msg: string) => void;
   inspectUnit: (unitId: string | null) => void;
@@ -70,8 +74,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   attackerId: 0,
   defenderId: 0,
   defenderCityId: 0,
-  maxDays: 30,
   isFinished: false,
+  battlePaused: false,
   winnerFactionId: null,
   battleMap: generateFieldBattleMap(DEFAULT_MAP_WIDTH, DEFAULT_MAP_HEIGHT),
   isSiege: false,
@@ -86,6 +90,10 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   turnPhase: 'player',
   playerFactionId: 0,
   defenseCoefficient: 1.0,
+  attackerFood: 0,
+  defenderFood: 0,
+  attackerStarveDays: 0,
+  defenderStarveDays: 0,
 
   addBattleLog: (msg) => set(s => ({ battleLog: [...s.battleLog.slice(-49), msg] })),
 
@@ -107,7 +115,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     attackerTroops = [],
     defenderTroops = [],
     playerFactionId = attackerId,
-    attackDirection = 'west'
+    attackDirection = 'west',
+    attackerFood = 0,
+    defenderFood = 0,
   ) => {
     const units: BattleUnit[] = [];
     const isSiege = isSiegeBattle(defenderCityId);
@@ -235,6 +245,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       turn: 1,
       day: 1,
       isFinished: false,
+      battlePaused: false,
       winnerFactionId: null,
       activeUnitId: firstPlayerUnit?.id || null,
       battleMap,
@@ -252,6 +263,10 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       turnPhase: 'player',
       playerFactionId,
       defenseCoefficient: cityBaseStats[defenderCityId]?.defenseCoefficient ?? 1.0,
+      attackerFood,
+      defenderFood,
+      attackerStarveDays: 0,
+      defenderStarveDays: 0,
     });
 
     // Check if battle should end immediately (e.g. all defenders have 0 troops)
@@ -277,17 +292,26 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId !== unit.factionId)
         .map(u => `${u.x},${u.y}`)
     );
-    state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+    // Gates only block the attacker faction; defenders pass through their own gates freely
+    const isDefender = unit.factionId === state.defenderId;
+    if (!isDefender) {
+      state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+    }
     const occupied = new Set(
       state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId === unit.factionId)
         .map(u => `${u.x},${u.y}`)
     );
 
+    // For defenders, treat gate terrain as passable (plain)
+    const effectiveTerrain = isDefender
+      ? state.battleMap.terrain.map(col => col.map(t => t === 'gate' ? 'plain' as const : t))
+      : state.battleMap.terrain;
+
     const range = getMovementRange(unit.type);
     const validMoves = getMoveRange(
       { q: unit.x, r: unit.y }, range,
       state.battleMap.width, state.battleMap.height,
-      state.battleMap.terrain, blocked, occupied
+      effectiveTerrain, blocked, occupied
     );
     if (!validMoves.has(`${q},${r}`)) return;
 
@@ -423,6 +447,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
     let newBattleMap = state.battleMap;
 
+    let newUnits = state.units.map(u => u.id === attackerUnitId ? { ...u, status: 'done' as const } : u);
+
     if (newGates[gateIndex].hp <= 0) {
       const newTerrain = state.battleMap.terrain.map((col, q) =>
         q === gateQ ? col.map((t, r) => r === gateR ? 'plain' as TerrainType : t) : col
@@ -430,6 +456,19 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       newBattleMap = { ...state.battleMap, terrain: newTerrain };
       newGates.splice(gateIndex, 1);
       get().addBattleLog(i18next.t('logs:battle.gateBroken'));
+      // Gate breach: defender morale drops -15 (RTK IV: breaching the gate shakes defender resolve)
+      get().addBattleLog(i18next.t('logs:battle.gateBreach', { penalty: 15 }));
+      newUnits = newUnits.map(u => {
+        if (u.factionId === state.defenderId && u.troops > 0) {
+          const newMorale = Math.max(0, u.morale - 15);
+          let newStatus = u.status;
+          if (newMorale < 20 && u.status !== 'routed' && u.status !== 'arriving' && u.status !== 'done') {
+            newStatus = 'routed';
+          }
+          return { ...u, morale: newMorale, status: newStatus };
+        }
+        return u;
+      });
     } else {
       get().addBattleLog(i18next.t('logs:battle.gateAttack', { attacker: localizedName(attacker.officer.name), damage, remaining: newGates[gateIndex].hp }));
     }
@@ -437,7 +476,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     set({
       battleMap: newBattleMap,
       gates: newGates,
-      units: state.units.map(u => u.id === attackerUnitId ? { ...u, status: 'done' as const } : u),
+      units: newUnits,
       mode: 'idle',
       activeUnitId: null,
     });
@@ -704,12 +743,98 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       return;
     }
 
+    // ── Siege attacker: target gates when enemies are behind walls ──
+    const isAttackerUnit = state.isSiege && activeUnit.factionId === state.attackerId;
+    const intactGates = state.gates.filter(g => g.hp > 0);
+
+    if (isAttackerUnit && intactGates.length > 0) {
+      // Find nearest intact gate
+      const nearestGate = intactGates.reduce((best, g) => {
+        const d = getDistance({ q: g.q, r: g.r }, { q: activeUnit.x, r: activeUnit.y });
+        const bestD = getDistance({ q: best.q, r: best.r }, { q: activeUnit.x, r: activeUnit.y });
+        return d < bestD ? g : best;
+      });
+
+      const distToGate = getDistance({ q: nearestGate.q, r: nearestGate.r }, { q: activeUnit.x, r: activeUnit.y });
+
+      // If adjacent to a gate, attack it
+      if (distToGate <= 1) {
+        get().attackGate(activeUnit.id, nearestGate.q, nearestGate.r);
+        return;
+      }
+
+      // Move toward nearest gate instead of nearest enemy
+      const moveRange = getMovementRange(activeUnit.type);
+      const directions = [
+        { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+        { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+      ];
+
+      let bestHex = { q: activeUnit.x, r: activeUnit.y };
+      let bestDist = distToGate;
+
+      for (const dir of directions) {
+        for (let step = 1; step <= moveRange; step++) {
+          const candidate = { q: activeUnit.x + dir.q * step, r: activeUnit.y + dir.r * step };
+          if (candidate.q < 0 || candidate.q >= state.battleMap.width || candidate.r < 0 || candidate.r >= state.battleMap.height) break;
+
+          const terrain = state.battleMap.terrain[candidate.q][candidate.r];
+          if (terrain === 'mountain' || terrain === 'city') break;
+          if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0 && u.status !== 'arriving')) break;
+          // Don't move onto intact gates
+          if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
+          if (terrain === 'gate') break; // gate terrain still blocks attacker
+
+          const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
+          if (hexDist > moveRange) break;
+
+          const d = getDistance(candidate, { q: nearestGate.q, r: nearestGate.r });
+          if (d < bestDist) {
+            bestDist = d;
+            bestHex = candidate;
+          }
+        }
+      }
+
+      if (bestHex.q !== activeUnit.x || bestHex.r !== activeUnit.y) {
+        get().moveUnit(activeUnit.id, bestHex.q, bestHex.r);
+      }
+
+      // After moving, try to attack the gate
+      const movedUnit = get().units.find(u => u.id === activeUnit.id);
+      if (movedUnit) {
+        const newDistToGate = getDistance({ q: movedUnit.x, r: movedUnit.y }, { q: nearestGate.q, r: nearestGate.r });
+        if (newDistToGate <= 1) {
+          get().attackGate(activeUnit.id, nearestGate.q, nearestGate.r);
+          return;
+        }
+      }
+
+      // Mark as done if couldn't reach gate
+      set(s => ({
+        units: s.units.map(u => u.id === activeUnit.id ? { ...u, status: 'done' as const } : u),
+      }));
+      return;
+    }
+
     // Try to move closer
     const moveRange = getMovementRange(activeUnit.type);
     const directions = [
       { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
       { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
     ];
+
+    // Siege defender sortie decision: only move through gates if we have troop advantage.
+    // Otherwise stay inside walls and let attacker waste time breaking gates.
+    const isDefenderUnit = state.isSiege && activeUnit.factionId === state.defenderId;
+    let shouldSortie = true;
+    if (isDefenderUnit) {
+      const allyTroops = state.units.filter(u => u.factionId === activeUnit.factionId && u.troops > 0 && u.status !== 'routed')
+        .reduce((sum, u) => sum + u.troops, 0);
+      const enemyTroops = enemies.reduce((sum, u) => sum + u.troops, 0);
+      // Only sortie if defender has >= 80% of attacker troops
+      shouldSortie = allyTroops >= enemyTroops * 0.8;
+    }
 
     let bestHex = { q: activeUnit.x, r: activeUnit.y };
     let bestDist = distToNearest;
@@ -720,9 +845,13 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         if (candidate.q < 0 || candidate.q >= state.battleMap.width || candidate.r < 0 || candidate.r >= state.battleMap.height) break;
 
         const terrain = state.battleMap.terrain[candidate.q][candidate.r];
-        if (terrain === 'mountain' || (terrain === 'city' && !state.isSiege)) break;
+        if (terrain === 'mountain' || terrain === 'city') break; // walls always block
         if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0 && u.status !== 'arriving')) break;
-        if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
+        // Gates block the attacker; defenders pass through freely
+        const isAIDefender = activeUnit.factionId === state.defenderId;
+        if (!isAIDefender && state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
+        // Defenders treat gate terrain as passable — but only if they should sortie
+        if (terrain === 'gate' && (!isAIDefender || !shouldSortie)) break;
 
         const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
         if (hexDist > moveRange) break;
@@ -758,9 +887,13 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   nextDay: () => {
     const state = get();
     const newDay = state.day + 1;
-    if (newDay > state.maxDays) {
-      set({ isFinished: true, winnerFactionId: state.defenderId });
-      get().addBattleLog(i18next.t('logs:battle.dayLimitReached', { maxDays: state.maxDays }));
+
+    // RTK IV: battles last 30 days per month. At month end, battle pauses
+    // for the strategic layer (taxes, harvest, AI turns, diplomacy) before resuming.
+    const DAYS_PER_MONTH = 30;
+    if (newDay > DAYS_PER_MONTH) {
+      set({ battlePaused: true });
+      get().addBattleLog(i18next.t('logs:battle.monthEnd'));
       return;
     }
 
@@ -805,6 +938,59 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     });
 
     newFireHexes = newFireHexes.map(f => ({ ...f, turnsLeft: f.turnsLeft - 1 })).filter(f => f.turnsLeft > 0);
+
+    // ── Food consumption (RTK IV: 1 food per soldier per day) ──
+    const attackerLivingTroops = unitsWithFireDamage
+      .filter(u => u.factionId === state.attackerId && u.troops > 0)
+      .reduce((sum, u) => sum + u.troops, 0);
+    const defenderLivingTroops = unitsWithFireDamage
+      .filter(u => u.factionId === state.defenderId && u.troops > 0)
+      .reduce((sum, u) => sum + u.troops, 0);
+
+    let newAttackerFood = Math.max(0, state.attackerFood - attackerLivingTroops);
+    let newDefenderFood = Math.max(0, state.defenderFood - defenderLivingTroops);
+
+    // ── Starvation morale drain (escalating: -5 × consecutive days without food) ──
+    let newAttackerStarveDays = state.attackerStarveDays;
+    let newDefenderStarveDays = state.defenderStarveDays;
+
+    if (newAttackerFood <= 0 && attackerLivingTroops > 0) {
+      newAttackerStarveDays += 1;
+      const moralePenalty = 5 * newAttackerStarveDays;
+      get().addBattleLog(i18next.t('logs:battle.starvation', { side: i18next.t('logs:battle.sideAttacker'), days: newAttackerStarveDays, penalty: moralePenalty }));
+      unitsWithFireDamage = unitsWithFireDamage.map(u => {
+        if (u.factionId === state.attackerId && u.troops > 0) {
+          const newMorale = Math.max(0, u.morale - moralePenalty);
+          let newStatus = u.status;
+          if (newMorale < 20 && u.status !== 'routed' && u.status !== 'arriving') {
+            newStatus = 'routed';
+          }
+          return { ...u, morale: newMorale, status: newStatus };
+        }
+        return u;
+      });
+    } else {
+      newAttackerStarveDays = 0;
+    }
+
+    if (newDefenderFood <= 0 && defenderLivingTroops > 0) {
+      newDefenderStarveDays += 1;
+      const moralePenalty = 5 * newDefenderStarveDays;
+      get().addBattleLog(i18next.t('logs:battle.starvation', { side: i18next.t('logs:battle.sideDefender'), days: newDefenderStarveDays, penalty: moralePenalty }));
+      unitsWithFireDamage = unitsWithFireDamage.map(u => {
+        if (u.factionId === state.defenderId && u.troops > 0) {
+          const newMorale = Math.max(0, u.morale - moralePenalty);
+          let newStatus = u.status;
+          if (newMorale < 20 && u.status !== 'routed' && u.status !== 'arriving') {
+            newStatus = 'routed';
+          }
+          return { ...u, morale: newMorale, status: newStatus };
+        }
+        return u;
+      });
+    } else {
+      newDefenderStarveDays = 0;
+    }
 
     // Routed units
     const routedCaptures: number[] = [];
@@ -854,7 +1040,50 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       activeUnitId: null,
       mode: 'idle',
       turnPhase: 'player',
+      attackerFood: newAttackerFood,
+      defenderFood: newDefenderFood,
+      attackerStarveDays: newAttackerStarveDays,
+      defenderStarveDays: newDefenderStarveDays,
     });
+
+    // Check if battle should end after day processing (routed units left map, starvation rout, etc.)
+    get().checkBattleEnd();
+  },
+
+  resumeBattle: (defenderFoodResupply) => {
+    const state = get();
+    if (!state.battlePaused) return;
+
+    // Reset day counter for the new month
+    // Resupply defender food from city stores
+    // Reset starvation counters (fresh month = fresh supply check)
+    // Reactivate all living, non-routed units
+    const resetUnits = state.units.map(u => {
+      if (u.troops <= 0 || u.status === 'routed') return u;
+      return {
+        ...u,
+        status: 'active' as const,
+        hasMoved: false,
+      };
+    });
+
+    const firstPlayerUnit = resetUnits.find(
+      u => u.factionId === state.playerFactionId && u.troops > 0 && u.status === 'active'
+    );
+
+    set({
+      day: 1,
+      battlePaused: false,
+      defenderFood: state.defenderFood + defenderFoodResupply,
+      attackerStarveDays: 0,
+      defenderStarveDays: 0,
+      units: resetUnits,
+      activeUnitId: firstPlayerUnit?.id || null,
+      mode: 'idle',
+      turnPhase: 'player',
+    });
+
+    get().addBattleLog(i18next.t('logs:battle.battleResume'));
   },
 
   checkBattleEnd: () => {

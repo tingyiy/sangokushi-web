@@ -236,6 +236,7 @@
     "commanderDefeated": "Commander defeated — {{name}}'s forces collapse!",
     "unitRouted": "{{name}} routed!",
     "gateBroken": "The gate has been breached!",
+    "gateBreach": "Gate breached! Defender morale -{{penalty}}.",
     "gateAttack": "{{attacker}} attacked the gate, dealing {{damage}} damage ({{remaining}} HP left).",
     "tacticSuccess": "{{name}} used \"{{tactic}}\" successfully!",
     "tacticFail": "{{name}}'s \"{{tactic}}\" failed.",
@@ -243,6 +244,11 @@
     "confused": "{{name}} is confused and cannot act.",
     "dayLimitReached": "Day {{maxDays}} reached. Attackers retreat, defenders win!",
     "dayHeader": "── Day {{day}} ──",
-    "reinforcements": "{{name}}'s reinforcements have arrived!"
+    "reinforcements": "{{name}}'s reinforcements have arrived!",
+    "starvation": "{{side}} army has no food (day {{days}})! Morale -{{penalty}} for all units.",
+    "sideAttacker": "Attacking",
+    "sideDefender": "Defending",
+    "monthEnd": "── Day 30 reached. Battle pauses for month transition. ──",
+    "battleResume": "── A new month begins. Battle resumes! ──"
   }
 }

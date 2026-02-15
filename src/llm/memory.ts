@@ -163,6 +163,7 @@ export function endBattle(outcome: string): void {
 /**
  * Format memory as text for inclusion in the LLM prompt.
  * Keeps recent history and strategy notes within a token budget.
+ * Detects and condenses repeated identical turn patterns.
  */
 export function formatMemoryForPrompt(): string {
   const parts: string[] = [];
@@ -174,19 +175,57 @@ export function formatMemoryForPrompt(): string {
     parts.push('');
   }
 
-  // Recent turn history (last 6 turns)
+  // Recent turn history (last 6 turns) — condensed
   const recentTurns = memory.turnHistory.slice(0, 6);
   if (recentTurns.length > 0) {
     parts.push('=== RECENT TURN HISTORY ===');
+
+    // Extract a short signature for each turn's actions (just cmd names)
+    const turnSignatures: { sig: string; turns: TurnEntry[] }[] = [];
     for (const turn of recentTurns) {
-      parts.push(`--- Turn ${turn.year}/${turn.month} ---`);
-      for (const a of turn.actions) {
-        parts.push(`  Action: ${a.action}`);
-        parts.push(`  Reasoning: ${a.reasoning}`);
-        parts.push(`  Result: ${a.result}`);
+      const sig = turn.actions.map(a => {
+        try {
+          const cmd = JSON.parse(a.action) as { cmd?: string };
+          return cmd.cmd ?? 'unknown';
+        } catch { return 'unknown'; }
+      }).join(', ');
+
+      // Merge with previous group if same signature
+      const last = turnSignatures[turnSignatures.length - 1];
+      if (last && last.sig === sig) {
+        last.turns.push(turn);
+      } else {
+        turnSignatures.push({ sig, turns: [turn] });
       }
-      if (turn.reflection) {
-        parts.push(`  Reflection: ${turn.reflection}`);
+    }
+
+    // Output condensed groups
+    for (const group of turnSignatures) {
+      if (group.turns.length > 1) {
+        // Condensed: multiple turns with same pattern
+        const first = group.turns[group.turns.length - 1]!;
+        const last = group.turns[0]!;
+        parts.push(`--- Turns ${first.year}/${first.month} to ${last.year}/${last.month} (${group.turns.length} turns, SAME PATTERN) ---`);
+        parts.push(`  Repeated actions: ${group.sig}`);
+        // Show results from the most recent one
+        for (const a of last.actions) {
+          parts.push(`  Result: ${a.result}`);
+        }
+        if (group.turns.length >= 3) {
+          parts.push(`  *** NOTE: You repeated this exact pattern ${group.turns.length} times. Consider a different approach. ***`);
+        }
+      } else {
+        // Single turn — show normally but condensed
+        const turn = group.turns[0]!;
+        parts.push(`--- Turn ${turn.year}/${turn.month} ---`);
+        for (const a of turn.actions) {
+          try {
+            const cmd = JSON.parse(a.action) as { cmd?: string };
+            parts.push(`  ${cmd.cmd}: ${a.result}`);
+          } catch {
+            parts.push(`  ${a.action}: ${a.result}`);
+          }
+        }
       }
     }
     parts.push('');

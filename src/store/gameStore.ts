@@ -171,6 +171,8 @@ export interface GameState {
     officerIds: number[];
     unitTypes: UnitType[];
     troops?: number[];
+    /** Food supply for the campaign (deducted from source city). Default: totalTroops × 10 */
+    food?: number;
   } | null;
   /** Pending events to show in dialog - Phase 6.4 */
   pendingEvents: import('../types').GameEvent[];

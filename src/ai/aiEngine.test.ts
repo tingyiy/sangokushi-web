@@ -137,7 +137,7 @@ describe('AI Engine', () => {
     const offensiveState = {
       ...mockState,
       cities: mockState.cities.map(c => 
-        c.id === 2 ? { ...c, troops: 30000, training: 100, morale: 100 } : (c.id === 1 ? { ...c, troops: 5000 } : c)
+        c.id === 2 ? { ...c, troops: 30000, food: 200000, training: 100, morale: 100 } : (c.id === 1 ? { ...c, troops: 5000 } : c)
       ),
       officers: [
           ...mockState.officers,
@@ -146,5 +146,22 @@ describe('AI Engine', () => {
     };
     const decisions = runAI(offensiveState);
     expect(decisions.some(d => d.action === 'aiStartBattle')).toBe(true);
+  });
+
+  it('should NOT attack when city food is insufficient for campaign', () => {
+    // City has 30000 troops, 2:1 advantage, 2 officers — but only 1000 food
+    // Food gate: sendable=1, estimatedDeploy=15000, needs 15000*10=150000, has 1000 → skip attack
+    const lowFoodState = {
+      ...mockState,
+      cities: mockState.cities.map(c =>
+        c.id === 2 ? { ...c, troops: 30000, food: 1000, training: 100, morale: 100 } : (c.id === 1 ? { ...c, troops: 5000 } : c)
+      ),
+      officers: [
+          ...mockState.officers,
+          { id: 4, name: 'General', factionId: 2, cityId: 2, acted: false, loyalty: 100, leadership: 80, war: 80, intelligence: 80, politics: 80, charisma: 80, skills: [], portraitId: 4, birthYear: 160, deathYear: 230, isGovernor: false, treasureId: null, relationships: [] }
+      ]
+    };
+    const decisions = runAI(lowFoodState);
+    expect(decisions.some(d => d.action === 'aiStartBattle')).toBe(false);
   });
 });

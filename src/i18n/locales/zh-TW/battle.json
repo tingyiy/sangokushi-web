@@ -42,9 +42,11 @@
     "retreat": "確定要撤退嗎？撤退將判定為敗北。"
   },
   "header": {
-    "dayCounter": "第 {{day}} / {{maxDays}} 日",
+    "dayCounter": "第 {{day}} 日",
     "windDirection": "風向：",
-    "battleTitle": "{{attacker}} 攻打 {{city}}"
+    "battleTitle": "{{attacker}} 攻打 {{city}}",
+    "foodStatus": "糧食：{{player}}（我方）/ {{enemy}}（敵方）",
+    "starving": "糧盡"
   },
   "action": {
     "endTurn": "結束回合 ({{count}} 待命)",

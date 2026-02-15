@@ -197,4 +197,186 @@ describe('Battle Store Fixes', () => {
        expect(defender.x).toBe(7);
        expect(defender.y).toBe(7);
   });
+
+  test('Bug #9: nextDay calls checkBattleEnd after routed units leave the map', () => {
+    // Regression: routed units leaving the map set troops=0, but checkBattleEnd
+    // was not called, causing the battle to continue indefinitely (defender stuck
+    // attacking own gates after all attackers were eliminated by starvation/rout).
+    const { initBattle } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    // Place attacker at map edge (routed, about to leave)
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.factionId === 1
+          ? { ...u, status: 'routed' as const, x: 0, y: 7, z: -7 }
+          : u
+      ),
+    }));
+
+    // nextDay should: move routed unit off edge → troops=0 → checkBattleEnd → defender wins
+    useBattleStore.getState().nextDay();
+
+    const state = useBattleStore.getState();
+    expect(state.isFinished).toBe(true);
+    expect(state.winnerFactionId).toBe(2); // Defender wins
+  });
+
+  test('Bug #10: starvation-routed units leaving map ends battle via checkBattleEnd', () => {
+    // Regression: army starves, units rout, move to edge, leave map.
+    // Without checkBattleEnd in nextDay, battle never ends.
+    const { initBattle } = useBattleStore.getState();
+    initBattle(
+      1, 2, 2,
+      [mockOfficer], [mockEnemy],
+      15, 80, 40, // attacker morale 15 (will rout on first starvation)
+      ['infantry'], ['infantry'],
+      [5000], [5000],
+      2, 'west', // player is defender
+      0, 100000, // attacker has 0 food
+    );
+
+    // Place attacker near edge so rout → edge → removal happens fast
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.factionId === 1
+          ? { ...u, x: 1, y: 7, z: -8 }
+          : u
+      ),
+    }));
+
+    // Advance days until battle ends
+    let maxIter = 20;
+    while (!useBattleStore.getState().isFinished && maxIter-- > 0) {
+      useBattleStore.getState().nextDay();
+    }
+
+    const state = useBattleStore.getState();
+    expect(state.isFinished).toBe(true);
+    expect(state.winnerFactionId).toBe(2); // Defender wins
+  });
+
+  test('Siege: defender can move through own intact gate', () => {
+    // initBattle with city 2 as defender → creates siege map with gates
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    expect(state.isSiege).toBe(true);
+    expect(state.gates.length).toBeGreaterThan(0);
+
+    // Defender (faction 2) is inside the walls at (7,7)
+    const defender = state.units.find(u => u.factionId === 2)!;
+    expect(defender.x).toBe(7);
+    expect(defender.y).toBe(7);
+
+    // Find a gate position
+    const gate = state.gates[0];
+    expect(gate.hp).toBeGreaterThan(0); // intact
+
+    // Try to move defender onto the gate hex — should succeed for defenders
+    // Defender needs to be adjacent to the gate for this to work
+    // Gates are at wall midpoints: (4,7), (10,7), (7,3), (7,11)
+    // Defender at (7,7) can reach (7,3) if movement range allows (infantry = 5)
+    // Distance from (7,7) to (7,3) = 4 hexes — within infantry range of 5
+    moveUnit(defender.id, gate.q, gate.r);
+
+    const movedDefender = useBattleStore.getState().units.find(u => u.id === defender.id)!;
+    // Defender should have moved to the gate position
+    expect(movedDefender.x).toBe(gate.q);
+    expect(movedDefender.y).toBe(gate.r);
+  });
+
+  test('Siege: attacker CANNOT move through intact gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const attacker = state.units.find(u => u.factionId === 1)!;
+    const gate = state.gates[0];
+
+    // Try to move attacker onto an intact gate hex — should be blocked
+    moveUnit(attacker.id, gate.q, gate.r);
+
+    const unmoved = useBattleStore.getState().units.find(u => u.id === attacker.id)!;
+    // Attacker should NOT have moved to the gate position
+    expect(unmoved.x).toBe(attacker.x);
+    expect(unmoved.y).toBe(attacker.y);
+  });
+
+  test('Siege: gate breach drops defender morale by 15', () => {
+    const { initBattle, attackGate } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const attacker = state.units.find(u => u.factionId === 1)!;
+    const defender = state.units.find(u => u.factionId === 2)!;
+    const initialMorale = defender.morale;
+
+    const gate = state.gates[0];
+
+    // Reduce gate HP to almost 0 so next attack breaks it
+    useBattleStore.setState(s => ({
+      gates: s.gates.map(g =>
+        g.q === gate.q && g.r === gate.r ? { ...g, hp: 1 } : g
+      ),
+      // Place attacker adjacent to gate
+      units: s.units.map(u =>
+        u.id === attacker.id ? { ...u, x: gate.q - 1, y: gate.r, z: -(gate.q - 1) - gate.r } : u
+      ),
+    }));
+
+    attackGate(attacker.id, gate.q, gate.r);
+
+    const afterState = useBattleStore.getState();
+    // Gate should be broken
+    expect(afterState.gates.find(g => g.q === gate.q && g.r === gate.r)).toBeUndefined();
+
+    // Defender morale should have dropped by 15
+    const updatedDefender = afterState.units.find(u => u.id === defender.id)!;
+    expect(updatedDefender.morale).toBe(initialMorale - 15);
+  });
+
+  test('Siege AI: attacker runEnemyTurn targets gates when enemies are behind walls', () => {
+    const { initBattle } = useBattleStore.getState();
+    // Init siege: attacker faction 1, defender faction 2, player is defender (2)
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy],
+      80, 80, 50,
+      ['infantry'], ['infantry'],
+      [5000], [5000],
+      2, 'west', // player is defender
+      500000, 500000,
+    );
+
+    const state = useBattleStore.getState();
+    expect(state.isSiege).toBe(true);
+    expect(state.gates.length).toBeGreaterThan(0);
+
+    const gate = state.gates[0];
+    const initialGateHp = gate.hp;
+
+    // Place attacker adjacent to gate (so it can attack immediately)
+    const attackerUnit = state.units.find(u => u.factionId === 1)!;
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attackerUnit.id
+          ? { ...u, x: gate.q - 1, y: gate.r, z: -(gate.q - 1) - gate.r, status: 'active' as const }
+          : u
+      ),
+      activeUnitId: attackerUnit.id,
+      turnPhase: 'enemy',
+    }));
+
+    // Run enemy AI turn
+    useBattleStore.getState().runEnemyTurn();
+
+    // Gate should have taken damage (AI attacked it)
+    const afterGate = useBattleStore.getState().gates.find(g => g.q === gate.q && g.r === gate.r);
+    if (afterGate) {
+      expect(afterGate.hp).toBeLessThan(initialGateHp);
+    } else {
+      // Gate was completely destroyed (unlikely with one attack, but possible)
+      expect(useBattleStore.getState().gates.find(g => g.q === gate.q && g.r === gate.r)).toBeUndefined();
+    }
+  });
 });

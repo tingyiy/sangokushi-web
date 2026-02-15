@@ -42,9 +42,11 @@
     "retreat": "Are you sure you want to retreat? This counts as a defeat."
   },
   "header": {
-    "dayCounter": "Day {{day}} / {{maxDays}}",
+    "dayCounter": "Day {{day}}",
     "windDirection": "Wind: ",
-    "battleTitle": "{{attacker}} attacks {{city}}"
+    "battleTitle": "{{attacker}} attacks {{city}}",
+    "foodStatus": "Food: {{player}} (us) / {{enemy}} (enemy)",
+    "starving": "STARVING"
   },
   "action": {
     "endTurn": "End Turn ({{count}} ready)",

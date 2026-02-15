@@ -78,9 +78,32 @@ function cityName(id: number | undefined): string {
 function requireOwnCity(cat: LogCategory, label: string, cityId: number): Result | null {
   const state = useGameStore.getState();
   const city = state.cities.find(c => c.id === cityId);
-  if (!city) return logCmd(cat, label, { ok: false, error: 'City not found' });
-  if (city.factionId !== state.playerFaction?.id) return logCmd(cat, label, { ok: false, error: 'Not your city' });
+  if (!city) return logCmd(cat, label, { ok: false, error: `City id=${cityId} not found` });
+  if (city.factionId !== state.playerFaction?.id) {
+    return logCmd(cat, label, { ok: false, error: notYourCityError(state, city) });
+  }
   return null;
+}
+
+/** Build a detailed "not your city" error message. */
+function notYourCityError(state: ReturnType<typeof useGameStore.getState>, city: ReturnType<typeof useGameStore.getState>['cities'][0]): string {
+  const ownerDesc = city.factionId === null
+    ? `${city.name} is unoccupied (empty). You can capture it by sending troops (setBattleFormation + startBattle).`
+    : `${city.name} is owned by ${state.factions.find(f => f.id === city.factionId)?.name ?? `faction#${city.factionId}`}.`;
+  const myCities = state.cities.filter(c => c.factionId === state.playerFaction?.id);
+  const myCityList = myCities.map(c => `${c.name}(id=${c.id})`).join(', ');
+  return `Not your city — ${ownerDesc} Your cities: ${myCityList}`;
+}
+
+/** Build a detailed "officer already acted" error message listing available officers in the city. */
+function officerAlreadyActedError(state: ReturnType<typeof useGameStore.getState>, officer: Officer, cityId: number): string {
+  const available = state.officers.filter(o =>
+    o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted
+  );
+  const availableList = available.length > 0
+    ? `Available officers in this city: ${available.map(o => `${o.name}(id=${o.id})`).join(', ')}`
+    : 'No available officers remain in this city (all have acted this turn).';
+  return `${officer.name} has already acted this turn. ${availableList}`;
 }
 
 /** Check that the selectedCityId belongs to the player faction. Returns error Result or null if ok. */
@@ -354,7 +377,7 @@ export const rtkApi = {
     if (state.phase !== 'playing') return logCmd('🏛', `developCommerce(${cityName(cityId)})`, { ok: false, error: 'Not in playing phase' });
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return logCmd('🏛', `developCommerce(${cityName(cityId)})`, { ok: false, error: 'City not found' });
-    if (city.factionId !== state.playerFaction?.id) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: 'Not your city' });
+    if (city.factionId !== state.playerFaction?.id) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: notYourCityError(state, city) });
 
     const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
 
@@ -363,7 +386,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
 
     if (city.gold < 500) return logCmd('🏛', `developCommerce(${city.name})`, { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` });
 
@@ -380,7 +403,7 @@ export const rtkApi = {
     if (state.phase !== 'playing') return logCmd('🏛', `developAgriculture(${cn})`, { ok: false, error: 'Not in playing phase' });
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return logCmd('🏛', `developAgriculture(${cn})`, { ok: false, error: 'City not found' });
-    if (city.factionId !== state.playerFaction?.id) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: 'Not your city' });
+    if (city.factionId !== state.playerFaction?.id) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: notYourCityError(state, city) });
 
     const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
 
@@ -389,7 +412,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
 
     if (city.gold < 500) return logCmd('🏛', `developAgriculture(${city.name})`, { ok: false, error: `Insufficient gold (Current: ${city.gold}, Required: 500)` });
 
@@ -412,7 +435,7 @@ export const rtkApi = {
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
     if (!executor) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
     if (city.defense >= 100) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: 'Defense already at maximum (100)' });
     if (city.gold < 300) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: `Insufficient gold (need 300, have ${city.gold})` });
 
@@ -435,7 +458,7 @@ export const rtkApi = {
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
     if (!executor) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
     if (city.floodControl >= 100) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: 'Flood control already at maximum (100)' });
     if (city.gold < 500) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: `Insufficient gold (need 500, have ${city.gold})` });
 
@@ -458,7 +481,7 @@ export const rtkApi = {
       ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
     if (!executor) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
     if (city.technology >= 100) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: 'Technology already at maximum (100)' });
     if (city.gold < 800) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: `Insufficient gold (need 800, have ${city.gold})` });
 
@@ -483,7 +506,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: `Executor ${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
 
     if (city.training >= 100) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: 'Training already at maximum (100)' });
     if (city.food < 500) return logCmd('🏛', `trainTroops(${city.name})`, { ok: false, error: `Insufficient food (Current: ${city.food}, Required: 500)` });
@@ -542,10 +565,36 @@ export const rtkApi = {
     if (state.phase !== 'playing') return logCmd('👤', `recruitOfficer(${on})`, { ok: false, error: 'Not in playing phase' });
     const officer = state.officers.find(o => o.id === officerId);
     if (!officer) return logCmd('👤', `recruitOfficer(${on})`, { ok: false, error: 'Officer not found' });
+    if (officer.factionId !== null) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `${officer.name} is not unaffiliated (belongs to faction ${state.factions.find(f => f.id === officer.factionId)?.name ?? officer.factionId})` });
+
+    // Pre-check: recruiter must be in the same city as the target
+    if (recruiterId) {
+      const recruiter = state.officers.find(o => o.id === recruiterId);
+      if (!recruiter) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `Recruiter id=${recruiterId} not found` });
+      if (recruiter.factionId !== state.playerFaction?.id) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `${recruiter.name} is not your officer` });
+      if (recruiter.cityId !== officer.cityId) {
+        const recruiterCity = cityName(recruiter.cityId);
+        const targetCity = cityName(officer.cityId);
+        return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `Recruiter ${recruiter.name} is in ${recruiterCity} but target ${officer.name} is in ${targetCity}. The recruiter must be in the same city as the target. Use transferOfficer to move ${recruiter.name} to ${targetCity} first.` });
+      }
+      if (recruiter.acted) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: officerAlreadyActedError(state, recruiter, recruiter.cityId) });
+    } else {
+      // Check if there's any player officer in the target's city
+      const available = state.officers.filter(o => o.cityId === officer.cityId && o.factionId === state.playerFaction?.id && !o.acted);
+      if (available.length === 0) {
+        const targetCity = cityName(officer.cityId);
+        const playerOfficersInCity = state.officers.filter(o => o.cityId === officer.cityId && o.factionId === state.playerFaction?.id);
+        if (playerOfficersInCity.length === 0) {
+          return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `You have no officers in ${targetCity} where ${officer.name} resides. Transfer an officer there first using transferOfficer.` });
+        }
+        return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: false, error: `All your officers in ${targetCity} have already acted this turn.` });
+      }
+    }
+
     state.recruitOfficer(officerId, recruiterId);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
     if (after.factionId === state.playerFaction?.id) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: true } });
-    return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: false } });
+    return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: false, reason: 'Officer refused (probability-based). Try again next turn.' } });
   },
 
   searchOfficer(cityId: number, officerId?: number): Result {
@@ -557,22 +606,38 @@ export const rtkApi = {
     if (err) return err;
     const city = state.cities.find(c => c.id === cityId)!;
 
-    const logBefore = state.log.length;
+    // Check for unaffiliated officers in the city (informational, not blocking)
+    const unaffiliatedBefore = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
+
+    // Track officers in player faction before search
+    const myOfficerIdsBefore = new Set(state.officers.filter(o => o.factionId === state.playerFaction?.id).map(o => o.id));
+
     state.searchOfficer(cityId, officerId);
 
     const stateAfter = useGameStore.getState();
-    const newLogs = stateAfter.log.slice(logBefore);
-    const lastLog = newLogs[newLogs.length - 1] || '';
 
-    let result: { type: 'officer' | 'treasure' | 'nothing'; name?: string } = { type: 'nothing' };
-    if (lastLog.includes('找到了')) {
-      const match = lastLog.match(/找到了 (.+?)！/);
-      result = { type: 'officer', name: match?.[1] };
-    } else if (lastLog.includes('發現了寶物')) {
-      result = { type: 'treasure' };
+    // Detect newly recruited officer by comparing faction membership
+    const newlyRecruited = stateAfter.officers.find(o =>
+      o.factionId === state.playerFaction?.id && !myOfficerIdsBefore.has(o.id)
+    );
+
+    if (newlyRecruited) {
+      return logCmd('👤', `searchOfficer(${city.name})`, {
+        ok: true,
+        data: {
+          type: 'officer',
+          name: newlyRecruited.name,
+          officerId: newlyRecruited.id,
+          message: `Found and recruited ${newlyRecruited.name}! They joined your faction with loyalty 60.`,
+        },
+      });
     }
 
-    return logCmd('👤', `searchOfficer(${city.name})`, { ok: true, data: result });
+    // Nothing found — provide helpful info about why
+    const hint = unaffiliatedBefore.length === 0
+      ? `No unaffiliated officers in ${city.name}. Check which of your cities have unaffiliated officers in the status display.`
+      : `${unaffiliatedBefore.length} unaffiliated officer(s) in ${city.name} but search failed (probability-based). Try again next turn with a high-charisma officer.`;
+    return logCmd('👤', `searchOfficer(${city.name})`, { ok: true, data: { type: 'nothing', hint } });
   },
 
   recruitPOW(officerId: number, recruiterId?: number): Result {
@@ -599,11 +664,17 @@ export const rtkApi = {
     if (!city) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: 'Officer city not found' });
     if (city.gold < amount) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: `Insufficient gold in city ${city.name} (Current: ${city.gold}, Required: ${amount})` });
 
+    // Bug fix: store.rewardOfficer reads selectedCityId to deduct gold.
+    // Auto-select the officer's city so the store can find it.
+    if (state.selectedCityId !== officer.cityId) {
+      state.selectCity(officer.cityId);
+    }
+
     const loyaltyBefore = officer.loyalty;
     state.rewardOfficer(officerId, type, amount);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
     if (after.loyalty > loyaltyBefore) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: true, data: { before: loyaltyBefore, after: after.loyalty } });
-    return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: 'Action failed to increase loyalty (maybe already at 100?)' });
+    return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: `Action failed to increase loyalty (loyalty=${officer.loyalty}). This may be a bug — please report it.` });
   },
 
   executeOfficer(officerId: number): Result {
@@ -665,7 +736,7 @@ export const rtkApi = {
 
     const city = state.cities.find(c => c.id === cityId);
     if (!city) return logCmd('⚔', `draftTroops(${cn}, ${amount})`, { ok: false, error: 'City not found' });
-    if (city.factionId !== state.playerFaction?.id) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: 'Not your city' });
+    if (city.factionId !== state.playerFaction?.id) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: notYourCityError(state, city) });
 
     const actualOfficerId = Array.isArray(officerId) ? officerId[0] : officerId;
 
@@ -674,7 +745,7 @@ export const rtkApi = {
       : state.officers.find(o => o.cityId === cityId && o.isGovernor);
 
     if (!executor) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: actualOfficerId ? `Officer ${actualOfficerId} not found in city` : 'No governor in city' });
-    if (executor.acted) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: `${executor.name} has already acted this turn` });
+    if (executor.acted) return logCmd('⚔', `draftTroops(${city.name}, ${amount})`, { ok: false, error: officerAlreadyActedError(state, executor, cityId) });
 
     const goldCost = amount * 2;
     const foodCost = amount * 3;
@@ -698,7 +769,7 @@ export const rtkApi = {
     if (state.phase !== 'playing') return logCmd('⚔', label, { ok: false, error: 'Not in playing phase' });
     const fromCity = state.cities.find(c => c.id === fromCityId);
     if (!fromCity) return logCmd('⚔', label, { ok: false, error: 'Origin city not found' });
-    if (fromCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: 'Not your city' });
+    if (fromCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: notYourCityError(state, fromCity) });
 
     // Check escort officer availability
     const factionId = state.playerFaction?.id;
@@ -706,7 +777,7 @@ export const rtkApi = {
       ? state.officers.find(o => o.id === officerId && o.cityId === fromCityId && o.factionId === factionId)
       : state.officers.find(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
     if (!escort) return logCmd('⚔', label, { ok: false, error: officerId ? `Officer ${officerName(officerId)} not found or not in city` : 'No available officer to escort transport' });
-    if (escort.acted) return logCmd('⚔', label, { ok: false, error: `${escort.name} has already acted this turn` });
+    if (escort.acted) return logCmd('⚔', label, { ok: false, error: officerAlreadyActedError(state, escort, fromCityId) });
 
     state.transport(fromCityId, toCityId, resources, officerId);
     return logCmd('⚔', label, { ok: true, data: { escort: escort.name } });
@@ -722,12 +793,12 @@ export const rtkApi = {
     return logCmd('⚔', label, { ok: false, error: 'Action failed' });
   },
 
-  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result {
+  setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[]; food?: number } | null): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return logCmd('⚔', 'setBattleFormation', { ok: false, error: 'Not in playing phase' });
     state.setBattleFormation(formation);
     const names = formation?.officerIds.map(id => officerName(id)) ?? [];
-    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes, troops: formation?.troops } });
+    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes, troops: formation?.troops, food: formation?.food } });
   },
 
   startBattle(targetCityId: number): Result {
@@ -756,13 +827,14 @@ export const rtkApi = {
 
     // Pre-check: must leave at least 1 officer
     if (formOfficers.length >= allCityOfficers.length) {
-      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Must leave at least 1 officer in ${sourceCity.name}. Formation has ${formOfficers.length} officers but city only has ${allCityOfficers.length}. Remove one from formation.` });
+      const officerNames = allCityOfficers.map(o => `${o.name}(id=${o.id})`).join(', ');
+      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Cannot attack — ${sourceCity.name} only has ${allCityOfficers.length} officer(s): ${officerNames}. You must leave at least 1 officer behind to defend the city. Either transfer more officers to this city first, or attack from a city with more officers.` });
     }
 
     // Pre-check: commander not acted
     const commander = formOfficers.reduce((prev, curr) => ((prev?.leadership ?? 0) > (curr?.leadership ?? 0) ? prev : curr));
     if (commander?.acted) {
-      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Commander ${commander.name} has already acted this turn` });
+      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: officerAlreadyActedError(state, commander, sourceCity.id) });
     }
 
     // Pre-check: troops
@@ -1225,8 +1297,9 @@ export const rtkApi = {
 
     if (state.phase === 'battle') {
       console.log(`═══ RTK Battle ═══`);
-      console.log(`Day ${battle.day} | Weather: ${battle.weather} | Wind: ${battle.windDirection}`);
+      console.log(`Day ${battle.day} | Weather: ${battle.weather} | Wind: ${battle.windDirection}${battle.battlePaused ? ' | PAUSED (month end)' : ''}`);
       console.log(`Attacker ID: ${battle.attackerId} | Defender ID: ${battle.defenderId}`);
+      console.log(`Food — Atk: ${battle.attackerFood} | Def: ${battle.defenderFood}`);
       const active = battle.units.find(u => u.id === battle.activeUnitId);
       if (active) console.log(`Active Unit: ${active.officer.name} (${active.id})`);
       console.log(`═══════════════════`);

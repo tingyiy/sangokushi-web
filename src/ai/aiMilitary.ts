@@ -53,7 +53,12 @@ export function evaluateMilitary(context: AIFactionContext): AIDecision[] {
       if (n.factionId === city.factionId) return false;
       const troopAdvantage = city.troops > n.troops * 2;
       const staffAdvantage = officersInCity.length >= 2;
-      return troopAdvantage && staffAdvantage && city.troops > 10000;
+      // Estimate deployed troops: AI sends min(5, officers-1) officers, equal share each
+      const sendableOfficers = Math.min(5, officersInCity.length - 1);
+      const estimatedDeploy = Math.floor(city.troops / officersInCity.length) * sendableOfficers;
+      // Must have enough food for 10 days of campaign (matches actual allocation: troops × 10)
+      const foodAdequate = city.food >= estimatedDeploy * 10;
+      return troopAdvantage && staffAdvantage && city.troops > 10000 && foodAdequate;
     });
 
     if (targetCity) {

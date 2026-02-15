@@ -9,6 +9,7 @@ import { getAdvisorSuggestions } from '../systems/advisor';
 import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from '../systems/events';
 import { checkHistoricalEvents } from '../data/historicalEvents';
 import { autoAssignGovernorInPlace } from './storeHelpers';
+import { useBattleStore } from './battleStore';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
@@ -112,6 +113,29 @@ function processOfficerLifecycle(state: GameState, newYear: number, newMonth: nu
 
   const officers = updatedOfficersPreDeath.filter(o => !deadOfficerIds.includes(o.id));
   return { officers, deadOfficerIds };
+}
+
+/**
+ * Process unaffiliated officer roaming: each month, unaffiliated officers
+ * have a chance to migrate to an adjacent city. This ensures they eventually
+ * spread across the map so all factions have recruitment opportunities.
+ */
+function processOfficerRoaming(officers: Officer[], cities: GameState['cities']): Officer[] {
+  const ROAM_CHANCE = 0.10; // 10% chance per month per officer
+
+  return officers.map(o => {
+    if (o.factionId !== null) return o; // only unaffiliated officers roam
+    if (Math.random() >= ROAM_CHANCE) return o; // didn't roam this month
+
+    const currentCity = cities.find(c => c.id === o.cityId);
+    if (!currentCity || currentCity.adjacentCityIds.length === 0) return o;
+
+    // Pick a random adjacent city
+    const randomIdx = Math.floor(Math.random() * currentCity.adjacentCityIds.length);
+    const targetCityId = currentCity.adjacentCityIds[randomIdx];
+
+    return { ...o, cityId: targetCityId };
+  });
 }
 
 /**
@@ -285,11 +309,14 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const stateForLifecycle = { ...get(), cities: economyCities, year: newYear, month: newMonth };
       const { officers: lifecycleOfficers, deadOfficerIds } = processOfficerLifecycle(stateForLifecycle, newYear, newMonth);
 
+      // Unaffiliated officer roaming: officers wander to adjacent cities over time
+      const roamedOfficers = processOfficerRoaming(lifecycleOfficers, economyCities);
+
       // Ruler succession
       const { factions: succFactions, cities: succCities } = handleSuccession(
         deadOfficerIds,
         get().officers,
-        lifecycleOfficers,
+        roamedOfficers,
         get().factions,
         economyCities,
         (msg) => get().addLog(msg),
@@ -300,7 +327,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
         month: newMonth,
         year: newYear,
         cities: succCities,
-        officers: lifecycleOfficers,
+        officers: roamedOfficers,
         factions: succFactions,
         selectedCityId: null,
         activeCommandCategory: null,
@@ -327,6 +354,17 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       if (newPlayerIdx > 0) {
         const beforePlayer = newTurnOrder.slice(0, newPlayerIdx);
         runAIFactions(beforePlayer, get);
+      }
+
+      // ── Phase F: Resume paused battle if one exists ──
+      const battleState = useBattleStore.getState();
+      if (battleState.battlePaused && !battleState.isFinished) {
+        // Resupply defender food from city stores (city may have received harvest during month-end)
+        const defenderCity = get().cities.find(c => c.id === battleState.defenderCityId);
+        const defenderFoodResupply = defenderCity?.food ?? 0;
+
+        useBattleStore.getState().resumeBattle(defenderFoodResupply);
+        set({ phase: 'battle' });
       }
 
       // Player now has control
@@ -489,14 +527,16 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
         }
       }
 
+      // Mark recruiter as acted, and recruit the found officer if any
       set({
-        officers: state.officers.map(o => o.id === recruiter.id ? { ...o, acted: true } : o)
+        officers: state.officers.map(o => {
+          if (o.id === recruiter.id) return { ...o, acted: true };
+          if (found && foundOfficer && o.id === foundOfficer.id) {
+            return { ...o, factionId: city.factionId, loyalty: 60 };
+          }
+          return o;
+        })
       });
-
-      if (found && foundOfficer) {
-        // AI search results are not logged to the player (fog of war)
-        void foundOfficer;
-      }
     },
 
     aiSpy: (cityId, targetCityId) => {

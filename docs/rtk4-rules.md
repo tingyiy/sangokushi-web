@@ -99,6 +99,55 @@ Each rule includes the source of verification and the test(s) that enforce it.
 
 ---
 
+## R-007: Battle Food Supply System
+
+**Rule:** Armies carry food supplies that are consumed daily during battle. When food runs out, morale drains progressively until the army routs.
+
+**Mechanics:**
+- **Food consumption:** 1 food per soldier per day. Calculated from living troops across all units on each side.
+- **Attacker food:** Deducted from the source city when the battle starts. Default: `totalTroops × 10` (enough for 10 days). Players can specify a custom amount via battle formation.
+- **Defender food:** Uses the defending city's entire food stores.
+- **Starvation morale drain:** When food reaches 0, all units on that side suffer `-5 × consecutiveStarveDays` morale per day. Day 1: -5, Day 2: -10, Day 3: -15, etc. The penalty escalates until morale collapses.
+- **Rout threshold:** Units with morale below 20 rout (standard morale rout rule). Starvation-induced rout cascades when the entire army's morale collapses.
+- **Starvation reset:** If food becomes available again (not currently possible mid-battle), the starvation day counter resets.
+
+**Corollaries:**
+- Battles against well-supplied defenders require sufficient food stockpiles or fast victories.
+- AI armies also carry food (default 10 days' supply) and can starve during prolonged sieges.
+- Food deducted from source city is not returned if the army wins quickly (RTK IV simplification).
+
+**Source:** RTK IV battle mechanics — armies that run out of food during prolonged campaigns suffer morale collapse. Adapted for balance with escalating penalty formula.
+
+**Enforced by:**
+- `src/store/battleFood.test.ts` — 13 tests covering food consumption, starvation morale drain, escalation, rout, depletion timing
+
+---
+
+## R-008: Multi-Month Battles (30-Day Month Cycle)
+
+**Rule:** Battles are not limited to a fixed number of days. Instead, battles run for up to 30 days per month. If neither side wins after day 30, the battle pauses for a strategic phase (month transition), then resumes in the next month.
+
+**Mechanics:**
+- **30 days per month:** Each battle month allows up to 30 days of combat. On the day after day 30, the battle pauses (`battlePaused = true`).
+- **Strategic pause:** During the pause, the game returns to the strategic phase. The player can issue limited commands (diplomacy, ceasefires). All factions take their AI turns, taxes are collected, harvests occur, events trigger.
+- **Battle resumes:** After the month transition completes, the battle resumes automatically. Day resets to 1, defender food is resupplied from updated city stores, starvation counters reset, and all living non-routed units are reactivated.
+- **Defender resupply:** The defender's food is replenished from their city's food stores after each month transition. This means well-supplied cities can hold out indefinitely, while attackers must bring enough food or win quickly.
+- **No automatic attacker loss:** Unlike some implementations, the attacker does NOT automatically lose at day 30. The battle continues into the next month.
+- **Infinite continuation:** Battles can span any number of months until one side wins (troops eliminated, commander defeated, starvation rout) or the attacker retreats.
+
+**Corollaries:**
+- Prolonged sieges favor defenders who have large city food stores and receive resupply.
+- Attackers who bring insufficient food will starve over time (R-007 starvation mechanics apply).
+- The strategic pause allows diplomacy (e.g., negotiating ceasefires to end a losing battle).
+- AI must account for multi-month battles when planning attacks.
+
+**Source:** RTK IV battle mechanics — battles in the original game can span multiple months when neither side is eliminated. The 30-day month cycle matches RTK IV's turn structure.
+
+**Enforced by:**
+- `src/store/battleMultiMonth.test.ts` — 11 tests covering: battle pauses at day 30, resumeBattle resets day/food/starvation, initBattle clears stale pause state, routed units stay routed across months
+
+---
+
 ## Adding New Rules
 
 When a new RTK IV rule is discovered and verified:

@@ -236,6 +236,28 @@ describe('AI Actions Mutate State', () => {
       expect(afterCity.gold).toBe(beforeCity.gold - 500);
     });
 
+    it('aiSearchOfficer recruits found officer into AI faction', () => {
+      // Add an unaffiliated officer in AI city 2
+      useGameStore.setState({
+        officers: [...useGameStore.getState().officers, createTestOfficer({
+          id: 99, name: '在野武將', factionId: null, cityId: 2, loyalty: 0, charisma: 50,
+        })],
+      });
+
+      // Mock random to guarantee search succeeds
+      const origRandom = Math.random;
+      Math.random = () => 0.01;
+      try {
+        useGameStore.getState().aiSearchOfficer(2);
+        const found = useGameStore.getState().officers.find(o => o.id === 99)!;
+        // Officer should now belong to AI faction (id=2) with loyalty 60
+        expect(found.factionId).toBe(2);
+        expect(found.loyalty).toBe(60);
+      } finally {
+        Math.random = origRandom;
+      }
+    });
+
     it('aiAppointGovernor sets isGovernor flag', () => {
       // Move ruler (id=20) out of city 2 so R-001 doesn't block
       // Add a non-governor officer in AI city 2

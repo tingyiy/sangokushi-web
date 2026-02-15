@@ -85,6 +85,18 @@ const BattleScreen: React.FC = () => {
     }
   }, [battle.isFinished, battle.winnerFactionId, battle.attackerId, battle.defenderId, battle.defenderCityId, battle.units, factions, addLog, resolveBattle, battle.capturedOfficerIds, battle.routedOfficerIds, showResults, t]);
 
+  // Battle pause handler: month ended, return to strategic phase
+  useEffect(() => {
+    if (battle.battlePaused && !battle.isFinished) {
+      // Give the player a moment to see the pause message before switching
+      const timer = setTimeout(() => {
+        addLog(t('logs:battle.monthEnd'));
+        setPhase('playing');
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [battle.battlePaused, battle.isFinished, addLog, setPhase, t]);
+
   const handleRetreat = () => {
     if (window.confirm(t('battle:confirm.retreat'))) {
       retreat();
@@ -142,7 +154,20 @@ const BattleScreen: React.FC = () => {
       {/* Header */}
       <div style={{ padding: '8px 12px', background: '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div style={{ fontSize: '0.85rem' }}>
-          {t('battle:header.dayCounter', { day: battle.day, maxDays: battle.maxDays })} | {t(WEATHER_KEYS[battle.weather])} | {t('battle:header.windDirection')}{t(WIND_KEYS[battle.windDirection] || 'battle:wind.north')}
+          {t('battle:header.dayCounter', { day: battle.day })} | {t(WEATHER_KEYS[battle.weather])} | {t('battle:header.windDirection')}{t(WIND_KEYS[battle.windDirection] || 'battle:wind.north')}
+          {' | '}
+          {(() => {
+            const isAtk = playerFactionId === battle.attackerId;
+            const pFood = isAtk ? battle.attackerFood : battle.defenderFood;
+            const eFood = isAtk ? battle.defenderFood : battle.attackerFood;
+            const pStarve = isAtk ? battle.attackerStarveDays : battle.defenderStarveDays;
+            return (
+              <span style={pStarve > 0 ? { color: '#ff4444', fontWeight: 'bold' } : undefined}>
+                {t('battle:header.foodStatus', { player: pFood.toLocaleString(), enemy: eFood.toLocaleString() })}
+                {pStarve > 0 && ` [${t('battle:header.starving')}]`}
+              </span>
+            );
+          })()}
         </div>
         <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
           {t('battle:header.battleTitle', { attacker: localizedName(factions.find(f => f.id === battle.attackerId)?.name ?? ''), city: localizedName(cities.find(c => c.id === battle.defenderCityId)?.name ?? '') })}

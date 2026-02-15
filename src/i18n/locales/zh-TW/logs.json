@@ -236,6 +236,7 @@
     "commanderDefeated": "主將敗陣，{{name}} 方全軍崩潰！",
     "unitRouted": "{{name}} 潰走！",
     "gateBroken": "城門被攻破！",
+    "gateBreach": "城門陷落！守方全軍士氣 -{{penalty}}。",
     "gateAttack": "{{attacker}} 攻門，造成 {{damage}} 傷害（殘 {{remaining}}）。",
     "tacticSuccess": "{{name}} 施展「{{tactic}}」成功！",
     "tacticFail": "{{name}} 施展「{{tactic}}」失敗。",
@@ -243,6 +244,11 @@
     "confused": "{{name}} 處於混亂狀態，無法行動。",
     "dayLimitReached": "已到第 {{maxDays}} 日，攻方撤退，守方勝利！",
     "dayHeader": "── 第 {{day}} 日 ──",
-    "reinforcements": "{{name}} 的援軍抵達戰場！"
+    "reinforcements": "{{name}} 的援軍抵達戰場！",
+    "starvation": "{{side}}軍糧盡（第 {{days}} 日）！全軍士氣 -{{penalty}}。",
+    "sideAttacker": "攻方",
+    "sideDefender": "守方",
+    "monthEnd": "── 第三十日，月末休戰，進入戰略階段。 ──",
+    "battleResume": "── 新月開始，戰鬥繼續！ ──"
   }
 }

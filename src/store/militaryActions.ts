@@ -265,6 +265,12 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
+      // ── Food supply calculation (RTK IV: armies carry food from source city) ──
+      const defaultFood = totalTroopsToDeploy * 10; // Enough for 10 days at 1:1
+      const attackerFood = state.battleFormation?.food != null
+        ? Math.min(state.battleFormation.food, city.food)
+        : Math.min(defaultFood, city.food);
+
       const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
 
       // ── Auto-capture undefended city ──
@@ -275,6 +281,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
             if (c.id === city.id) return {
               ...c,
               troops: c.troops - totalTroopsToDeploy,
+              food: c.food - attackerFood,
               crossbows: c.crossbows - crossbowsUsed,
               warHorses: c.warHorses - warHorsesUsed
             };
@@ -332,6 +339,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
             if (c.id === city.id) return {
               ...c,
               troops: c.troops - totalTroopsToDeploy,
+              food: c.food - attackerFood,
               crossbows: c.crossbows - crossbowsUsed,
               warHorses: c.warHorses - warHorsesUsed,
             };
@@ -369,6 +377,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           if (c.id === city.id) return {
             ...c,
             troops: c.troops - totalTroopsToDeploy,
+            food: c.food - attackerFood,
             crossbows: c.crossbows - crossbowsUsed,
             warHorses: c.warHorses - warHorsesUsed
           };
@@ -385,6 +394,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       });
 
       // Phase 1.2: Pass city morale and training to battle
+      const defenderFood = targetCity.food;
       useBattleStore.getState().initBattle(
         state.playerFaction.id,
         targetCity.factionId || 0,
@@ -399,7 +409,9 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         troopsPerOfficer,
         defenderTroopsPerOfficer,
         undefined, // playerFactionId (defaults to attackerId)
-        getAttackDirection(city, targetCity)
+        getAttackDirection(city, targetCity),
+        attackerFood,
+        defenderFood,
       );
 
       set({ phase: 'battle' });
@@ -446,6 +458,11 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return Math.min(equalShare, maxForOfficer);
       });
       const totalTroopsToDeploy = troopsPerOfficer.reduce((sum, t) => sum + t, 0);
+
+      // ── AI food calculation: bring enough for 10 days ──
+      const aiAttackerFood = Math.min(totalTroopsToDeploy * 10, city.food);
+      const aiDefenderFood = targetCity.food;
+
       const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
       const aiDefenderFaction = state.factions.find(f => f.id === targetCity.factionId);
       const aiDefenderRulerId = aiDefenderFaction?.rulerId;
@@ -464,6 +481,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
             if (c.id === city.id) return {
               ...c,
               troops: Math.max(0, c.troops - totalTroopsToDeploy),
+              food: Math.max(0, c.food - aiAttackerFood),
               crossbows: c.crossbows - crossbowsUsed,
               warHorses: c.warHorses - warHorsesUsed,
             };
@@ -495,6 +513,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           if (c.id === city.id) return {
             ...c,
             troops: Math.max(0, c.troops - totalTroopsToDeploy),
+            food: Math.max(0, c.food - aiAttackerFood),
             crossbows: c.crossbows - crossbowsUsed,
             warHorses: c.warHorses - warHorsesUsed
           };
@@ -551,7 +570,9 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         troopsPerOfficer,
         defenderTroopsPerOfficer,
         state.playerFaction?.id ?? targetCity.factionId ?? 0,
-        getAttackDirection(city, targetCity)
+        getAttackDirection(city, targetCity),
+        aiAttackerFood,
+        aiDefenderFood,
       );
 
       set({ phase: 'battle' });
