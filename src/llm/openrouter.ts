@@ -1,11 +1,13 @@
 /**
- * OpenRouter API client — browser-compatible, fetch-based.
- * Uses the Chat Completions endpoint (OpenAI-compatible).
+ * Unified OpenAI-compatible chat completions client.
  *
- * Docs: https://openrouter.ai/docs/api-reference/chat-completion
+ * Works with any provider that exposes a /chat/completions endpoint:
+ * OpenRouter, Gemini, Bedrock, Ollama, etc.
+ *
+ * Reads endpoint URL, API key, and model from config.ts (localStorage).
  */
 
-import { getApiKey, getModelId } from './config';
+import { getApiKey, getModelId, getEndpoint } from './config';
 import { llmLog } from './log';
 
 // ── Types ───────────────────────────────────────────────
@@ -42,10 +44,8 @@ export interface ChatCompletionError {
 
 // ── Client ──────────────────────────────────────────────
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
 /**
- * Send a chat completion request to OpenRouter.
+ * Send a chat completion request to the configured endpoint.
  * Returns the assistant's response text.
  * Throws on network errors or API errors.
  */
@@ -58,8 +58,10 @@ export async function chatCompletion(
   }
 ): Promise<{ text: string; model: string; usage?: ChatCompletionResponse['usage'] }> {
   const apiKey = getApiKey();
+  const endpoint = getEndpoint();
+
   if (!apiKey) {
-    throw new Error('OpenRouter API key not set. Go to Settings to configure it.');
+    throw new Error('API key not set. Go to Settings to configure it.');
   }
 
   const model = options?.model ?? getModelId();
@@ -76,23 +78,23 @@ export async function chatCompletion(
     body.max_tokens = options.maxTokens;
   }
 
-  const res = await fetch(OPENROUTER_API_URL, {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
+  };
+
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'RTK IV - Three Kingdoms Strategy Game',
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    let errorMessage = `OpenRouter API error: ${res.status}`;
+    let errorMessage = `API error: ${res.status}`;
     try {
       const errorBody = await res.json() as ChatCompletionError;
       if (errorBody.error?.message) {
-        errorMessage = `OpenRouter: ${errorBody.error.message}`;
+        errorMessage = errorBody.error.message;
       }
     } catch {
       // ignore JSON parse failure
@@ -103,7 +105,7 @@ export async function chatCompletion(
   const data = await res.json() as ChatCompletionResponse;
   const choice = data.choices?.[0];
   if (!choice?.message?.content) {
-    throw new Error('OpenRouter returned empty response');
+    throw new Error('API returned empty response');
   }
 
   llmLog('api', `Response from ${data.model}: ${choice.message.content.length} chars, ${data.usage?.total_tokens ?? '?'} tokens`);
@@ -116,24 +118,27 @@ export async function chatCompletion(
 }
 
 /**
- * Validate an API key by making a lightweight request.
- * Returns true if the key is valid.
+ * Validate an API key by making a lightweight request to the configured endpoint.
+ * Returns true if the key is valid (not 401/403).
  */
 export async function validateApiKey(apiKey: string): Promise<boolean> {
+  const endpoint = getEndpoint();
+  const model = getModelId();
+
   try {
-    const res = await fetch(OPENROUTER_API_URL, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model,
         messages: [{ role: 'user', content: 'test' }],
         max_tokens: 1,
       }),
     });
-    // 401 = invalid key, anything else means the key works
+    // 401/403 = invalid key, anything else means the key works
     return res.status !== 401 && res.status !== 403;
   } catch {
     return false;

@@ -1,44 +1,82 @@
 /**
- * LLM configuration — API key management, model selection, localStorage persistence.
+ * LLM configuration — generic OpenAI-compatible endpoint.
+ *
+ * All providers (OpenRouter, Gemini, Bedrock, Ollama, etc.) expose an
+ * OpenAI-compatible /chat/completions endpoint. We just store:
+ *   - Endpoint URL
+ *   - API key (bearer token)
+ *   - Model ID
+ *
+ * Presets provide quick-fill for common providers.
  *
  * localStorage keys:
- *   rtk4_llm_api_key   — OpenRouter API key
- *   rtk4_llm_model     — selected model ID
+ *   rtk4_llm_endpoint  — chat completions URL
+ *   rtk4_llm_api_key   — API key / bearer token
+ *   rtk4_llm_model     — model ID
  *   rtk4_llm_enabled   — whether LLM player is active ('true' / 'false')
  */
 
+// ── Presets ─────────────────────────────────────────────
+
+export interface ProviderPreset {
+  id: string;
+  name: string;
+  endpoint: string;
+  keyPlaceholder: string;
+  defaultModel: string;
+}
+
+export const PRESETS: ProviderPreset[] = [
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    keyPlaceholder: 'sk-or-...',
+    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    keyPlaceholder: 'AIza...',
+    defaultModel: 'gemini-2.5-flash-preview-05-20',
+  },
+  {
+    id: 'bedrock',
+    name: 'AWS Bedrock',
+    endpoint: 'https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/chat/completions',
+    keyPlaceholder: 'Bearer token...',
+    defaultModel: 'anthropic.claude-sonnet-4-20250514-v1:0',
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (local)',
+    endpoint: 'http://localhost:11434/v1/chat/completions',
+    keyPlaceholder: '(not required)',
+    defaultModel: 'llama3.2',
+  },
+];
+
 // ── localStorage keys ───────────────────────────────────
+
+const KEY_ENDPOINT = 'rtk4_llm_endpoint';
 const KEY_API_KEY = 'rtk4_llm_api_key';
 const KEY_MODEL = 'rtk4_llm_model';
 const KEY_ENABLED = 'rtk4_llm_enabled';
 
-// ── Model types ─────────────────────────────────────────
-export interface LLMModel {
-  id: string;
-  name: string;
-  contextLength: number;
-  free: boolean;
+const DEFAULT_ENDPOINT = PRESETS[0].endpoint;
+const DEFAULT_MODEL = PRESETS[0].defaultModel;
+
+// ── Endpoint ────────────────────────────────────────────
+
+export function getEndpoint(): string {
+  if (typeof window === 'undefined') return DEFAULT_ENDPOINT;
+  return localStorage.getItem(KEY_ENDPOINT) || DEFAULT_ENDPOINT;
 }
 
-/**
- * Fallback list used only when the API fetch fails.
- * These are meta-models that are always available.
- */
-export const FALLBACK_MODELS: LLMModel[] = [
-  {
-    id: 'openrouter/auto',
-    name: 'Auto (OpenRouter picks)',
-    contextLength: 128000,
-    free: false,
-  },
-];
-
-/**
- * Default model — a fast instruction-following model, NOT a reasoning model.
- * Reasoning models (deepseek-r1, qwen-thinking, etc.) are too slow for
- * real-time game play due to long chain-of-thought output.
- */
-export const DEFAULT_MODEL_ID = 'meta-llama/llama-3.3-70b-instruct:free';
+export function setEndpoint(url: string): void {
+  localStorage.setItem(KEY_ENDPOINT, url.trim());
+}
 
 // ── API Key ─────────────────────────────────────────────
 
@@ -58,8 +96,8 @@ export function clearApiKey(): void {
 // ── Model ───────────────────────────────────────────────
 
 export function getModelId(): string {
-  if (typeof window === 'undefined') return DEFAULT_MODEL_ID;
-  return localStorage.getItem(KEY_MODEL) || DEFAULT_MODEL_ID;
+  if (typeof window === 'undefined') return DEFAULT_MODEL;
+  return localStorage.getItem(KEY_MODEL) || DEFAULT_MODEL;
 }
 
 export function setModelId(modelId: string): void {
@@ -77,33 +115,25 @@ export function setLLMEnabled(enabled: boolean): void {
   localStorage.setItem(KEY_ENABLED, enabled ? 'true' : 'false');
 }
 
-// ── Validate key format ─────────────────────────────────
+// ── Preset detection ────────────────────────────────────
 
-/** Basic check — OpenRouter keys start with 'sk-or-' */
-export function isValidKeyFormat(key: string): boolean {
-  return key.trim().startsWith('sk-or-') && key.trim().length > 20;
+/** Find which preset matches the current endpoint, if any. */
+export function getActivePreset(): ProviderPreset | null {
+  const endpoint = getEndpoint();
+  return PRESETS.find(p => p.endpoint === endpoint) ?? null;
 }
 
-// ── Fetch models from OpenRouter API ────────────────────
+// ── Model types ─────────────────────────────────────────
 
-export interface OpenRouterModelInfo {
+export interface LLMModel {
   id: string;
   name: string;
-  description?: string;
-  context_length: number;
-  pricing: { prompt: string; completion: string };
+  contextLength: number;
+  free: boolean;
 }
 
-/**
- * Minimum context length for a model to be useful as a game agent.
- * The strategic prompt + state can be 4-8k tokens.
- */
-const MIN_CONTEXT_LENGTH = 16000;
+// ── Fetch models ────────────────────────────────────────
 
-/**
- * Patterns that identify reasoning/thinking models.
- * These are slow for real-time game play and should be listed last.
- */
 const REASONING_PATTERNS = ['-r1', 'thinking', '-reasoner'];
 
 function isReasoningModel(id: string): boolean {
@@ -111,19 +141,43 @@ function isReasoningModel(id: string): boolean {
   return REASONING_PATTERNS.some((p) => lower.includes(p));
 }
 
+const MIN_CONTEXT_LENGTH = 16000;
+
+interface OpenRouterModelInfo {
+  id: string;
+  name: string;
+  context_length: number;
+  pricing: { prompt: string; completion: string };
+}
+
 /**
- * Fetch available free models from the OpenRouter API.
- * Fast instruction-following models are sorted first.
- * Reasoning/thinking models are sorted last (marked with label).
- * Filters out models with tiny context windows.
+ * Fetch models for the current endpoint.
+ * Currently only supports OpenRouter and Gemini model listing.
+ * Returns empty array for unknown endpoints.
  */
-export async function fetchFreeModels(): Promise<LLMModel[]> {
+export async function fetchModels(): Promise<LLMModel[]> {
+  const endpoint = getEndpoint();
+
+  // OpenRouter
+  if (endpoint.includes('openrouter.ai')) {
+    return fetchOpenRouterModels();
+  }
+
+  // Gemini — use the native models endpoint with the stored API key
+  if (endpoint.includes('generativelanguage.googleapis.com')) {
+    return fetchGeminiModels();
+  }
+
+  return [];
+}
+
+async function fetchOpenRouterModels(): Promise<LLMModel[]> {
   const res = await fetch('https://openrouter.ai/api/v1/models');
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
   const data = await res.json();
   const all = data.data as OpenRouterModelInfo[];
 
-  const free = all
+  return all
     .filter(
       (m) =>
         (m.pricing.prompt === '0' || parseFloat(m.pricing.prompt) === 0) &&
@@ -139,13 +193,33 @@ export async function fetchFreeModels(): Promise<LLMModel[]> {
       };
     })
     .sort((a, b) => {
-      // Non-reasoning first, then reasoning
-      const aReasoning = isReasoningModel(a.id);
-      const bReasoning = isReasoningModel(b.id);
-      if (aReasoning !== bReasoning) return aReasoning ? 1 : -1;
-      // Within each group, sort by context length descending
+      const aR = isReasoningModel(a.id);
+      const bR = isReasoningModel(b.id);
+      if (aR !== bR) return aR ? 1 : -1;
       return b.contextLength - a.contextLength;
     });
+}
 
-  return free;
+async function fetchGeminiModels(): Promise<LLMModel[]> {
+  const apiKey = getApiKey();
+  if (!apiKey) return [];
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json() as {
+      models: { name: string; displayName: string; supportedGenerationMethods: string[]; inputTokenLimit?: number }[];
+    };
+    return data.models
+      .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+      .map(m => ({
+        id: m.name.replace('models/', ''),
+        name: m.displayName,
+        contextLength: m.inputTokenLimit ?? 0,
+        free: true,
+      }))
+      .sort((a, b) => b.contextLength - a.contextLength);
+  } catch {
+    return [];
+  }
 }

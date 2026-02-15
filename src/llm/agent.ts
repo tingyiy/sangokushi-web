@@ -21,15 +21,28 @@ import {
 import {
   SYSTEM_PROMPT_STRATEGIC, SYSTEM_PROMPT_BATTLE,
   buildStrategicContext, buildBattleContext,
+  resetLogTracking,
 } from './prompts';
 
 // ── Agent State ─────────────────────────────────────────
 
 let _isRunning = false;
 let _shouldStop = false;
+let _lastSeenBattleLogIndex = 0;
 
 export function isAgentRunning(): boolean { return _isRunning; }
 export function stopAgent(): void { _shouldStop = true; }
+
+/**
+ * Drain new battle log entries since last check.
+ * Returns the new entries and advances the tracker.
+ */
+function drainBattleLog(): string[] {
+  const log = useBattleStore.getState().battleLog;
+  const newEntries = log.slice(_lastSeenBattleLogIndex);
+  _lastSeenBattleLogIndex = log.length;
+  return newEntries;
+}
 
 // ── Response Parsing ────────────────────────────────────
 
@@ -198,12 +211,13 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
 
 /**
  * Run one strategic turn: ask LLM for commands, execute them, record results.
+ * Returns true on success, false on failure (API error, parse error).
  */
-export async function runStrategicTurn(): Promise<void> {
+export async function runStrategicTurn(): Promise<boolean> {
   const state = useGameStore.getState();
   if (state.phase !== 'playing') {
     llmLog('error', `Cannot run strategic turn in phase: ${state.phase}`);
-    return;
+    return false;
   }
 
   llmLog('decision', `=== Starting LLM Strategic Turn: ${state.year}/${state.month} ===`);
@@ -230,7 +244,7 @@ export async function runStrategicTurn(): Promise<void> {
     const errMsg = e instanceof Error ? e.message : String(e);
     llmLog('error', `API call failed: ${errMsg}`);
     setLLMStatus('error', errMsg);
-    return;
+    return false;
   }
   let parsed: StrategicResponse;
 
@@ -241,7 +255,7 @@ export async function runStrategicTurn(): Promise<void> {
     setLLMStatus('error', `Failed to parse LLM response`);
     // Fallback: just end turn
     rtkApi.endTurn();
-    return;
+    return false;
   }
 
   llmLog('decision', `LLM Thinking: ${parsed.thinking}`);
@@ -287,7 +301,7 @@ export async function runStrategicTurn(): Promise<void> {
       // After battle, check if we're back in playing phase
       if (useGameStore.getState().phase !== 'playing') {
         llmLog('decision', `Phase after battle: ${useGameStore.getState().phase}`);
-        return;
+        return true;
       }
     }
   }
@@ -307,6 +321,8 @@ export async function runStrategicTurn(): Promise<void> {
       await sleep(100);
     }
   }
+
+  return true;
 }
 
 // ── Battle Phase ────────────────────────────────────────
@@ -324,8 +340,10 @@ async function runBattlePhase(): Promise<void> {
 
   llmLog('battle', '=== Entering Battle Phase ===');
   setLLMStatus('thinking', 'Battle phase...');
+  _lastSeenBattleLogIndex = battle.battleLog.length; // sync tracker
 
   let maxIterations = 200; // safety limit
+  let noActiveUnitCount = 0; // track consecutive no-active-unit loops
   while (maxIterations-- > 0) {
     if (_shouldStop) break;
 
@@ -339,11 +357,28 @@ async function runBattlePhase(): Promise<void> {
       llmLog('battle', `Battle ended: ${outcome}`);
       endBattleMemory(outcome);
 
-      // Resolve battle and clear events
-      if (gState.phase === 'battle') {
-        // The battle should auto-resolve via the store
+      // Resolve battle: the agent must do what BattleScreen does —
+      // call resolveBattle() then transition phase back to 'playing'.
+      if (gState.phase === 'battle' && bState.isFinished && winner !== null) {
+        const loserFactionId = winner === bState.attackerId ? bState.defenderId : bState.attackerId;
+        const battleUnitsData = bState.units.map(u => ({
+          officerId: u.officerId,
+          troops: u.troops,
+          factionId: u.factionId,
+          status: u.status,
+        }));
+        gState.resolveBattle(
+          winner,
+          loserFactionId,
+          bState.defenderCityId,
+          battleUnitsData,
+          bState.capturedOfficerIds,
+          bState.routedOfficerIds,
+        );
+        useGameStore.getState().setPhase('playing');
         await sleep(300);
       }
+
       // Clear post-battle events
       while (useGameStore.getState().pendingEvents.length > 0) {
         rtkApi.confirmEvent();
@@ -354,9 +389,18 @@ async function runBattlePhase(): Promise<void> {
 
     // Not our turn? Let the enemy phase run.
     if (bState.turnPhase === 'enemy') {
+      const preEnemyLogLen = useBattleStore.getState().battleLog.length;
       while (useBattleStore.getState().stepEnemyPhase()) {
         await sleep(50);
       }
+      // Log what happened during enemy phase
+      const postEnemyLog = useBattleStore.getState().battleLog;
+      const enemyEvents = postEnemyLog.slice(preEnemyLogLen);
+      if (enemyEvents.length > 0) {
+        llmLog('result', `[enemy phase] ${enemyEvents.join(' | ')}`);
+      }
+      // Sync battle log tracker
+      _lastSeenBattleLogIndex = postEnemyLog.length;
       continue;
     }
 
@@ -369,12 +413,30 @@ async function runBattlePhase(): Promise<void> {
     // Get active unit
     const activeUnit = bState.units.find(u => u.id === bState.activeUnitId);
     if (!activeUnit) {
+      noActiveUnitCount++;
+      if (noActiveUnitCount > 5) {
+        // Stuck — no active unit repeatedly. Force end player phase and move on.
+        llmLog('battle', `No active unit for ${noActiveUnitCount} iterations, forcing phase advance`);
+        rtkApi.battle.endPlayerPhase();
+        await sleep(300);
+        // If still stuck, bail out
+        if (noActiveUnitCount > 15) {
+          llmLog('error', 'Battle stuck with no active unit, retreating');
+          rtkApi.retreat();
+          endBattleMemory('RETREAT (stuck)');
+          return;
+        }
+        continue;
+      }
       // No active unit — end player phase
       llmLog('battle', 'No active unit, ending player phase');
       rtkApi.battle.endPlayerPhase();
       await sleep(200);
       continue;
     }
+
+    // Reset counter when we do get an active unit
+    noActiveUnitCount = 0;
 
     // Check if this unit belongs to us
     if (activeUnit.factionId !== bState.playerFactionId) {
@@ -436,6 +498,14 @@ async function runBattlePhase(): Promise<void> {
       ? `OK${result.data ? ': ' + JSON.stringify(result.data) : ''}`
       : `FAILED: ${result.error}`;
 
+    llmLog('action', `${activeUnit.officer.name} ${actionType}: ${resultStr}`);
+
+    // Drain any new battle log entries (damage, kills, routs, etc.)
+    const newBattleLogs = drainBattleLog();
+    for (const entry of newBattleLogs) {
+      llmLog('result', `[battle] ${entry}`);
+    }
+
     recordBattleAction(
       `${activeUnit.officer.name}: ${actionType}`,
       '',
@@ -473,7 +543,11 @@ export async function startAgent(): Promise<void> {
 
   _isRunning = true;
   _shouldStop = false;
+  resetLogTracking();
   llmLog('decision', '=== LLM Agent Started ===');
+
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 5;
 
   try {
     while (!_shouldStop) {
@@ -487,11 +561,26 @@ export async function startAgent(): Promise<void> {
 
       // Only act during playing phase
       if (state.phase === 'playing') {
-        await runStrategicTurn();
-        // Wait before next turn to let UI breathe
-        await sleep(1000);
+        const success = await runStrategicTurn();
+        if (success) {
+          consecutiveErrors = 0;
+          await sleep(1000);
+        } else {
+          consecutiveErrors++;
+          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            llmLog('error', `${MAX_CONSECUTIVE_ERRORS} consecutive errors — stopping agent. Check API key and model.`);
+            setLLMStatus('error', `Stopped after ${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
+            break;
+          }
+          // Exponential backoff: 5s, 10s, 20s, 40s, ...
+          const backoffMs = 5000 * Math.pow(2, consecutiveErrors - 1);
+          llmLog('error', `Error ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}, retrying in ${backoffMs / 1000}s...`);
+          setLLMStatus('error', `Retrying in ${backoffMs / 1000}s (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})...`);
+          await sleep(backoffMs);
+        }
       } else if (state.phase === 'battle') {
         await runBattlePhase();
+        consecutiveErrors = 0;
         await sleep(500);
       } else {
         // Not in a phase we can act on — wait and check again

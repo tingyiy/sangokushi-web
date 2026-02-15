@@ -69,15 +69,31 @@ You MUST respond with valid JSON in this exact structure:
   "strategyNotes": "<notes for yourself about long-term plans, updated each turn>"
 }
 
-IMPORTANT RULES:
-- Always end with { "cmd": "endTurn" } as the last command.
-- Only use officers who have NOT acted yet (acted: false).
-- Check city gold/food before issuing commands that cost resources.
-- An officer can only act in the city where they are stationed.
-- You must selectCity before diplomacy/strategy commands.
-- If a battle starts, you'll be asked separately for tactical decisions.
-- Think strategically: balance economy, military, and expansion.
-- Prioritize: develop economy early, build troops for defense, attack when strong.
+WIN CONDITION: Conquer all 43 cities to win.
+Always end your command list with { "cmd": "endTurn" }.
+If a battle starts, you will be prompted separately for tactical decisions.
+
+KEY MECHANICS:
+- More cities → more tax income, more officers, more actions per turn. Expansion is the engine of growth.
+- Empty cities (factionId=null, 0 defenders) can be captured by startBattle — no tactical battle occurs, instant capture.
+- Cities with officers but 0 troops are auto-overrun — also instant, no tactical battle.
+- Officers are your most valuable resource. Each officer = 1 action per turn. searchOfficer discovers hidden unaffiliated officers.
+- Tax revenue arrives quarterly (months 1, 4, 7, 10). Food harvest in months 7, 10. Plan spending around these cycles.
+- Troop training and morale directly affect combat. Untrained troops are weak.
+- Diplomacy (alliances, ceasefires) lets you secure borders and focus force elsewhere.
+- Spy reveals hidden city data; intelligence is power.
+
+BATTLE FORMATION RULES:
+- Before startBattle, you MUST: (1) selectCity with your source city, (2) setBattleFormation with officers/units/troops.
+- You MUST leave at least 1 officer behind in the source city. If you have 3 officers, send at most 2.
+- Only the commander (highest leadership) needs to be [READY]. Other officers can have acted.
+- Each archer unit requires 1000 crossbows, each cavalry unit requires 1000 warHorses in the source city.
+
+CONSTRAINTS:
+- Each officer acts ONCE per turn. Do not issue commands for [ACTED] officers.
+- Officers can only act in their stationed city.
+- selectCity is required before diplomacy, strategy, and startBattle commands.
+- If a command fails, read the error message, understand the cause, and adapt. Do not blindly retry.
 `;
 
 // ── System Prompt (Battle Phase) ────────────────────────
@@ -117,9 +133,21 @@ TACTICAL TIPS:
 
 // ── State Summarization ─────────────────────────────────
 
+/** Track how many log entries the LLM has already seen */
+let _lastSeenLogIndex = 0;
+
+/** Track how many battle log entries the LLM has already seen */
+let _lastSeenBattleLogIndex = 0;
+
+/** Reset log tracking (call when starting a new game) */
+export function resetLogTracking(): void {
+  _lastSeenLogIndex = 0;
+  _lastSeenBattleLogIndex = 0;
+}
+
 /**
  * Build a comprehensive state summary for the strategic phase.
- * Includes: date, faction info, all cities, officers, diplomacy, memory.
+ * Includes: date, faction info, all cities, officers, diplomacy, game events, memory.
  */
 export function buildStrategicContext(): string {
   const state = useGameStore.getState();
@@ -182,15 +210,45 @@ export function buildStrategicContext(): string {
     parts.push('');
   }
 
-  // Diplomacy
+  // World map — public knowledge (which faction owns which city, roads between them)
+  parts.push('=== WORLD MAP ===');
+
+  // Helper: city label with owner
+  const cityLabel = (c: typeof state.cities[0]) => {
+    if (c.factionId === null) return `${c.name}(id=${c.id}, empty)`;
+    if (c.factionId === pf.id) return `${c.name}(id=${c.id}, MINE)`;
+    const fname = state.factions.find(f => f.id === c.factionId)?.name ?? `?`;
+    return `${c.name}(id=${c.id}, ${fname})`;
+  };
+
+  // All cities with adjacency
+  for (const city of state.cities) {
+    const owner = city.factionId === null ? 'empty'
+      : city.factionId === pf.id ? 'MINE'
+      : (state.factions.find(f => f.id === city.factionId)?.name ?? `faction ${city.factionId}`);
+    const neighbors = city.adjacentCityIds.map(id => {
+      const nc = state.cities.find(c => c.id === id);
+      return nc ? cityLabel(nc) : `?(id=${id})`;
+    });
+    parts.push(`  ${city.name}(id=${city.id}) [${owner}] → ${neighbors.join(', ')}`);
+  }
+  parts.push('');
+
+  // Diplomacy summary
   parts.push('=== DIPLOMACY ===');
   for (const f of state.factions) {
     if (f.id === pf.id) continue;
     const hostility = pf.relations[f.id] ?? 60;
     const isAlly = pf.allies.includes(f.id);
     const hasCeasefire = pf.ceasefires.some(c => c.factionId === f.id);
+    const ruler = state.officers.find(o => o.id === f.rulerId);
     const fCities = state.cities.filter(c => c.factionId === f.id);
-    parts.push(`  ${f.name}(id=${f.id}): hostility=${hostility}${isAlly ? ' [ALLY]' : ''}${hasCeasefire ? ' [CEASEFIRE]' : ''} cities=${fCities.length}`);
+    const dipTags = [
+      `hostility=${hostility}`,
+      isAlly ? 'ALLY' : null,
+      hasCeasefire ? 'CEASEFIRE' : null,
+    ].filter(Boolean).join(', ');
+    parts.push(`  ${f.name}(id=${f.id}) ruler=${ruler?.name ?? '?'} | ${dipTags} | ${fCities.length} cities`);
   }
   parts.push('');
 
@@ -202,6 +260,23 @@ export function buildStrategicContext(): string {
     }
     parts.push('');
   }
+
+  // Game log — recent events since last turn
+  const gameLog = state.log;
+  const newEntries = gameLog.slice(_lastSeenLogIndex);
+  if (newEntries.length > 0) {
+    parts.push('=== RECENT EVENTS (since your last turn) ===');
+    // Show last 20 entries max to keep context reasonable
+    const shown = newEntries.slice(-20);
+    for (const entry of shown) {
+      parts.push(`  - ${entry}`);
+    }
+    if (newEntries.length > 20) {
+      parts.push(`  ... and ${newEntries.length - 20} earlier events`);
+    }
+    parts.push('');
+  }
+  _lastSeenLogIndex = gameLog.length;
 
   // Memory
   const memoryText = formatMemoryForPrompt();
@@ -283,6 +358,22 @@ export function buildBattleContext(): string {
       parts.push('');
     }
   }
+
+  // Recent battle events (damage, kills, enemy actions, day transitions)
+  const battleLog = battle.battleLog;
+  const newBattleEntries = battleLog.slice(_lastSeenBattleLogIndex);
+  if (newBattleEntries.length > 0) {
+    parts.push('=== RECENT BATTLE EVENTS ===');
+    const shown = newBattleEntries.slice(-15);
+    for (const entry of shown) {
+      parts.push(`  - ${entry}`);
+    }
+    if (newBattleEntries.length > 15) {
+      parts.push(`  ... and ${newBattleEntries.length - 15} earlier events`);
+    }
+    parts.push('');
+  }
+  _lastSeenBattleLogIndex = battleLog.length;
 
   // Battle memory
   const memoryText = formatMemoryForPrompt();

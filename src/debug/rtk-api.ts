@@ -407,6 +407,15 @@ export const rtkApi = {
     const err = requireOwnCity('🏛', `reinforceDefense(${cn})`, cityId);
     if (err) return err;
     const city = state.cities.find(c => c.id === cityId)!;
+
+    const executor = officerId
+      ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+    if (!executor) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
+    if (executor.acted) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (city.defense >= 100) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: 'Defense already at maximum (100)' });
+    if (city.gold < 300) return logCmd('🏛', `reinforceDefense(${city.name})`, { ok: false, error: `Insufficient gold (need 300, have ${city.gold})` });
+
     const before = city.defense;
     state.reinforceDefense(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -421,6 +430,15 @@ export const rtkApi = {
     const err = requireOwnCity('🏛', `developFloodControl(${cn})`, cityId);
     if (err) return err;
     const city = state.cities.find(c => c.id === cityId)!;
+
+    const executor = officerId
+      ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+    if (!executor) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
+    if (executor.acted) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (city.floodControl >= 100) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: 'Flood control already at maximum (100)' });
+    if (city.gold < 500) return logCmd('🏛', `developFloodControl(${city.name})`, { ok: false, error: `Insufficient gold (need 500, have ${city.gold})` });
+
     const before = city.floodControl;
     state.developFloodControl(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -435,6 +453,15 @@ export const rtkApi = {
     const err = requireOwnCity('🏛', `developTechnology(${cn})`, cityId);
     if (err) return err;
     const city = state.cities.find(c => c.id === cityId)!;
+
+    const executor = officerId
+      ? state.officers.find(o => o.id === officerId && o.cityId === cityId)
+      : state.officers.find(o => o.cityId === cityId && o.isGovernor);
+    if (!executor) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: officerId ? `Officer ${officerId} not found in city` : 'No governor in city' });
+    if (executor.acted) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: `Officer ${executor.name} has already acted this turn` });
+    if (city.technology >= 100) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: 'Technology already at maximum (100)' });
+    if (city.gold < 800) return logCmd('🏛', `developTechnology(${city.name})`, { ok: false, error: `Insufficient gold (need 800, have ${city.gold})` });
+
     const before = city.technology;
     state.developTechnology(cityId, officerId);
     const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
@@ -707,7 +734,44 @@ export const rtkApi = {
     const state = useGameStore.getState();
     const cn = cityName(targetCityId);
     if (state.phase !== 'playing') return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Not in playing phase' });
+
+    // Pre-check: must have a city selected
+    if (state.selectedCityId === null) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'No source city selected. Call selectCity first.' });
+
+    const sourceCity = state.cities.find(c => c.id === state.selectedCityId);
+    if (!sourceCity) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Source city id=${state.selectedCityId} not found` });
+    if (sourceCity.factionId !== state.playerFaction?.id) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Source city ${sourceCity.name} is not yours` });
+
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!targetCity) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Target city id=${targetCityId} not found` });
+
+    // Pre-check: adjacency
+    if (!sourceCity.adjacentCityIds.includes(targetCityId)) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `${targetCity.name} is not adjacent to ${sourceCity.name}` });
+
+    // Pre-check: formation
+    if (!state.battleFormation) return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'No battle formation set. Call setBattleFormation first.' });
+
+    const formOfficers = state.battleFormation.officerIds.map(id => state.officers.find(o => o.id === id)).filter(Boolean);
+    const allCityOfficers = state.officers.filter(o => o.cityId === sourceCity.id && o.factionId === state.playerFaction?.id);
+
+    // Pre-check: must leave at least 1 officer
+    if (formOfficers.length >= allCityOfficers.length) {
+      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Must leave at least 1 officer in ${sourceCity.name}. Formation has ${formOfficers.length} officers but city only has ${allCityOfficers.length}. Remove one from formation.` });
+    }
+
+    // Pre-check: commander not acted
+    const commander = formOfficers.reduce((prev, curr) => ((prev?.leadership ?? 0) > (curr?.leadership ?? 0) ? prev : curr));
+    if (commander?.acted) {
+      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `Commander ${commander.name} has already acted this turn` });
+    }
+
+    // Pre-check: troops
+    if (sourceCity.troops <= 0) {
+      return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: `No troops in ${sourceCity.name}` });
+    }
+
     state.startBattle(targetCityId);
+
     if (useGameStore.getState().phase === 'battle') {
       logEvent(`Battle started against ${cn}!`);
       return { ok: true };
@@ -716,9 +780,9 @@ export const rtkApi = {
     const targetNow = useGameStore.getState().cities.find(c => c.id === targetCityId);
     if (targetNow?.factionId === state.playerFaction?.id) {
       logEvent(`Auto-captured ${cn}! (undefended)`);
-      return { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' };
+      return { ok: true, data: { autoCaptured: true } };
     }
-    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (check requirements — officers may have acted)' });
+    return logCmd('⚔', `startBattle(${cn})`, { ok: false, error: 'Battle failed to start (unknown reason)' });
   },
 
   retreat(): Result {
