@@ -11,6 +11,7 @@ import BattleScreen from './components/BattleScreen';
 import VictoryScreen from './components/VictoryScreen';
 import DefeatScreen from './components/DefeatScreen';
 import { audioSystem } from './systems/audio';
+import { LLMStatusOverlay } from './components/LLMStatusOverlay';
 import './App.css';
 
 /**
@@ -80,6 +81,7 @@ function App() {
       {phase === 'battle' && <BattleScreen />}
       {phase === 'victory' && <VictoryScreen />}
       {phase === 'defeat' && <DefeatScreen />}
+      <LLMStatusOverlay />
     </div>
   );
 }
