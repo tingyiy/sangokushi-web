@@ -53,16 +53,24 @@ You issue ONE command at a time. After each command, you see the result and upda
 - { "cmd": "recruitPOW", "officerId": <id>, "recruiterId": <id> }
 - { "cmd": "rewardOfficer", "officerId": <id>, "type": "gold", "amount": 100 }
 - { "cmd": "appointGovernor", "cityId": <id>, "officerId": <id> }
+- { "cmd": "appointAdvisor", "officerId": <id> }
+- { "cmd": "promoteOfficer", "officerId": <id>, "rank": "general"|"advisor"|"attendant"|"viceroy"|"common" }
+- { "cmd": "executeOfficer", "officerId": <id> }  (execute a captured POW)
+- { "cmd": "dismissOfficer", "officerId": <id> }  (release an officer from your faction)
 
 ### Diplomacy
 - { "cmd": "improveRelations", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 - { "cmd": "formAlliance", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 - { "cmd": "proposeCeasefire", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
+- { "cmd": "demandSurrender", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
+- { "cmd": "breakAlliance", "targetFactionId": <id> }
 
 ### Strategy
 - { "cmd": "spy", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
 - { "cmd": "rumor", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
 - { "cmd": "counterEspionage", "cityId": <yourCity>, "targetCityId": <id>, "targetOfficerId": <id>, "officerId": <id> }
+- { "cmd": "inciteRebellion", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
+- { "cmd": "arson", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
 
 ### Turn End
 - { "cmd": "endTurn" }
@@ -103,6 +111,7 @@ KEY MECHANICS:
 - searchOfficer searches your own city for hidden unaffiliated officers. If found, the officer immediately joins your faction (loyalty 60). Only works if unaffiliated officers exist in that city. Check the "Unaffiliated:N" count in the status display — cities showing no count have zero searchable officers. Do NOT waste actions searching cities with 0 unaffiliated officers.
 - recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
 - rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
+- transferOfficer: if you transfer the LAST officer out of a city, that city is ABANDONED (becomes unowned). Any faction can then capture it for free. Use this deliberately — e.g., to consolidate officers for recruitment — but be aware of the risk.
 - spy reveals an enemy city's data (troops, officers, resources) for several turns.
 - Diplomacy (alliances, ceasefires) can secure borders.
 
@@ -142,6 +151,7 @@ Respond with a JSON object for the current unit's action:
 - { "action": "tactic", "tactic": "<name>", "targetId": "<unit_id>" }
 - { "action": "wait" }
 - { "action": "endPlayerPhase" }  (end all remaining unit actions this day)
+- { "action": "retreat" }  (withdraw from battle — you lose, surviving officers flee)
 
 ## Response Format
 {
@@ -231,10 +241,7 @@ export function buildStrategicContext(): string {
     isPlayer: f.id === pf.id,
   })).sort((a, b) => b.cities - a.cities);
 
-  const myRank = factionPower.findIndex(f => f.isPlayer) + 1;
-  const totalFactions = factionPower.length;
-  parts.push(`Your rank: #${myRank} of ${totalFactions} factions by city count`);
-  parts.push(`Power ranking: ${factionPower.map(f => `${f.name}=${f.cities}${f.isPlayer ? '(YOU)' : ''}`).join(', ')}`);
+  parts.push(`Factions (${factionPower.length}): ${factionPower.map(f => `${f.name} ${f.cities} ${f.cities === 1 ? 'city' : 'cities'}${f.isPlayer ? ' (YOU)' : ''}`).join(', ')}`);
 
   // Empty cities count
   const emptyCities = state.cities.filter(c => c.factionId === null);

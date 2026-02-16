@@ -54,6 +54,8 @@
     "noSkillArson": "{{name}} does not have the Arson skill.",
     "noSkillEspionage": "{{name}} does not have the Espionage skill.",
     "noSkillIntelligence": "{{name}} does not have the Intelligence skill.",
+    "spyEmptyCity": "{{city}} is an empty city — there is nothing to spy on.",
+    "spyOwnCity": "{{city}} is your own city — you cannot spy on yourself.",
     "alreadyHostage": "{{name}} is already a hostage.",
     "alreadyAllied": "We are already allied with {{faction}}.",
     "rankRequirementsNotMet": "{{name}} does not meet the requirements for {{rank}}.",
@@ -88,6 +90,7 @@
     "searchFoundOfficer": "{{recruiter}} found {{officer}} in {{city}}!",
     "searchFoundTreasure": "{{recruiter}} found a treasure while searching in {{city}}!",
     "searchNothing": "{{recruiter}} found nothing in {{city}}.",
+    "searchNoUnaffiliated": "No unaffiliated officers in {{city}} to search for.",
     "surrenderSuccess": "{{recruiter}} convinced {{officer}} to surrender!",
     "surrenderFail": "{{recruiter}} failed to convince {{officer}} to surrender.",
     "reward": "Rewarded {{officer}} with {{amount}} gold. Loyalty increased.",
@@ -95,7 +98,8 @@
     "banish": "{{name}} has been banished.",
     "appointGovernor": "Appointed {{name}} as governor.",
     "appointAdvisor": "Appointed {{name}} as advisor.",
-    "moveOfficer": "{{name}} moved to {{city}}."
+    "moveOfficer": "{{name}} moved to {{city}}.",
+    "cityAbandoned": "{{city}} has been abandoned — no officers remain."
   },
   "military": {
     "captureEmptyCity": "{{city}} is undefended! {{commander}} captured {{city}}!",

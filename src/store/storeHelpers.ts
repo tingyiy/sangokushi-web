@@ -1,6 +1,29 @@
 import type { Officer, City, Faction } from '../types';
 
 /**
+ * Check if a city should be abandoned after an officer departs.
+ * RTK IV rule: when the last officer leaves a city, the city becomes unowned.
+ * Returns the updated cities array (with factionId set to null if abandoned).
+ */
+export function abandonCityIfEmpty(
+  cities: City[],
+  officers: Officer[],
+  cityId: number,
+  factionId: number,
+): { cities: City[]; abandoned: boolean } {
+  const remaining = officers.filter(
+    o => o.cityId === cityId && o.factionId === factionId
+  );
+  if (remaining.length > 0) return { cities, abandoned: false };
+  return {
+    cities: cities.map(c =>
+      c.id === cityId ? { ...c, factionId: null } : c
+    ),
+    abandoned: true,
+  };
+}
+
+/**
  * Auto-assign a governor for a city that has none.
  * RTK IV rule: if the ruler is present in the city, they ARE the governor.
  * Otherwise picks the best officer by politics + leadership.

@@ -282,11 +282,24 @@ export function createStrategyActions(set: Set, get: Get): Pick<GameState, 'rumo
       }
 
       const targetCity = state.cities.find(c => c.id === targetCityId);
+
+      // Guard: cannot spy on empty/unoccupied cities (nothing to reveal)
+      if (!targetCity || targetCity.factionId === null) {
+        get().addLog(i18next.t('logs:error.spyEmptyCity', { city: localizedName(targetCity?.name ?? '') }));
+        return;
+      }
+
+      // Guard: cannot spy on your own cities
+      if (targetCity.factionId === state.playerFaction!.id) {
+        get().addLog(i18next.t('logs:error.spyOwnCity', { city: localizedName(targetCity.name) }));
+        return;
+      }
+
       const result = spyingSystem.spy(
         { intelligence: messenger.intelligence, espionage: hasSkill(messenger, 'espionage') },
         targetCityId,
         state.playerFaction!.id,
-        targetCity?.factionId || null
+        targetCity.factionId
       );
 
       set({

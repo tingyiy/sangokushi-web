@@ -245,7 +245,43 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('transferOfficer works', () => {
-      // Need a second officer in city 1 so the last-officer guard doesn't block
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+      });
+      useGameStore.getState().transferOfficer(1, 2);
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officer?.cityId).toBe(2);
+      expect(officer?.acted).toBe(true);
+    });
+
+    it('transferOfficer allows last officer to leave city', () => {
+      // Only officer 1 in city 1 — should be allowed (city becomes ungarrisoned)
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+      });
+      useGameStore.getState().transferOfficer(1, 2);
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      // Officer should have moved
+      expect(officer?.cityId).toBe(2);
+      expect(officer?.acted).toBe(true);
+    });
+
+    it('transferOfficer abandons city when last officer leaves', () => {
+      // Only officer 1 in city 1 — city should become unowned
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+      });
+      useGameStore.getState().transferOfficer(1, 2);
+      const city1 = useGameStore.getState().cities.find(c => c.id === 1);
+      // City should be abandoned (factionId = null)
+      expect(city1?.factionId).toBeNull();
+      // Should log the abandonment
+      const logs = useGameStore.getState().log;
+      expect(logs.some(l => l.includes('放棄') || l.includes('abandoned'))).toBe(true);
+    });
+
+    it('transferOfficer does not abandon city when other officers remain', () => {
+      // Add a second officer in city 1
       useGameStore.setState({
         cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
         officers: [
@@ -258,23 +294,9 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         ],
       });
       useGameStore.getState().transferOfficer(1, 2);
-      const officer = useGameStore.getState().officers.find(o => o.id === 1);
-      expect(officer?.cityId).toBe(2);
-      expect(officer?.acted).toBe(true);
-    });
-
-    it('transferOfficer blocks last officer from leaving city', () => {
-      // Only officer 1 in city 1 — should be blocked
-      useGameStore.setState({
-        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
-      });
-      useGameStore.getState().transferOfficer(1, 2);
-      const officer = useGameStore.getState().officers.find(o => o.id === 1);
-      // Officer should NOT have moved
-      expect(officer?.cityId).toBe(1);
-      expect(officer?.acted).toBe(false);
-      // Should log an error
-      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('最後一位武將'));
+      const city1 = useGameStore.getState().cities.find(c => c.id === 1);
+      // City should still be owned
+      expect(city1?.factionId).toBe(1);
     });
 
     it('startBattle with formation works', () => {
@@ -418,10 +440,30 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('searchOfficer can find nothing', () => {
+      // Add an unaffiliated officer so search is allowed
+      useGameStore.setState({
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 99, name: '隱士', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 99, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: null, cityId: 1, acted: false, loyalty: 30, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
+      });
       const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.9);
       useGameStore.getState().searchOfficer(1);
       expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('一無所獲'));
       mockRandom.mockRestore();
+    });
+
+    it('searchOfficer rejects when no unaffiliated officers in city', () => {
+      // No unaffiliated officers — should be rejected without consuming action
+      useGameStore.getState().searchOfficer(1);
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('在野'));
+      // Officer should NOT have acted
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officer?.acted).toBe(false);
     });
 
     it('recruitPOW fails if recruitment fails', () => {
@@ -877,6 +919,71 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       // Leadership 90 >= 70 → eligible for general
       useGameStore.getState().promoteOfficer(3, 'general');
       expect(useGameStore.getState().officers.find(o => o.id === 3)!.rank).toBe('general');
+    });
+  });
+
+  describe('Spy Guards', () => {
+    it('spy rejects on empty city without consuming action or gold', () => {
+      // Add an empty city (id=3) adjacent to city 1
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c =>
+          c.id === 1 ? { ...c, adjacentCityIds: [...c.adjacentCityIds, 3] } : c
+        ).concat([{
+          id: 3, name: '空城', x: 70, y: 50, factionId: null, population: 10000, gold: 1000, food: 5000,
+          commerce: 10, agriculture: 10, defense: 10, troops: 0, adjacentCityIds: [1],
+          floodControl: 10, technology: 10, peopleLoyalty: 50, morale: 50, training: 50,
+          crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+        }]),
+      });
+
+      const goldBefore = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      const actedBefore = useGameStore.getState().officers.find(o => o.id === 1)!.acted;
+
+      useGameStore.getState().spy(3, 1);
+
+      const goldAfter = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      const actedAfter = useGameStore.getState().officers.find(o => o.id === 1)!.acted;
+
+      // Gold should NOT be deducted
+      expect(goldAfter).toBe(goldBefore);
+      // Officer should NOT have acted
+      expect(actedAfter).toBe(actedBefore);
+      // Should have a log message about empty city
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('空城'));
+    });
+
+    it('spy rejects on own city without consuming action or gold', () => {
+      const goldBefore = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      const actedBefore = useGameStore.getState().officers.find(o => o.id === 1)!.acted;
+
+      // Spy on own city (city 1 belongs to faction 1)
+      useGameStore.getState().spy(1, 1);
+
+      const goldAfter = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      const actedAfter = useGameStore.getState().officers.find(o => o.id === 1)!.acted;
+
+      // Gold should NOT be deducted
+      expect(goldAfter).toBe(goldBefore);
+      // Officer should NOT have acted
+      expect(actedAfter).toBe(actedBefore);
+      // Should have a log message about own city
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('許昌'));
+    });
+
+    it('spy on enemy city consumes action and gold normally', () => {
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      const goldBefore = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+
+      useGameStore.getState().spy(2, 1);
+
+      const goldAfter = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      const actedAfter = useGameStore.getState().officers.find(o => o.id === 1)!.acted;
+
+      // Gold should be deducted by 500
+      expect(goldAfter).toBe(goldBefore - 500);
+      // Officer should have acted
+      expect(actedAfter).toBe(true);
+      mockRandom.mockRestore();
     });
   });
 });

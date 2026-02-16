@@ -54,6 +54,8 @@
     "noSkillArson": "{{name}} 不具備燒討技能。",
     "noSkillEspionage": "{{name}} 不具備諜報技能。",
     "noSkillIntelligence": "{{name}} 不具備情報技能。",
+    "spyEmptyCity": "{{city}} 是一座空城，沒有情報可供刺探。",
+    "spyOwnCity": "{{city}} 是我方城市，不能對自己的城市進行間諜活動。",
     "alreadyHostage": "{{name}} 已經是人質了。",
     "alreadyAllied": "我方與 {{faction}} 已經是同盟了。",
     "rankRequirementsNotMet": "{{name}} 不符合{{rank}}的任命條件。",
@@ -88,6 +90,7 @@
     "searchFoundOfficer": "{{recruiter}} 在 {{city}} 找到了 {{officer}}！",
     "searchFoundTreasure": "{{recruiter}} 在 {{city}} 搜索時發現了寶物！",
     "searchNothing": "{{recruiter}} 在 {{city}} 搜索，一無所獲。",
+    "searchNoUnaffiliated": "{{city}} 沒有在野武將可供搜索。",
     "surrenderSuccess": "{{recruiter}} 成功勸降了 {{officer}}！",
     "surrenderFail": "{{recruiter}} 勸降 {{officer}} 失敗。",
     "reward": "賞賜 {{officer}} {{amount}} 金，忠誠上升。",
@@ -95,7 +98,8 @@
     "banish": "{{name}} 被逐出了勢力。",
     "appointGovernor": "任命 {{name}} 為太守。",
     "appointAdvisor": "任命 {{name}} 為軍師。",
-    "moveOfficer": "{{name}} 移動到了 {{city}}。"
+    "moveOfficer": "{{name}} 移動到了 {{city}}。",
+    "cityAbandoned": "{{city}} 已被放棄——城中無武將駐守。"
   },
   "military": {
     "captureEmptyCity": "{{city}} 是一座空城！{{commander}} 率軍佔領了 {{city}}！",

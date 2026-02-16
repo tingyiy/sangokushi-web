@@ -620,8 +620,15 @@ export const rtkApi = {
     if (err) return err;
     const city = state.cities.find(c => c.id === cityId)!;
 
-    // Check for unaffiliated officers in the city (informational, not blocking)
+    // Check for unaffiliated officers in the city (informational)
     const unaffiliatedBefore = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
+
+    // Snapshot acted states to detect if the store consumed the action
+    const actedBefore = new Map(
+      state.officers
+        .filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id)
+        .map(o => [o.id, o.acted])
+    );
 
     // Track officers in player faction before search
     const myOfficerIdsBefore = new Set(state.officers.filter(o => o.factionId === state.playerFaction?.id).map(o => o.id));
@@ -629,6 +636,21 @@ export const rtkApi = {
     state.searchOfficer(cityId, officerId);
 
     const stateAfter = useGameStore.getState();
+
+    // Check if any officer's acted state changed (action was consumed)
+    const actionConsumed = stateAfter.officers.some(o =>
+      actedBefore.has(o.id) && o.acted !== actedBefore.get(o.id)
+    );
+
+    // If no action was consumed, the store rejected the command
+    if (!actionConsumed) {
+      const hint = unaffiliatedBefore.length === 0
+        ? `No unaffiliated officers in ${city.name}. Check which of your cities have unaffiliated officers in the status display.`
+        : officerId
+          ? `Officer already acted or is not available.`
+          : `No available officer to perform the search.`;
+      return logCmd('👤', `searchOfficer(${city.name})`, { ok: false, error: hint });
+    }
 
     // Detect newly recruited officer by comparing faction membership
     const newlyRecruited = stateAfter.officers.find(o =>
@@ -647,10 +669,8 @@ export const rtkApi = {
       });
     }
 
-    // Nothing found — provide helpful info about why
-    const hint = unaffiliatedBefore.length === 0
-      ? `No unaffiliated officers in ${city.name}. Check which of your cities have unaffiliated officers in the status display.`
-      : `${unaffiliatedBefore.length} unaffiliated officer(s) in ${city.name} but search failed (probability-based). Try again next turn with a high-charisma officer.`;
+    // Action was consumed but nothing found — probability-based failure
+    const hint = `${unaffiliatedBefore.length} unaffiliated officer(s) in ${city.name} but search failed (probability-based). Try again next turn with a high-charisma officer.`;
     return logCmd('👤', `searchOfficer(${city.name})`, { ok: true, data: { type: 'nothing', hint } });
   },
 
@@ -810,9 +830,38 @@ export const rtkApi = {
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[]; food?: number } | null): Result {
     const state = useGameStore.getState();
     if (state.phase !== 'playing') return logCmd('⚔', 'setBattleFormation', { ok: false, error: 'Not in playing phase' });
+
+    // Clearing formation is always valid
+    if (formation === null) {
+      state.setBattleFormation(null);
+      return logCmd('⚔', 'setBattleFormation', { ok: true, data: { cleared: true } });
+    }
+
+    // Validate officer IDs exist and belong to the player
+    const errors: string[] = [];
+    const resolvedOfficers = formation.officerIds.map(id => {
+      const o = state.officers.find(off => off.id === id);
+      if (!o) { errors.push(`Officer id=${id} not found`); return null; }
+      if (o.factionId !== state.playerFaction?.id) { errors.push(`${o.name}(id=${id}) is not your officer`); return null; }
+      return o;
+    });
+    if (errors.length > 0) return logCmd('⚔', 'setBattleFormation', { ok: false, error: errors.join('; ') });
+
+    // Validate officers are all in the same city
+    const cities = new Set(resolvedOfficers.map(o => o!.cityId));
+    if (cities.size > 1) {
+      const details = resolvedOfficers.map(o => `${o!.name} in ${cityName(o!.cityId)}`).join(', ');
+      return logCmd('⚔', 'setBattleFormation', { ok: false, error: `Officers must be in the same city: ${details}` });
+    }
+
+    // Validate array lengths match
+    if (formation.officerIds.length !== formation.unitTypes.length) {
+      return logCmd('⚔', 'setBattleFormation', { ok: false, error: `officerIds (${formation.officerIds.length}) and unitTypes (${formation.unitTypes.length}) must have the same length` });
+    }
+
     state.setBattleFormation(formation);
-    const names = formation?.officerIds.map(id => officerName(id)) ?? [];
-    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation?.unitTypes, troops: formation?.troops, food: formation?.food } });
+    const names = formation.officerIds.map(id => officerName(id));
+    return logCmd('⚔', 'setBattleFormation', { ok: true, data: { officers: names, units: formation.unitTypes, troops: formation.troops, food: formation.food } });
   },
 
   startBattle(targetCityId: number): Result {
@@ -1058,8 +1107,36 @@ export const rtkApi = {
     if (state.phase !== 'playing') return logCmd('🕵', `spy(${cn})`, { ok: false, error: 'Not in playing phase' });
     const err = requireSelectedCity('🕵', `spy(${cn})`);
     if (err) return err;
+
+    // Pre-check: target city must exist and be enemy-owned
+    const targetCity = state.cities.find(c => c.id === targetCityId);
+    if (!targetCity) return logCmd('🕵', `spy(${cn})`, { ok: false, error: `Target city id=${targetCityId} not found` });
+    if (targetCity.factionId === null) return logCmd('🕵', `spy(${cn})`, { ok: false, error: `${targetCity.name} is an empty city — nothing to spy on.` });
+    if (targetCity.factionId === state.playerFaction?.id) return logCmd('🕵', `spy(${cn})`, { ok: false, error: `${targetCity.name} is your own city.` });
+
+    // Snapshot acted states of all officers in the source city to detect consumption
+    const sourceCityId = state.selectedCityId;
+    const actedBefore = new Map(
+      state.officers
+        .filter(o => o.cityId === sourceCityId && o.factionId === state.playerFaction?.id)
+        .map(o => [o.id, o.acted])
+    );
+
+    const logBefore = state.log.length;
     state.spy(targetCityId, officerId);
-    if (useGameStore.getState().isCityRevealed(targetCityId)) return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: true } });
+    const after = useGameStore.getState();
+    const newLogs = after.log.slice(logBefore);
+
+    // Check if any officer's acted state changed (action was consumed)
+    const actionConsumed = after.officers.some(o =>
+      actedBefore.has(o.id) && o.acted !== actedBefore.get(o.id)
+    );
+
+    // If no action was consumed but logs were added, it was a rejection
+    if (!actionConsumed && newLogs.length > 0) {
+      return logCmd('🕵', `spy(${cn})`, { ok: false, error: newLogs[newLogs.length - 1] });
+    }
+    if (after.isCityRevealed(targetCityId)) return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: true } });
     return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: false } });
   },
 

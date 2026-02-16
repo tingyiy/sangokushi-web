@@ -3,7 +3,7 @@ import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 import type { GameState } from './gameStore';
 import { hasSkill } from '../utils/skills';
-import { autoAssignGovernorInPlace } from './storeHelpers';
+import { autoAssignGovernorInPlace, abandonCityIfEmpty } from './storeHelpers';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
@@ -96,6 +96,13 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       }
 
       const unaffiliated = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
+
+      // No unaffiliated officers in city — reject without consuming action
+      if (unaffiliated.length === 0) {
+        get().addLog(i18next.t('logs:personnel.searchNoUnaffiliated', { city: localizedName(city.name) }));
+        return;
+      }
+
       let found = false;
       let foundOfficer: Officer | null = null;
 
@@ -220,10 +227,20 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const officer = state.officers.find(o => o.id === officerId);
       if (!officer || officer.factionId !== state.playerFaction?.id || officer.id === state.playerFaction?.rulerId) return;
 
-      set({
-        officers: state.officers.map(o => o.id === officerId ? { ...o, factionId: null, isGovernor: false, loyalty: 30 } : o)
-      });
+      const dismissedCityId = officer.cityId;
+      const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, factionId: null, isGovernor: false, loyalty: 30 } : o);
+
+      // Auto-abandon city if no officers remain (RTK IV rule)
+      const { cities: updatedCities, abandoned } = abandonCityIfEmpty(
+        state.cities, updatedOfficers, dismissedCityId!, state.playerFaction!.id
+      );
+
+      set({ officers: updatedOfficers, cities: updatedCities });
       get().addLog(i18next.t('logs:personnel.banish', { name: localizedName(officer.name) }));
+      if (abandoned) {
+        const abandonedCity = updatedCities.find(c => c.id === dismissedCityId);
+        get().addLog(i18next.t('logs:personnel.cityAbandoned', { city: localizedName(abandonedCity?.name ?? '') }));
+      }
     },
 
     appointGovernor: (cityId, officerId) => {
@@ -425,18 +442,9 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      // Block transferring the last officer out of a city
-      const sourceCityId = officer.cityId;
-      const officersInSource = state.officers.filter(
-        o => o.cityId === sourceCityId && o.factionId === state.playerFaction?.id
-      );
-      if (officersInSource.length <= 1) {
-        get().addLog(i18next.t('logs:error.lastOfficerInCity', { name: localizedName(officer.name) }));
-        return;
-      }
-
       const wasGovernor = officer.isGovernor;
       const isRuler = state.playerFaction!.rulerId === officerId;
+      const sourceCityId = officer.cityId;
 
       const updatedOfficers = state.officers.map(o => {
         if (o.id === officerId) {
@@ -453,9 +461,19 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       if (wasGovernor && sourceCityId !== null) {
         autoAssignGovernorInPlace(updatedOfficers, sourceCityId, state.playerFaction!.id, state.factions);
       }
-      set({ officers: updatedOfficers });
-      const finalDestCity = state.cities.find(c => c.id === targetCityId);
+
+      // Auto-abandon source city if no officers remain (RTK IV rule)
+      const { cities: updatedCities, abandoned } = abandonCityIfEmpty(
+        state.cities, updatedOfficers, sourceCityId!, state.playerFaction!.id
+      );
+
+      set({ officers: updatedOfficers, cities: updatedCities });
+      const finalDestCity = updatedCities.find(c => c.id === targetCityId);
       get().addLog(i18next.t('logs:personnel.moveOfficer', { name: localizedName(officer.name), city: localizedName(finalDestCity?.name ?? '') }));
+      if (abandoned) {
+        const abandonedCity = updatedCities.find(c => c.id === sourceCityId);
+        get().addLog(i18next.t('logs:personnel.cityAbandoned', { city: localizedName(abandonedCity?.name ?? '') }));
+      }
     },
   };
 }
