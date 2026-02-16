@@ -425,8 +425,17 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      const wasGovernor = officer.isGovernor;
+      // Block transferring the last officer out of a city
       const sourceCityId = officer.cityId;
+      const officersInSource = state.officers.filter(
+        o => o.cityId === sourceCityId && o.factionId === state.playerFaction?.id
+      );
+      if (officersInSource.length <= 1) {
+        get().addLog(i18next.t('logs:error.lastOfficerInCity', { name: localizedName(officer.name) }));
+        return;
+      }
+
+      const wasGovernor = officer.isGovernor;
       const isRuler = state.playerFaction!.rulerId === officerId;
 
       const updatedOfficers = state.officers.map(o => {

@@ -7,7 +7,7 @@
  * Reads endpoint URL, API key, and model from config.ts (localStorage).
  */
 
-import { getApiKey, getModelId, getEndpoint } from './config';
+import { getAccessToken, getAuthMode, getModelId, getEndpoint } from './config';
 import { llmLog } from './log';
 
 // ── Types ───────────────────────────────────────────────
@@ -57,10 +57,14 @@ export async function chatCompletion(
     maxTokens?: number;
   }
 ): Promise<{ text: string; model: string; usage?: ChatCompletionResponse['usage'] }> {
-  const apiKey = getApiKey();
+  const token = getAccessToken();
   const endpoint = getEndpoint();
 
-  if (!apiKey) {
+  if (!token) {
+    const mode = getAuthMode();
+    if (mode === 'oauth') {
+      throw new Error('Google OAuth token expired. Please sign in again via Settings.');
+    }
     throw new Error('API key not set. Go to Settings to configure it.');
   }
 
@@ -80,7 +84,7 @@ export async function chatCompletion(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`,
+    'Authorization': `Bearer ${token}`,
   };
 
   const res = await fetch(endpoint, {

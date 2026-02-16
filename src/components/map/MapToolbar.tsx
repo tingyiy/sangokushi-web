@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
-import { isLLMEnabled, getApiKey } from '../../llm/config';
+import { isLLMEnabled, getAccessToken } from '../../llm/config';
 import { startAgent, stopAgent, isAgentRunning } from '../../llm/agent';
 
 /**
@@ -27,7 +27,7 @@ export function MapToolbar({ onShowStatus, onShowSave, onShowLoad }: Props) {
   // Auto-start once when LLM first becomes ready.
   useEffect(() => {
     const check = () => {
-      const ready = isLLMEnabled() && !!getApiKey();
+      const ready = isLLMEnabled() && !!getAccessToken();
       setLlmReady(ready);
       const running = isAgentRunning();
       setAgentRunning(running);

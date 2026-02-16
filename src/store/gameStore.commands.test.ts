@@ -245,13 +245,36 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
     });
 
     it('transferOfficer works', () => {
+      // Need a second officer in city 1 so the last-officer guard doesn't block
       useGameStore.setState({
-        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+        officers: [
+          ...useGameStore.getState().officers,
+          {
+            id: 10, name: '守城將', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+            skills: [] as RTK4Skill[], portraitId: 10, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          },
+        ],
       });
       useGameStore.getState().transferOfficer(1, 2);
       const officer = useGameStore.getState().officers.find(o => o.id === 1);
       expect(officer?.cityId).toBe(2);
       expect(officer?.acted).toBe(true);
+    });
+
+    it('transferOfficer blocks last officer from leaving city', () => {
+      // Only officer 1 in city 1 — should be blocked
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c),
+      });
+      useGameStore.getState().transferOfficer(1, 2);
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      // Officer should NOT have moved
+      expect(officer?.cityId).toBe(1);
+      expect(officer?.acted).toBe(false);
+      // Should log an error
+      expect(useGameStore.getState().log).toContainEqual(expect.stringContaining('最後一位武將'));
     });
 
     it('startBattle with formation works', () => {

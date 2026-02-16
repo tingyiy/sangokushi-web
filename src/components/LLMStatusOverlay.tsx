@@ -5,7 +5,7 @@ import {
 } from '../llm/status';
 import type { LLMStatusState } from '../llm/status';
 import { isAgentRunning } from '../llm/agent';
-import { isLLMEnabled, getApiKey } from '../llm/config';
+import { isLLMEnabled, getAccessToken } from '../llm/config';
 
 /**
  * LLMStatusOverlay — floating indicator showing LLM agent status.
@@ -25,7 +25,7 @@ export function LLMStatusOverlay() {
   // Check if we should show at all
   useEffect(() => {
     const check = () => {
-      setVisible(isLLMEnabled() && !!getApiKey() && isAgentRunning());
+      setVisible(isLLMEnabled() && !!getAccessToken() && isAgentRunning());
     };
     check();
     const interval = setInterval(check, 500);

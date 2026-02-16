@@ -1,4 +1,9 @@
 {
+  "app": {
+    "title": "Sangokushi",
+    "subtitle": "Battle Against AI",
+    "llmSettings": "AI Config"
+  },
   "title": {
     "newGame": "New Game",
     "loadGame": "Load Game",
@@ -21,7 +26,10 @@
   },
   "faction": {
     "selectRulerCount": "Select Ruler ({{count}} available)",
-    "registerNewRuler": "Create New Ruler"
+    "registerNewRuler": "Create New Ruler",
+    "playerModeHuman": "Human",
+    "playerModeGameAI": "Game AI",
+    "noProvidersHint": "Configure AI providers via header AI Config button"
   },
   "settings": {
     "title": "Game Settings",
@@ -60,7 +68,16 @@
     "llmStop": "Stop AI",
     "llmRunning": "AI is playing...",
     "llmSave": "Save",
-    "llmClear": "Clear"
+    "llmClear": "Clear",
+    "llmOAuthSignIn": "Sign in with Google",
+    "llmOAuthSignOut": "Sign out",
+    "llmOAuthSignedIn": "Google OAuth active",
+    "llmOAuthActive": "Signed in via Google",
+    "llmOAuthLoading": "Signing in...",
+    "llmOAuthHint": "No API key needed",
+    "llmOAuthExpires": "expires in {{minutes}}m",
+    "llmDefaultProvider": "Default provider",
+    "llmSetDefault": "Set as default"
   },
   "header": {
     "dateLabel": "{{month}} / {{year}}",

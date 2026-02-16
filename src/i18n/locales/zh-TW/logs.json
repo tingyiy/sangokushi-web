@@ -43,6 +43,7 @@
     "transportNoOfficer": "城中無可用武將執行輸送。",
     "transportInsufficient": "{{label}}不足，無法輸送。需要 {{amount}}（現有 {{current}}）。",
     "moveOnlyFriendly": "只能移動到我方城市。",
+    "lastOfficerInCity": "{{name}} 是該城最後一位武將，無法調動。",
     "notOurFaction": "{{name}} 不屬於我方勢力，無法任命為太守。",
     "notInTargetCity": "{{name}} 不在 {{city}}，無法任命為太守。",
     "rewardGoldInsufficient": "金不足，無法賞賜。需要 {{amount}}（現有 {{current}}）。",

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from './store/gameStore';
 import { TitleScreen } from './components/TitleScreen';
 import { ScenarioSelect } from './components/ScenarioSelect';
@@ -10,27 +10,34 @@ import { DuelScreen } from './components/DuelScreen';
 import BattleScreen from './components/BattleScreen';
 import VictoryScreen from './components/VictoryScreen';
 import DefeatScreen from './components/DefeatScreen';
+import { AppHeader } from './components/AppHeader';
+import SaveLoadMenu from './components/SaveLoadMenu';
 import { audioSystem } from './systems/audio';
 import { LLMStatusOverlay } from './components/LLMStatusOverlay';
+import type { GamePhase } from './types';
 import './App.css';
 
 /**
  * Main App Component
  * Routes between different game screens based on current phase.
- * Phase 0.3: Integrated victory/defeat condition checking.
- * Phase 0.5: Added FactionSelect and GameSettingsScreen routes.
- * Phase 7.1: Added RulerCreation route.
- * Phase 7.4: Integrated Audio System.
  */
+
+/** Phases where the AppHeader is hidden (cinematic screens) */
+const HEADER_HIDDEN = new Set<GamePhase>(['victory', 'defeat']);
+
 function App() {
   const { phase, checkVictoryCondition, setPhase, addLog, gameSettings } = useGameStore();
+
+  // Save/Load menu state — lifted to App level so header can open them from any phase
+  const [showSaveMenu, setShowSaveMenu] = useState(false);
+  const [showLoadMenu, setShowLoadMenu] = useState(false);
 
   // Sync audio mute state with game settings
   useEffect(() => {
     audioSystem.setMute(!gameSettings.musicEnabled);
   }, [gameSettings.musicEnabled]);
 
-  // Phase 7.4: Update BGM based on phase
+  // Update BGM based on phase
   useEffect(() => {
     switch (phase) {
       case 'title':
@@ -54,7 +61,7 @@ function App() {
     }
   }, [phase]);
 
-  // Phase 0.3: Check victory/defeat conditions when in playing phase
+  // Check victory/defeat conditions when in playing phase
   useEffect(() => {
     if (phase === 'playing') {
       const result = checkVictoryCondition();
@@ -71,16 +78,40 @@ function App() {
 
   return (
     <div className="app">
+      {!HEADER_HIDDEN.has(phase) && (
+        <AppHeader
+          phase={phase}
+          onShowSave={() => setShowSaveMenu(true)}
+          onShowLoad={() => setShowLoadMenu(true)}
+        />
+      )}
       {phase === 'title' && <TitleScreen />}
       {phase === 'scenario' && <ScenarioSelect />}
       {phase === 'faction' && <FactionSelect />}
       {phase === 'settings' && <GameSettingsScreen />}
       {phase === 'rulerCreation' && <RulerCreation />}
-      {phase === 'playing' && <GameScreen />}
+      {phase === 'playing' && (
+        <GameScreen
+          onShowSave={() => setShowSaveMenu(true)}
+          onShowLoad={() => setShowLoadMenu(true)}
+        />
+      )}
       {phase === 'duel' && <DuelScreen />}
       {phase === 'battle' && <BattleScreen />}
       {phase === 'victory' && <VictoryScreen />}
       {phase === 'defeat' && <DefeatScreen />}
+
+      {/* Save/Load menus — available from any phase via header */}
+      <SaveLoadMenu
+        isOpen={showSaveMenu}
+        onClose={() => setShowSaveMenu(false)}
+        mode="save"
+      />
+      <SaveLoadMenu
+        isOpen={showLoadMenu}
+        onClose={() => setShowLoadMenu(false)}
+        mode="load"
+      />
       <LLMStatusOverlay />
     </div>
   );

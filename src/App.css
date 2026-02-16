@@ -3,6 +3,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-top: 40px; /* Space for fixed AppHeader */
 }
 
 /* ============ GLOBAL RTK STYLE ============ */
@@ -181,7 +182,7 @@
 .game-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 40px); /* Account for AppHeader */
   overflow: hidden;
 }
 

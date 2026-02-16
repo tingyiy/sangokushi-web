@@ -43,6 +43,7 @@
     "transportNoOfficer": "No available officer to escort the transport.",
     "transportInsufficient": "Not enough {{label}} to transport. Need {{amount}} (have {{current}}).",
     "moveOnlyFriendly": "Can only move to allied cities.",
+    "lastOfficerInCity": "{{name}} is the last officer in this city and cannot be transferred.",
     "notOurFaction": "{{name}} is not in our faction and cannot be appointed governor.",
     "notInTargetCity": "{{name}} is not in {{city}} and cannot be appointed governor.",
     "rewardGoldInsufficient": "Not enough gold for reward. Need {{amount}} (have {{current}}).",

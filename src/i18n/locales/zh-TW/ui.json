@@ -1,4 +1,9 @@
 {
+  "app": {
+    "title": "三國志之決戰AI",
+    "subtitle": "",
+    "llmSettings": "AI 設定"
+  },
   "title": {
     "newGame": "開始新遊戲",
     "loadGame": "載入進度存檔",
@@ -21,7 +26,10 @@
   },
   "faction": {
     "selectRulerCount": "選擇君主 {{count}}人",
-    "registerNewRuler": "登錄新君主"
+    "registerNewRuler": "登錄新君主",
+    "playerModeHuman": "人類玩家",
+    "playerModeGameAI": "遊戲AI",
+    "noProvidersHint": "請先透過標題列的「AI 設定」按鈕配置 AI 供應商"
   },
   "settings": {
     "title": "遊戲設定",
@@ -60,7 +68,16 @@
     "llmStop": "停止 AI",
     "llmRunning": "AI 執行中...",
     "llmSave": "儲存",
-    "llmClear": "清除"
+    "llmClear": "清除",
+    "llmOAuthSignIn": "以 Google 帳號登入",
+    "llmOAuthSignOut": "登出",
+    "llmOAuthSignedIn": "Google OAuth 已連線",
+    "llmOAuthActive": "已透過 Google 登入",
+    "llmOAuthLoading": "登入中...",
+    "llmOAuthHint": "免 API 金鑰",
+    "llmOAuthExpires": "{{minutes}} 分鐘後過期",
+    "llmDefaultProvider": "預設供應商",
+    "llmSetDefault": "設為預設"
   },
   "header": {
     "dateLabel": "{{year}}年 {{month}}月",

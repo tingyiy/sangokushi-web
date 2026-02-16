@@ -4,21 +4,22 @@ import { useGameStore } from '../store/gameStore';
 import { GameHeader } from './GameHeader';
 import { GameMap } from './map/GameMap';
 import { GameMinimap } from './map/GameMinimap';
-import { MapToolbar } from './map/MapToolbar';
 import { CityPanel } from './CityPanel';
 import { CommandMenu } from './menu/CommandMenu';
 import { GameLog } from './GameLog';
 import { GovernorAssignmentModal } from './GovernorAssignmentModal';
 import { DomesticStatusPanel } from './DomesticStatusPanel';
 import { EventDialog } from './EventDialog';
-import SaveLoadMenu from './SaveLoadMenu';
 
-export function GameScreen() {
+interface GameScreenProps {
+  onShowSave: () => void;
+  onShowLoad: () => void;
+}
+
+export function GameScreen({ onShowSave: _onShowSave, onShowLoad: _onShowLoad }: GameScreenProps) {
   const { t } = useTranslation();
   const { cities, officers, playerFaction, selectedCityId } = useGameStore();
   const [showStatusPanel, setShowStatusPanel] = useState(false);
-  const [showSaveMenu, setShowSaveMenu] = useState(false);
-  const [showLoadMenu, setShowLoadMenu] = useState(false);
 
   const ownCities = cities.filter(c => c.factionId === playerFaction?.id);
   const totalTroops = ownCities.reduce((s, c) => s + c.troops, 0);
@@ -34,11 +35,6 @@ export function GameScreen() {
           <GameHeader />
           <GameMinimap />
           <CityPanel />
-          <MapToolbar
-            onShowStatus={() => setShowStatusPanel(true)}
-            onShowSave={() => setShowSaveMenu(true)}
-            onShowLoad={() => setShowLoadMenu(true)}
-          />
         </div>
         <div className="game-right">
           <div className="sidebar-summary">
@@ -47,6 +43,13 @@ export function GameScreen() {
             <span>{t('sidebar.troopCount', { value: totalTroops.toLocaleString() })}</span>
             <span>{t('sidebar.goldCount', { value: totalGold.toLocaleString() })}</span>
             <span>{t('sidebar.foodCount', { value: totalFood.toLocaleString() })}</span>
+            <button
+              className="sidebar-status-btn"
+              onClick={() => setShowStatusPanel(true)}
+              title={t('toolbar.viewStatus')}
+            >
+              {t('toolbar.viewStatus')}
+            </button>
           </div>
           <CommandMenu />
           <GameLog />
@@ -58,16 +61,25 @@ export function GameScreen() {
         onClose={() => setShowStatusPanel(false)}
       />
       <EventDialog />
-      <SaveLoadMenu
-        isOpen={showSaveMenu}
-        onClose={() => setShowSaveMenu(false)}
-        mode="save"
-      />
-      <SaveLoadMenu
-        isOpen={showLoadMenu}
-        onClose={() => setShowLoadMenu(false)}
-        mode="load"
-      />
+
+      <style>{`
+        .sidebar-status-btn {
+          padding: 2px 8px;
+          font-size: 0.78rem;
+          background: #1e293b;
+          border: 1px solid #334155;
+          color: #9ca3af;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+        .sidebar-status-btn:hover {
+          background: #334155;
+          color: #e5e7eb;
+          border-color: #475569;
+        }
+      `}</style>
     </div>
   );
 }

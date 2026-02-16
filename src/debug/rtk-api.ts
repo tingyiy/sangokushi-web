@@ -593,8 +593,22 @@ export const rtkApi = {
 
     state.recruitOfficer(officerId, recruiterId);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
-    if (after.factionId === state.playerFaction?.id) return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: true } });
-    return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: false, reason: 'Officer refused (probability-based). Try again next turn.' } });
+    if (after.factionId === state.playerFaction?.id) {
+      // Find who did the recruiting (the officer who acted)
+      const recruiterUsed = recruiterId
+        ? state.officers.find(o => o.id === recruiterId)
+        : state.officers.filter(o => o.cityId === officer.cityId && o.factionId === state.playerFaction?.id)
+            .find(o => useGameStore.getState().officers.find(a => a.id === o.id)?.acted && !state.officers.find(b => b.id === o.id)?.acted);
+      const recruiterName = recruiterUsed?.name ?? 'unknown';
+      return logCmd('👤', `recruitOfficer(${officer.name})`, {
+        ok: true,
+        data: {
+          success: true,
+          message: `${recruiterName} recruited ${officer.name}! Loyalty: ${after.loyalty}. Stats: L=${officer.leadership}/W=${officer.war}/I=${officer.intelligence}/P=${officer.politics}/C=${officer.charisma}`,
+        },
+      });
+    }
+    return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: false, reason: `${officer.name} refused (probability-based). Try again next turn with a high-charisma officer.` } });
   },
 
   searchOfficer(cityId: number, officerId?: number): Result {

@@ -312,12 +312,14 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           if (promoted) set({ officers });
         }
         get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
-        // Check if the losing faction has no more cities
-        const loserFactionId = targetCity.factionId || 0;
-        const remainingCities = get().cities.filter(c => c.factionId === loserFactionId);
-        if (remainingCities.length === 0) {
-          const loserFaction = state.factions.find(f => f.id === loserFactionId);
-          get().addLog(i18next.t('logs:military.factionDestroyed', { faction: localizedName(loserFaction?.name ?? '') }));
+        // Check if the losing faction has no more cities (skip for truly empty / unaffiliated cities)
+        if (targetCity.factionId !== null) {
+          const loserFactionId = targetCity.factionId;
+          const remainingCities = get().cities.filter(c => c.factionId === loserFactionId);
+          if (remainingCities.length === 0) {
+            const loserFaction = state.factions.find(f => f.id === loserFactionId);
+            get().addLog(i18next.t('logs:military.factionDestroyed', { faction: localizedName(loserFaction?.name ?? '') }));
+          }
         }
         return;
       }
@@ -797,8 +799,15 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
 
       set({ cities: updatedCities, officers: updatedOfficers, factions: updatedFactions, battleResolved: true });
 
-      const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
-      get().addLog(i18next.t('logs:postBattle.cityFallen', { city: localizedName(city.name), faction: localizedName(winnerFaction?.name ?? ''), troops: Math.floor(totalSurvivingTroops * 0.8) }));
+      // Log city capture — but only for real battles (not overruns, which log their own message).
+      // Overruns are identified by the losing side having 0 total troops.
+      const loserTotalTroops = battleUnits
+        .filter(u => u.factionId === loserFactionId)
+        .reduce((s, u) => s + u.troops, 0);
+      if (city.factionId !== winnerFactionId && loserTotalTroops > 0) {
+        const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
+        get().addLog(i18next.t('logs:postBattle.cityFallen', { city: localizedName(city.name), faction: localizedName(winnerFaction?.name ?? ''), troops: Math.floor(totalSurvivingTroops * 0.8) }));
+      }
     },
   };
 }

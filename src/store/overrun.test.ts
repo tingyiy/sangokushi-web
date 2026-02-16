@@ -281,6 +281,39 @@ describe('Zero-Troop Overrun (no battle screen)', () => {
       expect(attackerOfficer?.acted).toBe(true);
     });
 
+    it('overrun does NOT log cityFallen message', () => {
+      const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, adjacentCityIds: [2] });
+      const tgtCity = makeCity({ id: 2, name: '洛陽', factionId: 2, troops: 0, adjacentCityIds: [1] });
+
+      const attacker1 = makeOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true });
+      const attacker2 = makeOfficer({ id: 2, name: '荀彧', factionId: 1, cityId: 1 });
+      const defender = makeOfficer({ id: 10, name: '袁紹', factionId: 2, cityId: 2, isGovernor: true });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, tgtCity],
+        officers: [attacker1, attacker2, defender],
+        factions: [
+          makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+          makeFaction({ id: 2, name: '袁紹', rulerId: 10, relations: { 1: 60 } }),
+        ],
+        playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+        battleFormation: { officerIds: [1], unitTypes: ['infantry'] },
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().startBattle(2);
+
+      const logs = useGameStore.getState().log;
+      // Should have the overrun message
+      expect(logs).toContainEqual(expect.stringContaining('守軍無兵可戰'));
+      // Should NOT have the redundant "cityFallen" message
+      expect(logs).not.toContainEqual(expect.stringContaining('攻陷'));
+      expect(logs).not.toContainEqual(expect.stringContaining('has fallen'));
+    });
+
     it('logs the overrun message', () => {
       const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, adjacentCityIds: [2] });
       const tgtCity = makeCity({ id: 2, name: '洛陽', factionId: 2, troops: 0, adjacentCityIds: [1] });
@@ -507,6 +540,43 @@ describe('Zero-Troop Overrun (no battle screen)', () => {
       // Target city should be captured by AI
       const captured = state.cities.find(c => c.id === 2);
       expect(captured?.factionId).toBe(2);
+    });
+  });
+
+  describe('Empty city capture (no faction)', () => {
+    it('capturing unaffiliated city does NOT log faction destroyed', () => {
+      // Target city has factionId: null (truly empty, no owner)
+      const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, adjacentCityIds: [2] });
+      const emptyCity = makeCity({ id: 2, name: '洛陽', factionId: null, troops: 0, adjacentCityIds: [1] });
+
+      const attacker = makeOfficer({ id: 1, name: '華雄', factionId: 1, cityId: 1, isGovernor: true });
+      const stayBehind = makeOfficer({ id: 2, name: '李儒', factionId: 1, cityId: 1 });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, emptyCity],
+        officers: [attacker, stayBehind],
+        factions: [
+          makeFaction({ id: 1, name: '董卓', rulerId: 1, isPlayer: true }),
+        ],
+        playerFaction: makeFaction({ id: 1, name: '董卓', rulerId: 1, isPlayer: true }),
+        battleFormation: { officerIds: [1], unitTypes: ['infantry'] },
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().startBattle(2);
+
+      const state = useGameStore.getState();
+      // City should be captured
+      const captured = state.cities.find(c => c.id === 2);
+      expect(captured?.factionId).toBe(1);
+
+      // Log should NOT contain "faction destroyed" message
+      const logs = state.log;
+      expect(logs).not.toContainEqual(expect.stringContaining('勢力已被消滅'));
+      expect(logs).not.toContainEqual(expect.stringContaining('has been destroyed'));
     });
   });
 });
