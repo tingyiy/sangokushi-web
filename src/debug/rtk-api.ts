@@ -5,6 +5,7 @@ import type { GamePhase, GameSettings, Officer, OfficerRank, Scenario } from '..
 import type { UnitType } from '../types/battle';
 import { getMovementRange, getAttackRange, type BattleTactic } from '../utils/unitTypes';
 import { getMoveRange } from '../utils/pathfinding';
+import { areCitiesConnected } from '../store/storeHelpers';
 import { RTKScenario } from './scenario-constants';
 
 interface Result {
@@ -828,6 +829,11 @@ export const rtkApi = {
     if (!toCity) return logCmd('⚔', label, { ok: false, error: `Destination city id=${toCityId} not found` });
     if (toCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: notYourCityError(state, toCity) });
 
+    // Pre-validate: cities must be connected through friendly territory
+    if (!areCitiesConnected(state.cities, fromCityId, toCityId, state.playerFaction!.id)) {
+      return logCmd('⚔', label, { ok: false, error: `No connected path of friendly cities between ${cityName(fromCityId)} and ${cityName(toCityId)}` });
+    }
+
     // Pre-validate: at least one resource must be positive
     const entries = Object.entries(resources).filter(([, v]) => v !== undefined && v > 0);
     if (entries.length === 0) return logCmd('⚔', label, { ok: false, error: 'No resources specified for transport' });
@@ -856,7 +862,14 @@ export const rtkApi = {
     if (!escortAfter?.acted) {
       return logCmd('⚔', label, { ok: false, error: 'Transport rejected by store logic' });
     }
-    return logCmd('⚔', label, { ok: true, data: { escort: escort.name, escortMovedTo: cityName(toCityId) } });
+    // Check if source city was abandoned (last officer escorted out)
+    const fromCityAfter = after.cities.find(c => c.id === fromCityId);
+    const abandoned = fromCityAfter && fromCityAfter.factionId === null;
+    const data: Record<string, unknown> = { escort: escort.name, escortMovedTo: cityName(toCityId) };
+    if (abandoned) {
+      data.warning = `${cityName(fromCityId)} was ABANDONED — the escort was the last officer. The city is now unowned.`;
+    }
+    return logCmd('⚔', label, { ok: true, data });
   },
 
   transferOfficer(officerId: number, targetCityId: number): Result {
@@ -879,10 +892,25 @@ export const rtkApi = {
         : `Target city id=${targetCityId} not found` });
     }
 
+    // Pre-validate: cities must be connected through friendly territory
+    if (officer.cityId !== null && !areCitiesConnected(state.cities, officer.cityId, targetCityId, state.playerFaction!.id)) {
+      return logCmd('⚔', label, { ok: false, error: `No connected path of friendly cities between ${cityName(officer.cityId)} and ${cityName(targetCityId)}` });
+    }
+
+    const sourceCityId = officer.cityId;
     state.transferOfficer(officerId, targetCityId);
-    const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
-    if (after.cityId === targetCityId) return logCmd('⚔', label, { ok: true });
-    return logCmd('⚔', label, { ok: false, error: 'Action failed' });
+    const afterState = useGameStore.getState();
+    const after = afterState.officers.find(o => o.id === officerId)!;
+    if (after.cityId !== targetCityId) return logCmd('⚔', label, { ok: false, error: 'Action failed' });
+
+    // Check if source city was abandoned (last officer transferred out)
+    if (sourceCityId !== null) {
+      const srcCityAfter = afterState.cities.find(c => c.id === sourceCityId);
+      if (srcCityAfter && srcCityAfter.factionId === null) {
+        return logCmd('⚔', label, { ok: true, data: { warning: `${cityName(sourceCityId)} was ABANDONED — the officer was the last one. The city is now unowned.` } });
+      }
+    }
+    return logCmd('⚔', label, { ok: true });
   },
 
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[]; food?: number } | null): Result {

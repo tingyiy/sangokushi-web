@@ -62,6 +62,42 @@ export function getAttackDirection(fromCity: City, toCity: City): 'north' | 'sou
 }
 
 /**
+ * Check if two cities are connected through a chain of friendly cities.
+ * RTK IV rule: transfer/transport requires a contiguous path of same-faction cities.
+ * Uses BFS on the city adjacency graph, only traversing cities with matching factionId.
+ * Both source and destination must belong to the faction.
+ */
+export function areCitiesConnected(
+  cities: City[],
+  fromCityId: number,
+  toCityId: number,
+  factionId: number,
+): boolean {
+  if (fromCityId === toCityId) return true;
+  const friendlyCities = new Map<number, City>();
+  for (const c of cities) {
+    if (c.factionId === factionId) friendlyCities.set(c.id, c);
+  }
+  if (!friendlyCities.has(fromCityId) || !friendlyCities.has(toCityId)) return false;
+
+  // BFS
+  const visited = new Set<number>([fromCityId]);
+  const queue = [fromCityId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const city = friendlyCities.get(current)!;
+    for (const neighborId of city.adjacentCityIds) {
+      if (neighborId === toCityId) return true;
+      if (!visited.has(neighborId) && friendlyCities.has(neighborId)) {
+        visited.add(neighborId);
+        queue.push(neighborId);
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Compute Euclidean distance between two cities using map coordinates (0-100 scale).
  */
 export function getCityDistance(cityA: { x: number; y: number }, cityB: { x: number; y: number }): number {

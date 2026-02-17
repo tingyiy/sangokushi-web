@@ -352,6 +352,71 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       expect(city1?.factionId).toBe(1);
     });
 
+    it('transport rejects disconnected friendly cities (Bug #47)', () => {
+      // City 1 (adj:[2]) and city 3 (adj:[]) are not connected — no friendly path
+      useGameStore.setState({
+        cities: [
+          ...useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 2 } : c), // city 2 is enemy
+          {
+            id: 3, name: '遠方', x: 90, y: 90, factionId: 1, population: 10000, gold: 5000, food: 5000,
+            commerce: 50, agriculture: 50, defense: 30, troops: 1000, adjacentCityIds: [],
+            floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
+            crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+          },
+        ],
+      });
+      const goldBefore = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      useGameStore.getState().transport(1, 3, { gold: 1000 }, 1);
+      // Transport should be rejected — gold unchanged, officer not acted
+      const goldAfter = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      expect(goldAfter).toBe(goldBefore);
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officer?.acted).toBe(false);
+    });
+
+    it('transferOfficer rejects disconnected friendly cities (Bug #47)', () => {
+      // City 1 (adj:[2]) and city 3 (adj:[]) are not connected
+      useGameStore.setState({
+        cities: [
+          ...useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 2 } : c),
+          {
+            id: 3, name: '遠方', x: 90, y: 90, factionId: 1, population: 10000, gold: 5000, food: 5000,
+            commerce: 50, agriculture: 50, defense: 30, troops: 1000, adjacentCityIds: [],
+            floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
+            crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+          },
+        ],
+      });
+      useGameStore.getState().transferOfficer(1, 3);
+      // Transfer should be rejected — officer stays in city 1
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officer?.cityId).toBe(1);
+      expect(officer?.acted).toBe(false);
+    });
+
+    it('transport allows non-adjacent cities connected through friendly territory (Bug #47)', () => {
+      // City 1 (adj:[2]) -- city 2 (adj:[1,3]) -- city 3 (adj:[2]), all faction 1
+      useGameStore.setState({
+        cities: [
+          useGameStore.getState().cities.find(c => c.id === 1)!,
+          { ...useGameStore.getState().cities.find(c => c.id === 2)!, factionId: 1, adjacentCityIds: [1, 3] },
+          {
+            id: 3, name: '遠方', x: 90, y: 90, factionId: 1, population: 10000, gold: 5000, food: 5000,
+            commerce: 50, agriculture: 50, defense: 30, troops: 1000, adjacentCityIds: [2],
+            floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
+            crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+          },
+        ],
+      });
+      useGameStore.getState().transport(1, 3, { gold: 1000 }, 1);
+      // Should succeed — city 2 bridges the path
+      const city3 = useGameStore.getState().cities.find(c => c.id === 3)!;
+      expect(city3.gold).toBe(6000);
+      const officer = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officer?.cityId).toBe(3);
+      expect(officer?.acted).toBe(true);
+    });
+
     it('startBattle with formation works', () => {
       // Need at least 2 officers in city so one can remain behind
       useGameStore.setState({

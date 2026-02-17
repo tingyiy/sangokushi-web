@@ -53,8 +53,8 @@ You issue ONE command at a time. After each command, you see the result and upda
 
 ### Military
 - { "cmd": "draftTroops", "cityId": <id>, "amount": <number>, "officerId": <id> }
-- { "cmd": "transport", "fromCityId": <id>, "toCityId": <id>, "resources": { "gold": <n>, "food": <n>, "troops": <n> }, "officerId": <id> }  (escort officer moves with the goods)
-- { "cmd": "transferOfficer", "officerId": <id>, "targetCityId": <id> }  (move officer only, no resources)
+- { "cmd": "transport", "fromCityId": <id>, "toCityId": <id>, "resources": { "gold": <n>, "food": <n>, "troops": <n> }, "officerId": <id> }  (escort officer moves with the goods; cities must be connected through friendly territory)
+- { "cmd": "transferOfficer", "officerId": <id>, "targetCityId": <id> }  (= transport with no resources; officer relocates; cities must be connected through friendly territory)
 - { "cmd": "setBattleFormation", "formation": { "officerIds": [<ids>], "unitTypes": ["infantry"|"cavalry"|"archer"], "troops": [<per-unit>], "food": <total food to bring> } }
 - { "cmd": "startBattle", "cityId": <sourceCity>, "targetCityId": <id> }
 
@@ -125,7 +125,8 @@ KEY MECHANICS:
 - searchOfficer searches your own city for hidden unaffiliated officers. If found, the officer immediately joins your faction (loyalty 60). Only works if unaffiliated officers exist in that city. Check the "Unaffiliated:N" count in the status display — cities showing no count have zero searchable officers. Do NOT waste actions searching cities with 0 unaffiliated officers.
 - recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
 - rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
-- transferOfficer: if you transfer the LAST officer out of a city, that city is ABANDONED (becomes unowned). Any faction can then capture it for free. Use this deliberately — e.g., to consolidate officers for recruitment — but be aware of the risk.
+- transferOfficer and transport both relocate the officer. If you move the LAST officer out of a city, that city is ABANDONED (becomes unowned) and any remaining gold/food/troops are left behind. Any faction can then capture it for free. Plan carefully — count officers before moving!
+- transferOfficer / transport require a connected path of friendly cities between source and destination. Disconnected enclaves cannot send officers to each other.
 - spy reveals an enemy city's data (troops, officers, resources) for several turns. REQUIRES an officer with the 'intelligence' or 'espionage' skill — check skills=[...] in officer listings. Officers without these skills will always fail.
 - Strategy commands (spy, rumor, arson, inciteRebellion, counterEspionage) each require specific officer skills. Only assign officers whose skills match the command.
 - Diplomacy (alliances, ceasefires) can secure borders.

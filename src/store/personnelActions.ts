@@ -3,7 +3,7 @@ import { localizedName } from '../i18n/dataNames';
 import type { Officer } from '../types';
 import type { GameState } from './gameStore';
 import { hasSkill } from '../utils/skills';
-import { autoAssignGovernorInPlace, abandonCityIfEmpty } from './storeHelpers';
+import { autoAssignGovernorInPlace, abandonCityIfEmpty, areCitiesConnected } from './storeHelpers';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
@@ -356,6 +356,15 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       if (fromCity.factionId !== state.playerFaction?.id) return;
       if (toCity.factionId !== state.playerFaction?.id) return;
 
+      // RTK IV: cities must be connected through a chain of friendly cities
+      if (!areCitiesConnected(state.cities, fromCityId, toCityId, state.playerFaction!.id)) {
+        get().addLog(i18next.t('logs:error.citiesNotConnected', {
+          from: localizedName(fromCity.name),
+          to: localizedName(toCity.name),
+        }));
+        return;
+      }
+
       // Find the escort officer: use specified officerId, or auto-pick first available
       const playerFactionId = state.playerFaction!.id;
       const escort = officerId
@@ -468,9 +477,18 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
+      // RTK IV: cities must be connected through a chain of friendly cities
+      const sourceCityId = officer.cityId;
+      if (sourceCityId !== null && !areCitiesConnected(state.cities, sourceCityId, targetCityId, state.playerFaction!.id)) {
+        get().addLog(i18next.t('logs:error.citiesNotConnected', {
+          from: localizedName(state.cities.find(c => c.id === sourceCityId)?.name ?? ''),
+          to: localizedName(destCity.name),
+        }));
+        return;
+      }
+
       const wasGovernor = officer.isGovernor;
       const isRuler = state.playerFaction!.rulerId === officerId;
-      const sourceCityId = officer.cityId;
 
       const updatedOfficers = state.officers.map(o => {
         if (o.id === officerId) {

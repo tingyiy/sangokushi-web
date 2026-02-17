@@ -345,14 +345,17 @@ describe('Acted Flag Enforcement (one action per turn)', () => {
   });
 
   // ════════════════════════════════════════════
-  //  TRANSPORT: no adjacency restriction (RTK IV rule)
+  //  TRANSPORT: connected through friendly territory (RTK IV rule)
   // ════════════════════════════════════════════
-  describe('Transport allows non-adjacent friendly cities', () => {
-    it('transport succeeds to a non-adjacent friendly city', () => {
-      // Add a 4th city (factionId: 1) that is NOT adjacent to city 1
+  describe('Transport requires connected friendly path (Bug #47)', () => {
+    it('transport succeeds to a non-adjacent city connected through friendly territory', () => {
+      // Add a 4th city (factionId: 1) adjacent to city 3, which is adjacent to city 1
+      // Path: city 1 -- city 3 -- city 4 (all faction 1)
       useGameStore.setState({
         cities: [
-          ...useGameStore.getState().cities,
+          ...useGameStore.getState().cities.map(c =>
+            c.id === 3 ? { ...c, adjacentCityIds: [1, 4] } : c // city 3 now connects to both 1 and 4
+          ),
           {
             id: 4, name: '長安', x: 80, y: 50, factionId: 1, population: 100000, gold: 5000, food: 5000,
             commerce: 50, agriculture: 50, defense: 30, troops: 5000, adjacentCityIds: [3],
@@ -362,11 +365,11 @@ describe('Acted Flag Enforcement (one action per turn)', () => {
         ],
       });
 
-      // City 1 (許昌) adjacentCityIds = [2, 3] — city 4 (長安) is NOT adjacent
+      // City 1 (許昌) adjacentCityIds = [2, 3] — city 4 (長安) is NOT adjacent to city 1
       const city1 = useGameStore.getState().cities.find(c => c.id === 1)!;
       expect(city1.adjacentCityIds).not.toContain(4);
 
-      // Transport gold from city 1 to city 4 (non-adjacent)
+      // Transport gold from city 1 to city 4 (connected via city 3)
       useGameStore.getState().transport(1, 4, { gold: 1000 }, 2);
 
       const state = useGameStore.getState();
@@ -374,6 +377,27 @@ describe('Acted Flag Enforcement (one action per turn)', () => {
       const dst = state.cities.find(c => c.id === 4)!;
       expect(src.gold).toBe(49000); // 50000 - 1000
       expect(dst.gold).toBe(6000);  // 5000 + 1000
+    });
+
+    it('transport rejects disconnected friendly cities', () => {
+      // City 4 is friendly but not connected (city 2 is enemy, breaking the chain)
+      useGameStore.setState({
+        cities: [
+          ...useGameStore.getState().cities,
+          {
+            id: 4, name: '長安', x: 80, y: 50, factionId: 1, population: 100000, gold: 5000, food: 5000,
+            commerce: 50, agriculture: 50, defense: 30, troops: 5000, adjacentCityIds: [2],
+            floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 60, training: 60,
+            crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+          },
+        ],
+      });
+
+      // Path: city 1 → city 2 (enemy!) → city 4 — blocked
+      const goldBefore = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      useGameStore.getState().transport(1, 4, { gold: 1000 }, 2);
+      const goldAfter = useGameStore.getState().cities.find(c => c.id === 1)!.gold;
+      expect(goldAfter).toBe(goldBefore); // transport rejected
     });
   });
 });

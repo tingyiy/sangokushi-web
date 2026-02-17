@@ -148,6 +148,30 @@ Each rule includes the source of verification and the test(s) that enforce it.
 
 ---
 
+## R-009: Transfer/Transport Requires Connected Friendly Path
+
+**Rule:** Officers can only be transferred or transported between cities connected through a contiguous chain of friendly (same-faction) cities. Both the source and destination must belong to the faction, and every intermediate city on the path must also belong to the faction. Disconnected enclaves cannot exchange officers or resources.
+
+**Mechanics:**
+- **Connectivity check:** BFS on the city adjacency graph, only traversing cities with the same `factionId`.
+- **Not just adjacent:** Non-adjacent cities are allowed as long as a friendly path exists (e.g., A→B→C where A and C are not adjacent but B connects them).
+- **Enemy/neutral cities block the path:** If an intermediate city is enemy or unowned (`factionId === null`), the path is broken.
+- **Applies to both transport and transferOfficer:** Both operations relocate an escort officer and require the same connectivity.
+
+**Corollaries:**
+- Losing a city to enemy conquest can split your territory, cutting off transfer/transport between disconnected groups.
+- Abandoning a city (last officer leaves) can also break connectivity.
+- Plan officer movements carefully to avoid stranding cities.
+
+**Source:** RTK IV gameplay — transfers and transports follow supply lines through controlled territory. Officers cannot teleport across enemy-held territory.
+
+**Enforced by:**
+- `src/store/storeHelpers.test.ts` — 7 unit tests for `areCitiesConnected()` BFS
+- `src/store/gameStore.commands.test.ts` — 4 integration tests (Bug #47: transport/transfer reject disconnected, allow connected non-adjacent)
+- `src/store/actedEnforcement.test.ts` — 2 tests (transport connected path, transport disconnected rejection)
+
+---
+
 ## Adding New Rules
 
 When a new RTK IV rule is discovered and verified:
