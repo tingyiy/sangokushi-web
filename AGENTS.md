@@ -84,7 +84,7 @@ interface DuelState {
 }
 
 // ✅ Use Omit/Pick for derived types
-type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'stamina' | 'loyalty' | 'isGovernor'>;
+type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'acted' | 'loyalty' | 'isGovernor'>;
 
 // ✅ Explicit return types for complex functions
 function makeCity(id: number, factionId: number | null, overrides: Partial<City>): City {
@@ -213,16 +213,16 @@ English keys: `'domestic' | 'military' | 'personnel' | 'diplomacy' | 'strategy' 
 Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / "Domestic" (en)
 
 ### Key Files
-- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~580 lines)
+- `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries, warLog (~650 lines)
 - `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train, buyFood (~400 lines)
-- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss, transport, transfer (~500 lines)
-- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~690 lines)
-- `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~330 lines)
-- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~320 lines)
-- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~470 lines)
-- `src/store/saveLoadActions.ts` - Save, load, slots, delete (~115 lines)
-- `src/store/storeHelpers.ts` - Shared helpers (autoAssignGovernor, getAttackDirection)
-- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~850 lines)
+- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss, transport, transfer (~520 lines)
+- `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat, resolveBattle (~900 lines)
+- `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~370 lines)
+- `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~380 lines)
+- `src/store/turnActions.ts` - endTurn, AI decisions, AI variants (~840 lines)
+- `src/store/saveLoadActions.ts` - Save, load, slots, delete, LLM memory persistence (~140 lines)
+- `src/store/storeHelpers.ts` - Shared helpers (autoAssignGovernor, getAttackDirection, areCitiesConnected)
+- `src/store/battleStore.ts` - Tactical battle state, mode system, enemy AI (~1160 lines)
 - `src/types/index.ts` - All type definitions
 - `src/types/battle.ts` - Battle-specific types (`BattleUnit`, `BattleMode`, `BattleState`)
 - `src/components/GameScreen.tsx` - Main gameplay UI
@@ -237,12 +237,17 @@ Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / 
 - `src/data/cities.ts` - City coordinates, adjacency data (43 cities)
 - `src/data/scenarios.ts` - Scenario definitions (6 scenarios)
 - `src/cli/play.ts` - CLI runner (drives game from terminal, no browser needed)
-- `src/debug/rtk-api.ts` - Browser automation API (`window.rtk`) (~1160 lines)
+- `src/debug/rtk-api.ts` - Browser automation API (`window.rtk`) (~1550 lines)
 - `src/i18n/index.ts` - i18next config, browser language detection
 - `src/i18n/dataNames.ts` - `localizedName()` helper for officer/city/faction name translation
 - `src/i18n/cli.ts` - CLI-specific i18n init (Node.js, no browser detector)
 - `src/i18n/locales/{zh-TW,en}/` - Translation files (ui.json, data.json, battle.json, logs.json, cli.json)
 - `src/store/i18n-logs.test.ts` - Regression tests ensuring no Chinese leaks into English UI
+- `src/llm/agent.ts` - LLM agent loop, command dispatcher, battle handler (~930 lines)
+- `src/llm/prompts.ts` - System prompts, context builders for LLM (~550 lines)
+- `src/llm/memory.ts` - Turn journal, strategy notes, war records, battle history (~400 lines)
+- `src/llm/config.ts` - Per-provider credential storage, per-ruler LLM assignment
+- `src/llm/openrouter.ts` - Generic OpenAI-compatible HTTP client
 
 ### Internationalization (i18n)
 
@@ -354,7 +359,7 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 **Battle End Conditions:**
 1. All units of one side eliminated/routed → that side loses
 2. **Commander (主將) defeated → that side loses immediately** (commander = first unit in faction's array). Remaining units get -30 morale but battle ends right away.
-3. Day limit exceeded (default 30) → attacker loses (defender wins)
+3. Battle pauses after 30 days → strategic month processes → battle resumes next month (see R-008 multi-month battles)
 4. Player retreat → player's side loses
 
 **全軍覆沒 (Unit Wiped Out):**
@@ -389,7 +394,7 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 668 tests across 43 test files
+- Current test suite: 714 tests across 46 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 - Ruler-governor rule tests: `src/store/rulerGovernor.test.ts` (9 tests enforcing R-001)
@@ -481,14 +486,14 @@ Information visibility follows RTK IV's intelligence system. The store layer exp
 | Population, troops, gold, food | Yes | Yes | Hidden (`????`) |
 | Commerce, agriculture, defense, etc. | Yes | Yes | Hidden |
 | Weapons (crossbows, horses, etc.) | Yes | No (military secret) | Hidden |
-| Affiliated officers + base stats | Yes | Yes (no stamina/loyalty) | Hidden |
+| Affiliated officers + base stats | Yes | Yes (no loyalty) | Hidden |
 | Unaffiliated officers, POWs | Yes | No (internal info) | Hidden |
-| Officer stamina & loyalty | Yes | No (internal info) | Hidden |
+| Officer loyalty | Yes | No (internal info) | Hidden |
 
 **Officer visibility — `getOfficerView(officerId)`**
 - Base stats (L/W/I/P/C), skills, age, relationships: always visible (encyclopedia / public knowledge)
 - Current city location, rank: visible only if officer is own OR in a revealed city
-- Stamina, loyalty: visible only if officer is own
+- Loyalty: visible only if officer is own
 
 **Faction overview visibility — `world` / `factions` commands**
 - Faction names, city ownership: always visible (political map is public)

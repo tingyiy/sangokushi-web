@@ -103,6 +103,7 @@ interface RTKApi {
   manufacture(cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults', officerId?: number): Result;
   disasterRelief(cityId: number, officerId?: number): Result;
   setTaxRate(cityId: number, rate: 'low' | 'medium' | 'high'): Result;
+  buyFood(cityId: number, amount: number): Result;
 
   // Personnel (人事)
   recruitOfficer(officerId: number, recruiterId?: number): Result;
@@ -115,8 +116,8 @@ interface RTKApi {
 
   // Military (軍事)
   draftTroops(cityId: number, amount: number, officerId?: number): Result;
-  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number): Result;
-  transferOfficer(officerId: number, targetCityId: number): Result;
+  transport(fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }, officerId?: number): Result;  // cities must be connected through friendly territory
+  transferOfficer(officerId: number, targetCityId: number): Result;  // same connectivity rule as transport
   setBattleFormation(formation: { officerIds: number[]; unitTypes: UnitType[]; troops?: number[] } | null): Result;
   startBattle(targetCityId: number): Result;
   retreat(): Result;
@@ -235,7 +236,7 @@ interface Result {
 ```
 src/
   debug/
-    rtk-api.ts          # The API implementation (~1160 lines)
+    rtk-api.ts          # The API implementation (~1550 lines)
     rtk-api.test.ts     # Tests for the API
     index.ts            # Conditional mount: if (import.meta.env.DEV) mount()
 ```
@@ -439,13 +440,14 @@ rtk.searchOfficer(4);
 // Draft troops
 rtk.draftTroops(4, 5000);
 
-// Transport gold and food to another city (requires an available officer as escort)
+// Transport gold and food to another city (escort officer moves with the goods)
 rtk.transport(4, 5, { gold: 3000, food: 2000 });
-// → { ok: true, data: { escort: '夏侯惇' } }
+// → { ok: true, data: { escort: '夏侯惇', escortMovedTo: '洛陽' } }
 
 // Transport with a specific escort officer
 rtk.transport(4, 5, { gold: 3000 }, 42);
-// → { ok: true, data: { escort: '典韋' } }
+// → { ok: true, data: { escort: '典韋', escortMovedTo: '洛陽' } }
+// NOTE: If the escort was the last officer, data.warning will say the city was abandoned
 
 // Check adjacent enemies for attack
 rtk.query.adjacentEnemyCities(4);
@@ -611,4 +613,4 @@ rtk.save(1);
 - **Added scenario reference table** for `newGame`
 - **Added battle command wrapper examples** (gate attack, tactic execution)
 - **Updated status() printer** to show tax, tech, POWs, pending events, battle weather
-- **Estimated implementation size** grew from initial ~300-400 estimate to ~1160 lines
+- **Estimated implementation size** grew from initial ~300-400 estimate to ~1550 lines

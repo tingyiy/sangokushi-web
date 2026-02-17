@@ -29,7 +29,7 @@ Additionally, RTK IV has these systems that are not tied to a specific command c
 |--------|------------|
 | Travelers (旅人) — 8 wandering NPCs | **0%** — no traces |
 | Barbarian Invasions (異民族) — 山越/烏丸/羌/南蠻 | **0%** — no traces |
-| Officer Injury/Illness (傷病) | **Partial** — stamina only, no injury/illness/death from overwork |
+| Officer Injury/Illness (傷病) | **Partial** — one action per turn (acted flag), no injury/illness/death from overwork |
 | Duel (一騎討) in CLI | **Partial** — store complete, CLI has no duel commands |
 
 ---
@@ -96,7 +96,7 @@ The player can actively consult their 軍師 (military advisor) or 侍中 (civil
    ```
    getAdvisorCounsel(topic: string, targetId?: number) → string
    ```
-   Costs no stamina (consultation is free in RTK IV).
+   Costs no action (consultation is free in RTK IV).
 
 4. **New CLI commands**:
    - `advise attack <city>` — "Should I attack this city?"
@@ -125,7 +125,7 @@ Traveling merchants visit cities periodically. The player can:
 - Merchant visits are random events (higher chance for high-commerce cities)
 - Prices vary by region and season
 
-**What we have today:** Nothing. Zero traces of merchant, trade, buy, or sell in the codebase.
+**What we have today:** A basic `buyFood` command (1 gold = 2 food, no action cost) exists, but there is no merchant visit system, no seasonal price fluctuation, and no weapon trading.
 
 **Implementation Plan:**
 
@@ -163,7 +163,7 @@ Traveling merchants visit cities periodically. The player can:
    buyFromMerchant(cityId, item, quantity) → void
    sellToMerchant(cityId, item, quantity) → void
    ```
-   Requires merchant present in city. No stamina cost (ruler decision).
+   Requires merchant present in city. No action cost (ruler decision).
 
 4. **New CLI commands**:
    - `market <city>` — show current merchant prices (if merchant present)
@@ -265,7 +265,7 @@ Rules:
 
 **Agent value:** Medium. Travelers provide tactical opportunities (acquire powerful treasures, learn new skills) that agents can exploit when available.
 
-**Dependency:** Officer illness/injury system should ideally exist before implementing healers (于吉/華佗). Without it, healing travelers have no purpose. Could implement the healers as "stamina full restore" as a simpler substitute.
+**Dependency:** Officer illness/injury system should ideally exist before implementing healers (于吉/華佗). Without it, healing travelers have no purpose.
 
 ---
 
@@ -306,7 +306,7 @@ The most powerful strategy command. You send a loyal officer to "defect" to the 
    - Success chance: `30 + officer.intelligence / 2 + officer.charisma / 4`%
    - On success: officer moves to target city, `factionId` changes to target faction, `isMole = true`
    - On failure: officer is captured by enemy, becomes POW
-   - Stamina cost: -30
+    - Consumes the officer's action for the turn
 
 4. **Intelligence reports** in `endTurn()`:
    - Every 2 months, each active mole generates an intelligence report
@@ -425,7 +425,7 @@ Barbarian attacks:
 | **Allied reinforcements** | Allied factions send units to help in battle | Not implemented. `requestJointAttack` exists but allies attack independently. | Medium (2-3 days) — spawn ally AI units, coordinate with existing battle AI |
 | **Diplomatic gifts (進物)** | Send treasures to other factions to improve relations | `improveRelations` exists (costs gold). Cannot send specific treasures. | Small (1 day) — add `gift <faction> <treasure>` using existing treasure system |
 | **More historical events** | 20+ scripted events across all scenarios | Only 2 events: 赤壁之戰, 曹操歸天 | Medium (incremental) — add events in `src/data/historicalEvents.ts` |
-| **Officer injury/illness** | Officers can be injured in battle, fall ill, die from overwork. Recovery takes months. | Only stamina (recovers fully each turn). No persistent injury/illness. | Medium (2-3 days) — add health state to Officer type, recovery timer |
+| **Officer injury/illness** | Officers can be injured in battle, fall ill, die from overwork. Recovery takes months. | Only acted flag (one action per turn). No persistent injury/illness. | Medium (2-3 days) — add health state to Officer type, recovery timer |
 | **Fake treasures** | Some found treasures are counterfeits (stat bonus still applies but they're fake). Travelers can identify them. | Treasures exist but no fake/real distinction. | Small (1 day) — add `isFake` field, discovery during `search` |
 | **Fortification tactics** | Defender can set traps (落とし穴/柴草) before field battle if they have a 軍師 | Not implemented | Medium (1-2 days) — pre-battle trap placement phase |
 

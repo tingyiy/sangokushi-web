@@ -29,7 +29,7 @@ Full i18n support is implemented. The UI supports **Traditional Chinese (繁體�
 
 ## Map Overhaul — ✅ Complete (Phases 1-5)
 
-The strategic map has been fully rewritten from a single static SVG (`ChinaMap.tsx`, 730 lines) into an inline SVG component system under `src/components/map/` with seasonal terrain, pixel-art style, castle city markers, and dark-bordered dirt-track roads. The battle map hex grid now reflects the strategic map's seasonal terrain colors.
+The strategic map has been fully rewritten from a single static SVG (`ChinaMap.tsx`, 730 lines) into an inline SVG component system under `src/components/map/` with seasonal terrain, pixel-art style, castle city markers, and dark-bordered dirt-track roads. The battle map hex grid also reflects the strategic map's seasonal terrain colors.
 
 **What was done:**
 - **Phase 1:** Terrain data — defined terrain polygons (mountains, rivers, plains, deserts, lakes), separated into sub-components (`GameMap.tsx`, `MapTerrain.tsx`, `MapCities.tsx`, `MapRoads.tsx`, `MapPatterns.tsx`, `mapData.ts`)

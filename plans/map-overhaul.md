@@ -2,7 +2,7 @@
 
 Replace the current single static SVG map with an authentic RTK IV-style map featuring seasonal variations, pixel-art terrain, and historical geography.
 
-> **Status:** Phases 1-4 are **complete**. Phase 5 (battle map seasonal terrain) remains.
+> **Status:** All phases (1-5) are **complete**.
 
 ---
 
@@ -111,9 +111,12 @@ Use 4 pre-rendered background images (one per season) with SVG overlays for inte
 - Mouse sensitivity wired to game settings
 - Minimap integration
 
-### Phase 5: Battle Map Integration — 🔲 Remaining
-- Ensure battle maps (`BattleMap.tsx`) also reflect seasonal terrain colors
-- Battle terrain tiles should match the strategic map's current season
+### Phase 5: Battle Map Integration — ✅ Complete
+- Battle maps (`BattleMap.tsx`) reflect seasonal terrain colors
+- Hex tiles use seasonal palette derived from strategic map colors (`BATTLE_TERRAIN_PALETTES`)
+- SVG texture patterns for all terrain types (`BattleMapPatterns.tsx`)
+- Winter snow overlay on natural terrain hexes
+- Smooth 1.5s CSS transitions between seasons
 
 ---
 
@@ -125,8 +128,8 @@ Use 4 pre-rendered background images (one per season) with SVG overlays for inte
 | Seasonal rendering | 2-3 | ✅ Done |
 | City & road redesign | 1-2 | ✅ Done |
 | Pixel-art style | 2-3 | ✅ Done |
-| Battle map integration | 1-2 | 🔲 Remaining |
-| **Total** | **8-13 days** | **~85% complete** |
+| Battle map integration | 1-2 | ✅ Done |
+| **Total** | **8-13 days** | **100% complete** |
 
 ---
 
@@ -141,7 +144,7 @@ Use 4 pre-rendered background images (one per season) with SVG overlays for inte
 | `src/components/map/MapCities.tsx` | City marker rendering (castle icons, flags) |
 | `src/components/map/MapRoads.tsx` | Road network rendering (dark-bordered dirt tracks) |
 | `src/components/map/mapData.ts` | Season palettes, road styles, label colors, wheel factor |
-| `src/components/map/BattleMap.tsx` | Needs seasonal terrain color update (Phase 5) |
+| `src/components/map/BattleMap.tsx` | Battle map with seasonal terrain colors (Phase 5) |
 
 ---
 
