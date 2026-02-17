@@ -12,7 +12,9 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { SYSTEM_PROMPT_STRATEGIC, SYSTEM_PROMPT_BATTLE } from './prompts';
+import { SYSTEM_PROMPT_STRATEGIC, SYSTEM_PROMPT_BATTLE, buildQuickStats } from './prompts';
+import { useGameStore } from '../store/gameStore';
+import type { RTK4Skill } from '../types';
 
 // ── Extract command names from agent.ts ──────────────────────────────
 
@@ -97,5 +99,58 @@ describe('LLM prompt completeness', () => {
         `${cmd} is in INTERNAL_STRATEGIC_COMMANDS but not in the agent dispatcher — remove it from the exclusion list`,
       ).toContain(cmd);
     }
+  });
+});
+
+describe('LLM prompt accuracy (Bug #38)', () => {
+  test('prompt does NOT claim quarterly-only tax schedule', () => {
+    // The game processes economy every month (processEconomy in turnActions.ts).
+    // The prompt must not tell the LLM that taxes come only on specific months.
+    expect(SYSTEM_PROMPT_STRATEGIC).not.toMatch(/tax revenue comes quarterly/i);
+    expect(SYSTEM_PROMPT_STRATEGIC).not.toMatch(/tax revenue arrives quarterly/i);
+  });
+
+  test('prompt states income is monthly', () => {
+    expect(SYSTEM_PROMPT_STRATEGIC).toMatch(/EVERY month/i);
+  });
+
+  test('prompt mentions Bountiful Harvest bonus event timing', () => {
+    // Bountiful Harvest can occur in months 7 & 10 — this IS correct
+    expect(SYSTEM_PROMPT_STRATEGIC).toMatch(/Bountiful Harvest/);
+  });
+});
+
+describe('LLM quick stats content (Gap #1)', () => {
+  test('buildQuickStats includes training, morale, commerce, agriculture, defense', () => {
+    useGameStore.setState({
+      phase: 'playing',
+      playerFaction: { id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      cities: [{
+        id: 1, name: 'TestCity', x: 0, y: 0, factionId: 1, population: 10000,
+        gold: 5000, food: 8000, commerce: 300, agriculture: 450, defense: 60,
+        troops: 2000, adjacentCityIds: [],
+        floodControl: 20, technology: 30, peopleLoyalty: 70, morale: 75, training: 55,
+        crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+      }],
+      officers: [{
+        id: 1, name: 'TestOff', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+        skills: [] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 230, treasureId: null,
+        factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: true,
+        rank: 'common' as const, relationships: [],
+      }],
+      factions: [{ id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null }],
+    });
+
+    const stats = buildQuickStats();
+
+    expect(stats).toContain('Comm:300');
+    expect(stats).toContain('Agri:450');
+    expect(stats).toContain('Def:60');
+    expect(stats).toContain('Train:55');
+    expect(stats).toContain('Morale:75');
+    // Still contains the basics
+    expect(stats).toContain('Gold:5000');
+    expect(stats).toContain('Food:8000');
+    expect(stats).toContain('Troops:2000');
   });
 });

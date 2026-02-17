@@ -737,17 +737,55 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const distToNearest = getDistance({ q: nearest.x, r: nearest.y }, { q: activeUnit.x, r: activeUnit.y });
     const atkRange = getAttackRange(activeUnit.type);
 
-    // If in attack range, attack
-    if (distToNearest <= atkRange) {
-      get().attackUnit(activeUnit.id, nearest.id);
-      return;
-    }
-
-    // ── Siege attacker: target gates when enemies are behind walls ──
+    // ── Siege attacker: PRIORITIZE gates over attacking enemies behind walls ──
     const isAttackerUnit = state.isSiege && activeUnit.factionId === state.attackerId;
     const intactGates = state.gates.filter(g => g.hp > 0);
 
-    if (isAttackerUnit && intactGates.length > 0) {
+    // Check if a breach exists: siege map always starts with 4 gates; fewer means at least one was breached
+    const hasBreached = state.isSiege && intactGates.length < 4;
+
+    // Determine whether this unit should use gate-targeting or normal combat
+    let useGateTargeting = isAttackerUnit && intactGates.length > 0;
+
+    if (useGateTargeting && hasBreached) {
+      // A breach exists AND intact gates remain. Check if the unit can reach any enemy
+      // through a breach — if so, use normal combat instead of gate targeting.
+      const blockedForReach = new Set(
+        state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
+      intactGates.forEach(g => blockedForReach.add(`${g.q},${g.r}`));
+      const occupiedForReach = new Set(
+        state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
+
+      // Check reachability with a generous range (entire map traversal)
+      const reachable = getMoveRange(
+        { q: activeUnit.x, r: activeUnit.y }, 30,
+        state.battleMap.width, state.battleMap.height,
+        state.battleMap.terrain, blockedForReach, occupiedForReach
+      );
+
+      // Can we pathfind to a hex within attack range of any enemy?
+      const canReachEnemy = enemies.some(e => {
+        for (let dq = -atkRange; dq <= atkRange; dq++) {
+          for (let dr = -atkRange; dr <= atkRange; dr++) {
+            const hex = { q: e.x + dq, r: e.y + dr };
+            if (getDistance(hex, { q: e.x, r: e.y }) <= atkRange && reachable.has(`${hex.q},${hex.r}`)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+
+      if (canReachEnemy) {
+        useGateTargeting = false; // Enemy reachable through breach — use normal combat
+      }
+    }
+
+    if (useGateTargeting) {
       // Find nearest intact gate
       const nearestGate = intactGates.reduce((best, g) => {
         const d = getDistance({ q: g.q, r: g.r }, { q: activeUnit.x, r: activeUnit.y });
@@ -757,42 +795,53 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
       const distToGate = getDistance({ q: nearestGate.q, r: nearestGate.r }, { q: activeUnit.x, r: activeUnit.y });
 
-      // If adjacent to a gate, attack it
+      // If adjacent to a gate, attack it (gate takes priority over units)
       if (distToGate <= 1) {
         get().attackGate(activeUnit.id, nearestGate.q, nearestGate.r);
         return;
       }
 
-      // Move toward nearest gate instead of nearest enemy
-      const moveRange = getMovementRange(activeUnit.type);
-      const directions = [
-        { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-        { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
-      ];
+      // If enemy is in attack range AND outside walls (field combat), attack them
+      // But DON'T attack enemies behind/on gates — focus on breaking the gate first
+      if (distToNearest <= atkRange) {
+        const nearestTerrain = state.battleMap.terrain[nearest.x]?.[nearest.y];
+        const isEnemyBehindWalls = nearestTerrain === 'gate' || nearestTerrain === 'city'
+          || nearest.factionId === state.defenderId;
+        if (!isEnemyBehindWalls) {
+          get().attackUnit(activeUnit.id, nearest.id);
+          return;
+        }
+        // Enemy is behind walls — ignore them, keep heading for the gate
+      }
 
+      // Use proper pathfinding to move toward the gate (can route around friendly units)
+      const moveRange = getMovementRange(activeUnit.type);
+      const blocked = new Set(
+        state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
+      // Gates block attacker movement
+      state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+      const occupied = new Set(
+        state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+          .map(u => `${u.x},${u.y}`)
+      );
+
+      const validMoves = getMoveRange(
+        { q: activeUnit.x, r: activeUnit.y }, moveRange,
+        state.battleMap.width, state.battleMap.height,
+        state.battleMap.terrain, blocked, occupied
+      );
+
+      // Pick the reachable hex closest to the nearest gate
       let bestHex = { q: activeUnit.x, r: activeUnit.y };
       let bestDist = distToGate;
-
-      for (const dir of directions) {
-        for (let step = 1; step <= moveRange; step++) {
-          const candidate = { q: activeUnit.x + dir.q * step, r: activeUnit.y + dir.r * step };
-          if (candidate.q < 0 || candidate.q >= state.battleMap.width || candidate.r < 0 || candidate.r >= state.battleMap.height) break;
-
-          const terrain = state.battleMap.terrain[candidate.q][candidate.r];
-          if (terrain === 'mountain' || terrain === 'city') break;
-          if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0 && u.status !== 'arriving')) break;
-          // Don't move onto intact gates
-          if (state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
-          if (terrain === 'gate') break; // gate terrain still blocks attacker
-
-          const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
-          if (hexDist > moveRange) break;
-
-          const d = getDistance(candidate, { q: nearestGate.q, r: nearestGate.r });
-          if (d < bestDist) {
-            bestDist = d;
-            bestHex = candidate;
-          }
+      for (const [key] of validMoves) {
+        const [cq, cr] = key.split(',').map(Number);
+        const d = getDistance({ q: cq, r: cr }, { q: nearestGate.q, r: nearestGate.r });
+        if (d < bestDist) {
+          bestDist = d;
+          bestHex = { q: cq, r: cr };
         }
       }
 
@@ -814,6 +863,12 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       set(s => ({
         units: s.units.map(u => u.id === activeUnit.id ? { ...u, status: 'done' as const } : u),
       }));
+      return;
+    }
+
+    // If in attack range (non-siege or gates already breached), attack
+    if (distToNearest <= atkRange) {
+      get().attackUnit(activeUnit.id, nearest.id);
       return;
     }
 
@@ -1089,8 +1144,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   checkBattleEnd: () => {
     const state = get();
     // Include 'arriving' units — reinforcements on the way prevent elimination
-    const attackers = state.units.filter(u => u.factionId === state.attackerId && u.troops > 0 && u.status !== 'routed' && u.status !== 'done');
-    const defenders = state.units.filter(u => u.factionId === state.defenderId && u.troops > 0 && u.status !== 'routed' && u.status !== 'done');
+    // 'done' units have merely finished acting this turn; they are still alive combatants.
+    const attackers = state.units.filter(u => u.factionId === state.attackerId && u.troops > 0 && u.status !== 'routed');
+    const defenders = state.units.filter(u => u.factionId === state.defenderId && u.troops > 0 && u.status !== 'routed');
 
     if (attackers.length === 0) {
       set({ isFinished: true, winnerFactionId: state.defenderId });

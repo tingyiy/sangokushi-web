@@ -10,7 +10,7 @@ interface Props {
 
 export function TransportDialog({ toCityId, onClose }: Props) {
   const { t } = useTranslation();
-  const { selectedCityId, cities, officers, playerFaction, transport } = useGameStore();
+  const { selectedCityId, cities, officers, playerFaction, transport, transferOfficer } = useGameStore();
   const fromCity = cities.find(c => c.id === selectedCityId);
   const toCity = cities.find(c => c.id === toCityId);
 
@@ -26,20 +26,26 @@ export function TransportDialog({ toCityId, onClose }: Props) {
   const [food, setFood] = useState<number>(0);
   const [troops, setTroops] = useState<number>(0);
 
-  const handleTransport = () => {
+  const hasResources = gold > 0 || food > 0 || troops > 0;
+
+  const handleAction = () => {
     if (!fromCity || !toCity || !selectedOfficerId) return;
-    const resources: { gold?: number; food?: number; troops?: number } = {};
-    if (gold > 0) resources.gold = gold;
-    if (food > 0) resources.food = food;
-    if (troops > 0) resources.troops = troops;
-    if (Object.keys(resources).length === 0) return;
-    transport(fromCity.id, toCity.id, resources, selectedOfficerId);
+
+    if (hasResources) {
+      // Transport mode: move resources + officer
+      const resources: { gold?: number; food?: number; troops?: number } = {};
+      if (gold > 0) resources.gold = gold;
+      if (food > 0) resources.food = food;
+      if (troops > 0) resources.troops = troops;
+      transport(fromCity.id, toCity.id, resources, selectedOfficerId);
+    } else {
+      // Transfer mode: move officer only
+      transferOfficer(selectedOfficerId, toCity.id);
+    }
     onClose();
   };
 
   if (!fromCity || !toCity) return null;
-
-  const hasAny = gold > 0 || food > 0 || troops > 0;
 
   return (
     <div className="modal-overlay">
@@ -57,11 +63,15 @@ export function TransportDialog({ toCityId, onClose }: Props) {
             >
               {availableOfficers.map(o => (
                 <option key={o.id} value={o.id}>
-                  {localizedName(o.name)}（{t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war}）
+                  {localizedName(o.name)}({t('stat.leadership')}{o.leadership} {t('stat.war')}{o.war})
                 </option>
               ))}
             </select>
           )}
+        </div>
+
+        <div style={{ fontSize: '0.8em', color: '#88ccff', marginBottom: '12px' }}>
+          {t('transport.officerWillMove')}
         </div>
         
         <div className="input-group">
@@ -108,8 +118,8 @@ export function TransportDialog({ toCityId, onClose }: Props) {
 
         <div className="modal-actions">
           <button className="btn btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="btn btn-confirm" onClick={handleTransport} disabled={!hasAny || !selectedOfficerId}>
-            {t('transport.confirm')}
+          <button className="btn btn-confirm" onClick={handleAction} disabled={!selectedOfficerId}>
+            {hasResources ? t('transport.confirm') : t('transport.confirmTransfer')}
           </button>
         </div>
       </div>

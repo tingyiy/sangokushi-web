@@ -181,7 +181,11 @@
       "manufactureWarHorses": "War Horses",
       "manufactureBatteringRams": "Rams",
       "manufactureCatapults": "Catapults",
-      "disasterRelief": "Disaster Relief (500g+1000f)"
+      "disasterRelief": "Disaster Relief (500g+1000f)",
+      "buyFood": "Buy Food (1g = 2f)",
+      "buyFoodConfirm": "Buy",
+      "buyFoodMax": "Max",
+      "buyFoodInfo": "Gold {{gold}} → Max {{max}} food"
     },
     "action": {
       "developCommerce": "Develop Commerce",
@@ -206,6 +210,7 @@
       "draftConfirm": "Draft",
       "draftCapInfo": "Cap {{cap}} / Current {{current}} / Room {{room}}",
       "draftAtCap": "Garrison at capacity",
+      "transferTransport": "Transfer / Transport",
       "transport": "Transport",
       "transportTo": "To {{cityName}}",
       "attack": "Attack",
@@ -219,7 +224,7 @@
       "execute": "Execute",
       "reward": "Reward (1000g)",
       "officerLoyalty": "{{name}} (Loy {{loyalty}})",
-      "appointTransfer": "Appoint / Transfer",
+      "appointTransfer": "Appoint",
       "appointGovernor": "Governor",
       "appointAdvisor": "Advisor",
       "transfer": "Transfer",
@@ -263,15 +268,19 @@
     "archer": "Archer"
   },
   "transport": {
-    "title": "Transport to {{cityName}}",
-    "officer": "Escort Officer",
+    "title": "Transfer / Transport to {{cityName}}",
+    "officer": "Officer",
     "noOfficer": "No available officers",
     "resourceType": "Resource Type",
     "goldOption": "Gold (Current: {{amount}})",
     "foodOption": "Food (Current: {{amount}})",
     "troopsOption": "Troops (Current: {{amount}})",
     "amount": "Amount",
-    "confirm": "Transport"
+    "confirm": "Transport",
+    "confirmTransfer": "Transfer",
+    "modeTransferOnly": "Transfer officer only (no resources)",
+    "modeWithResources": "Transport with resources",
+    "officerWillMove": "* Officer will move to destination"
   },
   "officer": {
     "colName": "Name",
@@ -308,6 +317,7 @@
     "deleted": "Slot {{slot}} deleted",
     "emptySlot": "Empty",
     "slotLabel": "Slot {{slot}}",
+    "slotDate": "{{month}} / {{year}} AD",
     "delete": "Delete",
     "currentProgress": "Current: {{month}}/{{year}} - {{factionName}}"
   },

@@ -212,6 +212,7 @@ export interface GameState {
   trainTroops: (cityId: number, officerId?: number) => void;
   manufacture: (cityId: number, weaponType: 'crossbows' | 'warHorses' | 'batteringRams' | 'catapults', officerId?: number) => void;
   disasterRelief: (cityId: number, officerId?: number) => void;
+  buyFood: (cityId: number, amount: number) => void;
 
   // ── Personnel Actions ──
   recruitOfficer: (officerId: number, recruiterId?: number) => void;
@@ -282,7 +283,7 @@ export interface GameState {
   // ── Save/Load Actions ──
   saveGame: (slot: number) => boolean;
   loadGame: (slot: number) => boolean;
-  getSaveSlots: () => { slot: number; date: string | null; version: string | null }[];
+  getSaveSlots: () => { slot: number; date: string | null; version: string | null; scenarioName?: string; rulerName?: string; year?: number; month?: number }[];
   deleteSave: (slot: number) => boolean;
 }
 

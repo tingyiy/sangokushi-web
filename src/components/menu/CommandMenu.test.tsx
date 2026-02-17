@@ -69,6 +69,7 @@ describe('CommandMenu', () => {
       trainTroops: vi.fn(),
       manufacture: vi.fn(),
       disasterRelief: vi.fn(),
+      buyFood: vi.fn(),
       recruitOfficer: vi.fn(), 
       recruitPOW: vi.fn(),
       rewardOfficer: vi.fn(),
@@ -121,7 +122,7 @@ describe('CommandMenu', () => {
       ...mockFn(),
       activeCommandCategory: 'domestic',
       selectedCityId: 1,
-      cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2] }],
+      cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000, food: 10000, population: 50000, troops: 3000 }],
       playerFaction: { id: 1 },
       officers: [{ id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, skills: ['manufacture'] }],
       developCommerce: mockDevelopCommerce,
@@ -179,8 +180,8 @@ describe('CommandMenu', () => {
       expect(btnTexts).not.toContain('command.personnel.appointAdvisor');
       // No rank select in ruler row
       const selects = rulerRow!.querySelectorAll('select');
-      // Only the transfer select should be present
-      expect(selects.length).toBe(1);
+      // No selects — transfer moved to military, no rank select for ruler
+      expect(selects.length).toBe(0);
       // No dismiss button for ruler
       expect(btnTexts).not.toContain('command.personnel.dismiss');
     });
@@ -265,9 +266,9 @@ describe('CommandMenu', () => {
       expect(btnTexts).toContain('command.personnel.appointAdvisor');
       // Should have dismiss button
       expect(btnTexts).toContain('command.personnel.dismiss');
-      // Should have rank select + transfer select = 2 selects
+      // Should have rank select only (transfer moved to military)
       const selects = regularRow!.querySelectorAll('select');
-      expect(selects.length).toBe(2);
+      expect(selects.length).toBe(1);
     });
   });
 });

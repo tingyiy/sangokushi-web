@@ -10,7 +10,7 @@ type Get = () => GameState;
 export function createDomesticActions(set: Set, get: Get): Pick<GameState,
   'setTaxRate' | 'promoteOfficer' | 'developCommerce' | 'developAgriculture' |
   'reinforceDefense' | 'developFloodControl' | 'developTechnology' |
-  'trainTroops' | 'manufacture' | 'disasterRelief'
+  'trainTroops' | 'manufacture' | 'disasterRelief' | 'buyFood'
 > {
   return {
     setTaxRate: (cityId: number, rate: 'low' | 'medium' | 'high') => {
@@ -374,6 +374,27 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         ),
       });
       get().addLog(i18next.t('logs:domestic.relief', { city: localizedName(city.name), officer: localizedName(executor.name), bonus: 15 + bonus }));
+    },
+
+    buyFood: (cityId, amount) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === cityId);
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      // RTK IV 糶米: 1 gold = 2 food. Does NOT require an officer action.
+      const goldCost = Math.ceil(amount / 2);
+      if (city.gold < goldCost) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:domestic.buyFood_action'), required: goldCost, current: city.gold }));
+        return;
+      }
+      if (amount <= 0) return;
+      set({
+        cities: state.cities.map(c =>
+          c.id === cityId
+            ? { ...c, gold: c.gold - goldCost, food: c.food + amount }
+            : c
+        ),
+      });
+      get().addLog(i18next.t('logs:domestic.buyFood', { city: localizedName(city.name), amount, cost: goldCost }));
     },
   };
 }

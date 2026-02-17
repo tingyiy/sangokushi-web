@@ -663,17 +663,15 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         // If officer belongs to the losing faction and was in the battle city
         if (o.cityId === cityId && o.factionId === loserFactionId) {
           if (participatingOfficerIds.has(o.id)) {
-            const unit = battleUnits.find(u => u.officerId === o.id);
-            if (unit && (unit.troops <= 0 || unit.status === 'routed')) {
-              // Officer's unit was destroyed or routed — try to flee
-              if (fleeCity) {
-                get().addLog(i18next.t('logs:postBattle.fleeToCity', { name: localizedName(o.name), city: localizedName(fleeCity.name) }));
-                return { ...o, cityId: fleeCity.id, isGovernor: false };
-              } else {
-                // Nowhere to flee — captured
-                get().addLog(i18next.t('logs:postBattle.nowhereToFlee', { name: localizedName(o.name) }));
-                return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
-              }
+            // Officer participated in battle — losing side always flees (or is captured)
+            // regardless of remaining troops. The battle was lost; the city belongs to the winner.
+            if (fleeCity) {
+              get().addLog(i18next.t('logs:postBattle.fleeToCity', { name: localizedName(o.name), city: localizedName(fleeCity.name) }));
+              return { ...o, cityId: fleeCity.id, isGovernor: false };
+            } else {
+              // Nowhere to flee — captured
+              get().addLog(i18next.t('logs:postBattle.nowhereToFlee', { name: localizedName(o.name) }));
+              return { ...o, factionId: -1 as unknown as number, cityId: cityId, isGovernor: false };
             }
           } else {
             // Officer was in city but didn't participate in battle

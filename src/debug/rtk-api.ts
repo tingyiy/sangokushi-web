@@ -546,6 +546,24 @@ export const rtkApi = {
     return logCmd('🏛', `disasterRelief(${city.name})`, { ok: true, data: { before, after: after.peopleLoyalty } });
   },
 
+  buyFood(cityId: number, amount: number): Result {
+    const state = useGameStore.getState();
+    const cn = cityName(cityId);
+    const label = `buyFood(${cn}, ${amount})`;
+    if (state.phase !== 'playing') return logCmd('🏛', label, { ok: false, error: 'Not in playing phase' });
+    const err = requireOwnCity('🏛', label, cityId);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === cityId)!;
+    const goldCost = Math.ceil(amount / 2);
+    if (city.gold < goldCost) return logCmd('🏛', label, { ok: false, error: `Not enough gold. Need ${goldCost} (have ${city.gold}). Rate: 1 gold = 2 food.` });
+    if (amount <= 0) return logCmd('🏛', label, { ok: false, error: 'Amount must be positive' });
+    const beforeGold = city.gold;
+    const beforeFood = city.food;
+    state.buyFood(cityId, amount);
+    const after = useGameStore.getState().cities.find(c => c.id === cityId)!;
+    return logCmd('🏛', label, { ok: true, data: { food: { before: beforeFood, after: after.food }, gold: { before: beforeGold, after: after.gold }, rate: '1 gold = 2 food' } });
+  },
+
   setTaxRate(cityId: number, rate: 'low' | 'medium' | 'high'): Result {
     const state = useGameStore.getState();
     const label = `setTaxRate(${cityName(cityId)}, ${rate})`;
@@ -805,6 +823,23 @@ export const rtkApi = {
     if (!fromCity) return logCmd('⚔', label, { ok: false, error: 'Origin city not found' });
     if (fromCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: notYourCityError(state, fromCity) });
 
+    // Pre-validate: destination city must exist and belong to player
+    const toCity = state.cities.find(c => c.id === toCityId);
+    if (!toCity) return logCmd('⚔', label, { ok: false, error: `Destination city id=${toCityId} not found` });
+    if (toCity.factionId !== state.playerFaction?.id) return logCmd('⚔', label, { ok: false, error: notYourCityError(state, toCity) });
+
+    // Pre-validate: at least one resource must be positive
+    const entries = Object.entries(resources).filter(([, v]) => v !== undefined && v > 0);
+    if (entries.length === 0) return logCmd('⚔', label, { ok: false, error: 'No resources specified for transport' });
+
+    // Pre-validate: sufficient resources in source city
+    const shortages: string[] = [];
+    for (const [res, amt] of entries) {
+      const available = fromCity[res as keyof typeof fromCity] as number;
+      if (available < amt) shortages.push(`${res}: need ${amt}, have ${available}`);
+    }
+    if (shortages.length > 0) return logCmd('⚔', label, { ok: false, error: `Insufficient resources: ${shortages.join('; ')}` });
+
     // Check escort officer availability
     const factionId = state.playerFaction?.id;
     const escort = officerId
@@ -814,13 +849,36 @@ export const rtkApi = {
     if (escort.acted) return logCmd('⚔', label, { ok: false, error: officerAlreadyActedError(state, escort, fromCityId) });
 
     state.transport(fromCityId, toCityId, resources, officerId);
-    return logCmd('⚔', label, { ok: true, data: { escort: escort.name } });
+
+    // Post-call verification: check the officer actually acted
+    const after = useGameStore.getState();
+    const escortAfter = after.officers.find(o => o.id === escort.id);
+    if (!escortAfter?.acted) {
+      return logCmd('⚔', label, { ok: false, error: 'Transport rejected by store logic' });
+    }
+    return logCmd('⚔', label, { ok: true, data: { escort: escort.name, escortMovedTo: cityName(toCityId) } });
   },
 
   transferOfficer(officerId: number, targetCityId: number): Result {
     const state = useGameStore.getState();
     const label = `transferOfficer(${officerName(officerId)} → ${cityName(targetCityId)})`;
     if (state.phase !== 'playing') return logCmd('⚔', label, { ok: false, error: 'Not in playing phase' });
+
+    // Pre-validate: officer exists and belongs to player
+    const officer = state.officers.find(o => o.id === officerId);
+    if (!officer || officer.factionId !== state.playerFaction?.id) {
+      return logCmd('⚔', label, { ok: false, error: `Officer id=${officerId} not found or not yours` });
+    }
+    if (officer.acted) return logCmd('⚔', label, { ok: false, error: officerAlreadyActedError(state, officer, officer.cityId) });
+
+    // Pre-validate: target city belongs to player
+    const destCity = state.cities.find(c => c.id === targetCityId);
+    if (!destCity || destCity.factionId !== state.playerFaction?.id) {
+      return logCmd('⚔', label, { ok: false, error: destCity
+        ? notYourCityError(state, destCity)
+        : `Target city id=${targetCityId} not found` });
+    }
+
     state.transferOfficer(officerId, targetCityId);
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
     if (after.cityId === targetCityId) return logCmd('⚔', label, { ok: true });
@@ -1135,6 +1193,11 @@ export const rtkApi = {
     // If no action was consumed but logs were added, it was a rejection
     if (!actionConsumed && newLogs.length > 0) {
       return logCmd('🕵', `spy(${cn})`, { ok: false, error: newLogs[newLogs.length - 1] });
+    }
+    // If no action was consumed and no logs were added, the store silently rejected
+    // (e.g., selectedCityId mismatch — store guard returned without side effects)
+    if (!actionConsumed) {
+      return logCmd('🕵', `spy(${cn})`, { ok: false, error: 'Spy action failed (no action consumed). Possible selectedCity mismatch.' });
     }
     if (after.isCityRevealed(targetCityId)) return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: true } });
     return logCmd('🕵', `spy(${cn})`, { ok: true, data: { success: false } });

@@ -98,6 +98,37 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       const city = useGameStore.getState().cities.find(c => c.id === 1);
       expect(city?.peopleLoyalty).toBeGreaterThan(70);
     });
+
+    it('buyFood converts gold to food at 1:2 rate', () => {
+      const cityBefore = useGameStore.getState().cities.find(c => c.id === 1)!;
+      const goldBefore = cityBefore.gold;
+      const foodBefore = cityBefore.food;
+      useGameStore.getState().buyFood(1, 2000);
+      const cityAfter = useGameStore.getState().cities.find(c => c.id === 1)!;
+      expect(cityAfter.food).toBe(foodBefore + 2000);
+      expect(cityAfter.gold).toBe(goldBefore - 1000); // 2000 food / 2 = 1000 gold
+    });
+
+    it('buyFood rejects when insufficient gold', () => {
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 1 ? { ...c, gold: 100 } : c)
+      });
+      const foodBefore = useGameStore.getState().cities.find(c => c.id === 1)!.food;
+      useGameStore.getState().buyFood(1, 1000); // needs 500 gold, only has 100
+      const foodAfter = useGameStore.getState().cities.find(c => c.id === 1)!.food;
+      expect(foodAfter).toBe(foodBefore); // no change
+    });
+
+    it('buyFood does not require officer action', () => {
+      // Mark all officers as acted
+      useGameStore.setState({
+        officers: useGameStore.getState().officers.map(o => ({ ...o, acted: true }))
+      });
+      const foodBefore = useGameStore.getState().cities.find(c => c.id === 1)!.food;
+      useGameStore.getState().buyFood(1, 100);
+      const foodAfter = useGameStore.getState().cities.find(c => c.id === 1)!.food;
+      expect(foodAfter).toBe(foodBefore + 100); // still works
+    });
   });
 
   describe('Personnel (人事)', () => {
@@ -242,6 +273,28 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       const city2 = useGameStore.getState().cities.find(c => c.id === 2);
       expect(city1?.gold).toBe(8000);
       expect(city2?.gold).toBe(12000);
+    });
+
+    it('transport moves escort officer to destination city', () => {
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
+      });
+      const officerBefore = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officerBefore?.cityId).toBe(1);
+      useGameStore.getState().transport(1, 2, { gold: 1000 }, 1);
+      const officerAfter = useGameStore.getState().officers.find(o => o.id === 1);
+      expect(officerAfter?.cityId).toBe(2);
+      expect(officerAfter?.acted).toBe(true);
+    });
+
+    it('transport abandons source city when escort is the last officer', () => {
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c => c.id === 2 ? { ...c, factionId: 1 } : c)
+      });
+      // Officer 1 is the only officer in city 1
+      useGameStore.getState().transport(1, 2, { gold: 500 }, 1);
+      const city1 = useGameStore.getState().cities.find(c => c.id === 1);
+      expect(city1?.factionId).toBeNull();
     });
 
     it('transferOfficer works', () => {

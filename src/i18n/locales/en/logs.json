@@ -82,7 +82,9 @@
     "developTech_action": "develop technology",
     "manufacture_action": "manufacture",
     "relief_action": "provide relief",
-    "conscript_action": "conscript"
+    "conscript_action": "conscript",
+    "buyFood": "{{city}}: Purchased {{amount}} food for {{cost}} gold.",
+    "buyFood_action": "buy food"
   },
   "personnel": {
     "recruitSuccess": "{{recruiter}} successfully recruited {{officer}}! Loyalty 60",

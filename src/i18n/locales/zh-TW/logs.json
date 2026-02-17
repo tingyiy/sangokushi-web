@@ -82,7 +82,9 @@
     "developTech_action": "開發技術",
     "manufacture_action": "製造",
     "relief_action": "賑災",
-    "conscript_action": "徵兵"
+    "conscript_action": "徵兵",
+    "buyFood": "{{city}}：購入 {{amount}} 糧（花費 {{cost}} 金）",
+    "buyFood_action": "糶米"
   },
   "personnel": {
     "recruitSuccess": "{{recruiter}} 成功招攬 {{officer}}！忠誠 60",

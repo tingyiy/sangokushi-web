@@ -284,3 +284,165 @@ describe('rtk-api — setBattleFormation validation', () => {
     expect(useGameStore.getState().battleFormation).toBeNull();
   });
 });
+
+describe('rtk-api — transferOfficer pre-validation', () => {
+  beforeEach(() => setupTestState());
+
+  it('returns ok:false with detailed error for abandoned city', () => {
+    // City 3 is empty (factionId: null) — transfer should fail with helpful message
+    const result = rtkApi.transferOfficer(1, 3);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('unoccupied');
+  });
+
+  it('returns ok:false with detailed error for enemy city', () => {
+    const result = rtkApi.transferOfficer(1, 2);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Not your city');
+  });
+
+  it('returns ok:false when officer already acted', () => {
+    useGameStore.setState({
+      officers: useGameStore.getState().officers.map(o =>
+        o.id === 1 ? { ...o, acted: true } : o
+      ),
+    });
+    const result = rtkApi.transferOfficer(1, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('already acted');
+  });
+
+  it('returns ok:true when transfer succeeds', () => {
+    // Make city 3 player-owned
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c =>
+        c.id === 3 ? { ...c, factionId: 1 } : c
+      ),
+    });
+    const result = rtkApi.transferOfficer(1, 3);
+    expect(result.ok).toBe(true);
+    expect(useGameStore.getState().officers.find(o => o.id === 1)?.cityId).toBe(3);
+  });
+});
+
+describe('rtk-api — buyFood', () => {
+  beforeEach(() => setupTestState());
+
+  it('purchases food at 1:2 gold ratio', () => {
+    const before = useGameStore.getState().cities.find(c => c.id === 1)!;
+    const result = rtkApi.buyFood(1, 2000);
+    expect(result.ok).toBe(true);
+    const after = useGameStore.getState().cities.find(c => c.id === 1)!;
+    expect(after.food).toBe(before.food + 2000);
+    expect(after.gold).toBe(before.gold - 1000);
+  });
+
+  it('rejects when insufficient gold', () => {
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c =>
+        c.id === 1 ? { ...c, gold: 10 } : c
+      ),
+    });
+    const result = rtkApi.buyFood(1, 1000);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('gold');
+  });
+
+  it('rejects for enemy city', () => {
+    const result = rtkApi.buyFood(2, 1000);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Not your city');
+  });
+});
+
+describe('rtk-api — transport validation (Bug #37)', () => {
+  beforeEach(() => setupTestState());
+
+  it('returns ok:true when transport succeeds', () => {
+    // Add a second player-owned city to transport to
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c =>
+        c.id === 3 ? { ...c, factionId: 1, adjacentCityIds: [1] } : c
+      ),
+    });
+    const result = rtkApi.transport(1, 3, { gold: 1000, food: 2000 }, 1);
+    expect(result.ok).toBe(true);
+    expect((result.data as { escort: string }).escort).toBe('荀彧');
+    // Verify resources actually moved
+    const after = useGameStore.getState();
+    const city1 = after.cities.find(c => c.id === 1)!;
+    const city3 = after.cities.find(c => c.id === 3)!;
+    expect(city1.gold).toBe(9000);
+    expect(city1.food).toBe(48000);
+    expect(city3.gold).toBe(2000);
+    expect(city3.food).toBe(7000);
+    // Officer should have acted
+    expect(after.officers.find(o => o.id === 1)!.acted).toBe(true);
+  });
+
+  it('returns ok:false when destination city is not player-owned', () => {
+    // City 2 belongs to faction 2 (enemy)
+    const result = rtkApi.transport(1, 2, { gold: 500 }, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Not your city');
+    // Officer should NOT have acted
+    expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
+  });
+
+  it('returns ok:false when destination city is unoccupied', () => {
+    // City 3 is factionId: null
+    const result = rtkApi.transport(1, 3, { gold: 500 }, 1);
+    expect(result.ok).toBe(false);
+    // Officer should NOT have acted
+    expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
+  });
+
+  it('returns ok:false when no resources specified', () => {
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c =>
+        c.id === 3 ? { ...c, factionId: 1 } : c
+      ),
+    });
+    const result = rtkApi.transport(1, 3, {}, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('No resources');
+    // Officer should NOT have acted
+    expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
+  });
+
+  it('returns ok:false when insufficient resources in source city', () => {
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c => {
+        if (c.id === 1) return { ...c, gold: 100 };
+        if (c.id === 3) return { ...c, factionId: 1 };
+        return c;
+      }),
+    });
+    const result = rtkApi.transport(1, 3, { gold: 5000 }, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Insufficient');
+    expect(result.error).toContain('gold');
+    // Officer should NOT have acted
+    expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
+  });
+
+  it('returns ok:false when officer already acted', () => {
+    useGameStore.setState({
+      cities: useGameStore.getState().cities.map(c =>
+        c.id === 3 ? { ...c, factionId: 1 } : c
+      ),
+      officers: useGameStore.getState().officers.map(o =>
+        o.id === 1 ? { ...o, acted: true } : o
+      ),
+    });
+    const result = rtkApi.transport(1, 3, { gold: 500 }, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('already acted');
+  });
+
+  it('returns ok:false when destination city does not exist', () => {
+    const result = rtkApi.transport(1, 999, { gold: 500 }, 1);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+});

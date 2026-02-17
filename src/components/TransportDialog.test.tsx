@@ -10,6 +10,7 @@ vi.mock('../store/gameStore', () => ({
 
 describe('TransportDialog', () => {
   const mockTransport = vi.fn();
+  const mockTransferOfficer = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,12 +26,13 @@ describe('TransportDialog', () => {
       ],
       playerFaction: { id: 1 },
       transport: mockTransport,
+      transferOfficer: mockTransferOfficer,
     });
   });
 
   it('renders with officer selection and all three resource inputs', () => {
     render(<TransportDialog toCityId={2} onClose={() => {}} />);
-    expect(screen.getByText(/資源輸送/)).toBeDefined();
+    expect(screen.getByText(/移動 \/ 輸送/)).toBeDefined();
     expect(screen.getByText(/洛陽/)).toBeDefined();
     // Should have 3 number inputs for gold, food, troops
     const inputs = screen.getAllByRole('spinbutton');

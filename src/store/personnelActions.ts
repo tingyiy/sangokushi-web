@@ -387,9 +387,29 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      // Apply transfers
-      set({
-        cities: state.cities.map(c => {
+      // Apply transfers — officer moves with the goods (escort)
+      const wasGovernor = escort.isGovernor;
+      const isRuler = state.playerFaction!.rulerId === escort.id;
+
+      let updatedOfficers = state.officers.map(o => {
+        if (o.id === escort.id) {
+          return { ...o, cityId: toCityId, acted: true, isGovernor: isRuler ? true : false };
+        }
+        // If ruler is moving in, strip governor from existing governor at destination
+        if (isRuler && o.cityId === toCityId && o.factionId === state.playerFaction!.id && o.isGovernor) {
+          return { ...o, isGovernor: false };
+        }
+        return o;
+      });
+
+      // Auto-assign governor for source city if it lost its governor
+      if (wasGovernor) {
+        autoAssignGovernorInPlace(updatedOfficers, fromCityId, state.playerFaction!.id, state.factions);
+      }
+
+      // Auto-abandon source city if no officers remain
+      const { cities: updatedCities, abandoned } = abandonCityIfEmpty(
+        state.cities.map(c => {
           if (c.id === fromCityId) {
             let gold = c.gold;
             let food = c.food;
@@ -414,8 +434,10 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
           }
           return c;
         }),
-        officers: state.officers.map(o => o.id === escort.id ? { ...o, acted: true } : o)
-      });
+        updatedOfficers, fromCityId, state.playerFaction!.id
+      );
+
+      set({ cities: updatedCities, officers: updatedOfficers });
 
       // Build summary log
       const parts: string[] = [];
@@ -423,6 +445,10 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         parts.push(`${i18next.t(`logs:common.${res}`)} ${amt}`);
       }
       get().addLog(i18next.t('logs:domestic.transportMulti', { from: localizedName(fromCity.name), to: localizedName(toCity.name), officer: localizedName(escort.name), details: parts.join(i18next.t('logs:common.comma')) }));
+      if (abandoned) {
+        const abandonedCity = updatedCities.find(c => c.id === fromCityId);
+        get().addLog(i18next.t('logs:personnel.cityAbandoned', { city: localizedName(abandonedCity?.name ?? '') }));
+      }
     },
 
     transferOfficer: (officerId, targetCityId) => {

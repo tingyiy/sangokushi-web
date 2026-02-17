@@ -17,7 +17,7 @@ interface SaveLoadMenuProps {
 const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) => {
   const { t } = useTranslation();
   const { saveGame, loadGame, getSaveSlots, deleteSave, year, month, playerFaction } = useGameStore();
-  const [saveSlots, setSaveSlots] = useState<{ slot: number; date: string | null; version: string | null }[]>([]);
+  const [saveSlots, setSaveSlots] = useState<ReturnType<typeof getSaveSlots>>([]);
   const [message, setMessage] = useState<string>('');
 
   // Refresh save slots when menu opens
@@ -135,10 +135,22 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
                 <div style={{ color: '#fff', fontWeight: 'bold' }}>
                   {t('save.slotLabel', { slot: slot.slot })}
                 </div>
-                <div style={{ color: '#888', fontSize: '0.9rem' }}>
-                  {formatDate(slot.date)}
-                  {slot.version && ` · v${slot.version}`}
-                </div>
+                {slot.date ? (
+                  <>
+                    <div style={{ color: '#ccc', fontSize: '0.9rem' }}>
+                      {slot.scenarioName ? localizedName(slot.scenarioName) : ''}
+                      {slot.rulerName ? ` · ${localizedName(slot.rulerName)}` : ''}
+                      {slot.year != null ? ` · ${t('save.slotDate', { year: slot.year, month: slot.month })}` : ''}
+                    </div>
+                    <div style={{ color: '#888', fontSize: '0.8rem' }}>
+                      {formatDate(slot.date)}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: '#888', fontSize: '0.9rem' }}>
+                    {t('save.emptySlot')}
+                  </div>
+                )}
               </div>
               {mode === 'save' && slot.date && (
                 <button
@@ -171,7 +183,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
               cursor: 'pointer',
             }}
           >
-            {t('common.cancel')}
+            {t('common.close')}
           </button>
         </div>
 

@@ -17,13 +17,22 @@ export const SYSTEM_PROMPT_STRATEGIC = `You are an expert AI player for Romance 
 - Each officer gets ONE action per turn (marked as "acted" after).
 - Domestic actions (commerce, agriculture, defense, technology, training) cost 500 gold each.
 - Drafting troops costs 2 gold + 3 food per soldier. Max draft = 10% of city population.
-- Tax revenue comes quarterly (months 1, 4, 7, 10). Food harvest in months 7 and 10.
+- Gold and food income is collected EVERY month (based on commerce, agriculture, population, loyalty, and tax rate). Bountiful Harvest events (bonus food) can occur in months 7 and 10.
 - Each city needs a governor. The ruler IS the governor of their city (cannot be reassigned).
 - Each city you own generates tax income and food, and may have recruitable officers.
 - Empty cities (factionId=null) have no garrison. Using startBattle on them results in instant capture with no tactical battle.
 - Cities with officers but 0 troops are auto-overrun — also instant capture.
 - Enemy city data (troops, officers, resources) is hidden unless you use the spy command to reveal it.
 - Troop training and morale affect combat effectiveness.
+
+## Random Disasters & Events
+Each month, every city faces random events:
+- **Flood** (3% chance, reduced by floodControl): Pop -5%, Gold -10%, Food -15%, Defense -10. Use developFloodControl to reduce chance — at floodControl=100, chance drops to ~1%.
+- **Locusts** (2% chance): Food -30%. No prevention mechanic.
+- **Plague** (1% chance): Pop -10%, Troops -15%. No prevention mechanic.
+- **Bountiful Harvest** (10% chance, months 7 & 10 only): Food +5000~10000.
+- After a disaster, use disasterRelief (500g+1000f) to restore people's loyalty (+15~25).
+- Prioritize developFloodControl for cities with low floodControl and high resource value.
 
 ## How This Works
 You issue ONE command at a time. After each command, you see the result and updated status, then decide your next command. When you are done, issue "endTurn".
@@ -35,15 +44,17 @@ You issue ONE command at a time. After each command, you see the result and upda
 - { "cmd": "developAgriculture", "cityId": <id>, "officerId": <id> }
 - { "cmd": "reinforceDefense", "cityId": <id>, "officerId": <id> }
 - { "cmd": "developTechnology", "cityId": <id>, "officerId": <id> }
+- { "cmd": "developFloodControl", "cityId": <id>, "officerId": <id> }  (costs 500g, raises floodControl to reduce flood chance)
 - { "cmd": "trainTroops", "cityId": <id>, "officerId": <id> }  (costs 500 food, not gold)
 - { "cmd": "manufacture", "cityId": <id>, "weaponType": "crossbows"|"warHorses"|"batteringRams"|"catapults", "officerId": <id> }
 - { "cmd": "setTaxRate", "cityId": <id>, "rate": "low"|"medium"|"high" }
-- { "cmd": "disasterRelief", "cityId": <id>, "officerId": <id> }
+- { "cmd": "disasterRelief", "cityId": <id>, "officerId": <id> }  (costs 500g+1000f, restores people's loyalty after disasters)
+- { "cmd": "buyFood", "cityId": <id>, "amount": <number> }  (1 gold = 2 food, no officer action needed)
 
 ### Military
 - { "cmd": "draftTroops", "cityId": <id>, "amount": <number>, "officerId": <id> }
-- { "cmd": "transport", "fromCityId": <id>, "toCityId": <id>, "resources": { "gold": <n>, "food": <n>, "troops": <n> }, "officerId": <id> }
-- { "cmd": "transferOfficer", "officerId": <id>, "targetCityId": <id> }
+- { "cmd": "transport", "fromCityId": <id>, "toCityId": <id>, "resources": { "gold": <n>, "food": <n>, "troops": <n> }, "officerId": <id> }  (escort officer moves with the goods)
+- { "cmd": "transferOfficer", "officerId": <id>, "targetCityId": <id> }  (move officer only, no resources)
 - { "cmd": "setBattleFormation", "formation": { "officerIds": [<ids>], "unitTypes": ["infantry"|"cavalry"|"archer"], "troops": [<per-unit>], "food": <total food to bring> } }
 - { "cmd": "startBattle", "cityId": <sourceCity>, "targetCityId": <id> }
 
@@ -64,13 +75,16 @@ You issue ONE command at a time. After each command, you see the result and upda
 - { "cmd": "proposeCeasefire", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 - { "cmd": "demandSurrender", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 - { "cmd": "breakAlliance", "targetFactionId": <id> }
+- { "cmd": "requestJointAttack", "allyFactionId": <id>, "targetCityId": <id>, "officerId": <id> }  (request allied faction to attack a city)
+- { "cmd": "exchangeHostage", "officerId": <id>, "targetFactionId": <id> }  (send officer as hostage to strengthen alliance)
 
-### Strategy
-- { "cmd": "spy", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
-- { "cmd": "rumor", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
-- { "cmd": "counterEspionage", "cityId": <yourCity>, "targetCityId": <id>, "targetOfficerId": <id>, "officerId": <id> }
-- { "cmd": "inciteRebellion", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
-- { "cmd": "arson", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }
+### Strategy (REQUIRES specific officer skills — check officer skills before using)
+- { "cmd": "spy", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (requires 'intelligence' or 'espionage' skill)
+- { "cmd": "rumor", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (requires 'rumor' skill)
+- { "cmd": "counterEspionage", "cityId": <yourCity>, "targetCityId": <id>, "targetOfficerId": <id>, "officerId": <id> }  (requires 'intelligence' or 'espionage' skill)
+- { "cmd": "inciteRebellion", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (requires 'rumor' or 'espionage' skill)
+- { "cmd": "arson", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (requires 'firePlot' skill)
+- { "cmd": "gatherIntelligence", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (gather detailed intel on enemy city, requires 'intelligence' or 'espionage' skill)
 
 ### Turn End
 - { "cmd": "endTurn" }
@@ -107,12 +121,13 @@ Action 4:
 { "thinking": "All officers acted. End turn.", "command": { "cmd": "endTurn" } }
 
 KEY MECHANICS:
-- Tax revenue arrives quarterly (months 1, 4, 7, 10). Food harvest in months 7, 10.
+- Gold and food income arrives EVERY month (not quarterly). Higher commerce → more gold, higher agriculture → more food. Developing these pays off immediately.
 - searchOfficer searches your own city for hidden unaffiliated officers. If found, the officer immediately joins your faction (loyalty 60). Only works if unaffiliated officers exist in that city. Check the "Unaffiliated:N" count in the status display — cities showing no count have zero searchable officers. Do NOT waste actions searching cities with 0 unaffiliated officers.
 - recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
 - rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
 - transferOfficer: if you transfer the LAST officer out of a city, that city is ABANDONED (becomes unowned). Any faction can then capture it for free. Use this deliberately — e.g., to consolidate officers for recruitment — but be aware of the risk.
-- spy reveals an enemy city's data (troops, officers, resources) for several turns.
+- spy reveals an enemy city's data (troops, officers, resources) for several turns. REQUIRES an officer with the 'intelligence' or 'espionage' skill — check skills=[...] in officer listings. Officers without these skills will always fail.
+- Strategy commands (spy, rumor, arson, inciteRebellion, counterEspionage) each require specific officer skills. Only assign officers whose skills match the command.
 - Diplomacy (alliances, ceasefires) can secure borders.
 
 BATTLE FORMATION RULES:
@@ -183,7 +198,7 @@ export function resetLogTracking(): void {
 
 /**
  * Build a quick status summary after each action.
- * Shows per-city: available officers, gold, troops so LLM can plan its next action.
+ * Shows per-city: available officers, gold, troops, and key stats so LLM can plan its next action.
  */
 export function buildQuickStats(): string {
   const state = useGameStore.getState();
@@ -200,7 +215,7 @@ export function buildQuickStats(): string {
     const readyNames = ready.map(o => `${o.name}(${o.id})`).join(', ') || 'none';
     const unaffiliated = state.officers.filter(o => o.cityId === city.id && o.factionId === null).length;
     const unafStr = unaffiliated > 0 ? ` Unaffiliated:${unaffiliated}` : '';
-    lines.push(`${city.name}: ${ready.length}/${officers.length} officers ready [${readyNames}] | Gold:${city.gold} Food:${city.food} Troops:${city.troops}${unafStr}`);
+    lines.push(`${city.name}: ${ready.length}/${officers.length} officers ready [${readyNames}] | Gold:${city.gold} Food:${city.food} Troops:${city.troops} | Comm:${city.commerce} Agri:${city.agriculture} Def:${city.defense} Train:${city.training} Morale:${city.morale}${unafStr}`);
   }
 
   return lines.join('\n');
@@ -289,14 +304,15 @@ export function buildStrategicContext(): string {
 
     parts.push(`[${city.name}] id=${city.id} | Gov: ${governor?.name ?? 'NONE'}`);
     parts.push(`  Gold: ${city.gold} | Food: ${city.food} | Troops: ${city.troops} | Pop: ${city.population}`);
-    parts.push(`  Commerce: ${city.commerce} | Agri: ${city.agriculture} | Defense: ${city.defense} | Tech: ${city.technology}`);
+    parts.push(`  Commerce: ${city.commerce} | Agri: ${city.agriculture} | Defense: ${city.defense} | Tech: ${city.technology} | FloodCtrl: ${city.floodControl}`);
     parts.push(`  Training: ${city.training} | Morale: ${city.morale} | Loyalty: ${city.peopleLoyalty}`);
     if (city.crossbows > 0 || city.warHorses > 0 || city.batteringRams > 0 || city.catapults > 0) {
       parts.push(`  Weapons: Xbow=${city.crossbows} Horse=${city.warHorses} Ram=${city.batteringRams} Cat=${city.catapults}`);
     }
     parts.push(`  Officers (${officers.length}, ${available.length} available):`);
     for (const o of officers) {
-      parts.push(`    ${o.name} id=${o.id} L=${o.leadership}/W=${o.war}/I=${o.intelligence}/P=${o.politics}/C=${o.charisma} ${o.acted ? '[ACTED]' : '[READY]'} loy=${o.loyalty} rank=${o.rank}${o.isGovernor ? ' [GOV]' : ''}`);
+      const skillStr = o.skills.length > 0 ? ` skills=[${o.skills.join(',')}]` : '';
+      parts.push(`    ${o.name} id=${o.id} L=${o.leadership}/W=${o.war}/I=${o.intelligence}/P=${o.politics}/C=${o.charisma} ${o.acted ? '[ACTED]' : '[READY]'} loy=${o.loyalty} rank=${o.rank}${o.isGovernor ? ' [GOV]' : ''}${skillStr}`);
     }
     if (pows.length > 0) {
       parts.push(`  POWs: ${pows.map(o => `${o.name}(id=${o.id})`).join(', ')}`);

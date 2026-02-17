@@ -17,9 +17,9 @@ export function CommandMenu() {
     selectedCityId, cities, officers, factions, playerFaction,
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
-    developFloodControl, developTechnology, trainTroops, manufacture, disasterRelief,
+    developFloodControl, developTechnology, trainTroops, manufacture, disasterRelief, buyFood,
     recruitOfficer, searchOfficer, recruitPOW, rewardOfficer, executeOfficer, dismissOfficer, appointGovernor, appointAdvisor,
-    draftTroops, transferOfficer,
+    draftTroops,
     improveRelations, formAlliance, requestJointAttack, proposeCeasefire, demandSurrender, breakAlliance, exchangeHostage,
     counterEspionage, inciteRebellion, arson, spy, gatherIntelligence, rumor,
     endTurn, addLog, setTaxRate, promoteOfficer
@@ -31,6 +31,7 @@ export function CommandMenu() {
     onSelect: (officerId: number) => void;
   } | null>(null);
   const [draftAmount, setDraftAmount] = useState<number>(0);
+  const [buyFoodAmount, setBuyFoodAmount] = useState<number>(0);
 
   const city = cities.find(c => c.id === selectedCityId);
   const isOwnCity = city?.factionId === playerFaction?.id;
@@ -123,6 +124,48 @@ export function CommandMenu() {
               </div>
               
               <button className="btn btn-action" onClick={() => executeWithOfficer(t('command.action.disasterRelief'), (oid) => disasterRelief(city.id, oid))}>{t('command.domestic.disasterRelief')}</button>
+
+              {(() => {
+                const maxFood = city.gold * 2;
+                return (
+                  <div className="sub-menu">
+                    <h5>{t('command.domestic.buyFood')}</h5>
+                    <div style={{ fontSize: '0.75em', color: '#999', marginBottom: '4px' }}>
+                      {t('command.domestic.buyFoodInfo', { gold: city.gold.toLocaleString(), max: maxFood.toLocaleString() })}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxFood}
+                        step={1000}
+                        value={buyFoodAmount}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          setBuyFoodAmount(isNaN(v) ? 0 : Math.max(0, Math.min(v, maxFood)));
+                        }}
+                        className="draft-input"
+                      />
+                      <button className="btn-tiny" onClick={() => setBuyFoodAmount(maxFood)}>
+                        {t('command.domestic.buyFoodMax')}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.7em', color: '#888', margin: '3px 0' }}>
+                      {buyFoodAmount > 0 && `${Math.ceil(buyFoodAmount / 2).toLocaleString()}${t('city.gold')} → ${buyFoodAmount.toLocaleString()}${t('city.food')}`}
+                    </div>
+                    <button
+                      className="btn btn-action"
+                      disabled={buyFoodAmount <= 0}
+                      onClick={() => {
+                        buyFood(city.id, buyFoodAmount);
+                        setBuyFoodAmount(0);
+                      }}
+                    >
+                      {t('command.domestic.buyFoodConfirm')}{buyFoodAmount > 0 ? ` ${buyFoodAmount.toLocaleString()}${t('city.food')}` : ''}
+                    </button>
+                  </div>
+                );
+              })()}
             </>
           )}
 
@@ -188,7 +231,7 @@ export function CommandMenu() {
               })()}
               
               <div className="sub-menu">
-                <h5>{t('command.military.transport')}</h5>
+                <h5>{t('command.military.transferTransport')}</h5>
                 {cities.filter(c => c.factionId === playerFaction?.id && c.id !== city.id).map(friendlyCity => (
                   <button key={friendlyCity.id} className="btn btn-action btn-small" onClick={() => setDialog({ type: 'transport', targetCityId: friendlyCity.id })}>
                     {t('command.military.transportTo', { cityName: localizedName(friendlyCity.name) })}
@@ -290,19 +333,6 @@ export function CommandMenu() {
                             </select>
                           </>
                         )}
-                        <select className="select-tiny" onChange={(e) => {
-                          if (!e.target.value) return;
-                          transferOfficer(o.id, parseInt(e.target.value));
-                        }}>
-                           <option value="">{t('command.personnel.transfer')}</option>
-                           {city.adjacentCityIds.map(adjId => {
-                              const adjCity = cities.find(c => c.id === adjId);
-                              if (adjCity && adjCity.factionId === playerFaction?.id) {
-                                return <option key={adjId} value={adjId}>{localizedName(adjCity.name)}</option>;
-                              }
-                              return null;
-                           })}
-                        </select>
                         {!isRuler && <button className="btn-tiny btn-danger" onClick={() => dismissOfficer(o.id)}>{t('command.personnel.dismiss')}</button>}
                       </div>
                     </div>

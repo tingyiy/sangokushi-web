@@ -85,7 +85,7 @@ function App() {
           onShowLoad={() => setShowLoadMenu(true)}
         />
       )}
-      {phase === 'title' && <TitleScreen />}
+      {phase === 'title' && <TitleScreen onShowLoad={() => setShowLoadMenu(true)} />}
       {phase === 'scenario' && <ScenarioSelect />}
       {phase === 'faction' && <FactionSelect />}
       {phase === 'settings' && <GameSettingsScreen />}

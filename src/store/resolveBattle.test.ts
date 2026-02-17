@@ -750,4 +750,123 @@ describe('resolveBattle - RTK IV Post-Battle Mechanics', () => {
     expect(state.cities.find(c => c.id === 4)!.factionId).toBeNull(); // unclaimed
     expect(state.log.some(l => l.includes('無處可逃'))).toBe(true);
   });
+
+  /**
+   * Bug #42 regression: losing officer with troops > 0 and status 'done'
+   * should still flee, not become a ghost stuck in the enemy city.
+   *
+   * Scenario: Liu Bei defends Puyang, battle ends (e.g., from bug #39),
+   * Liu Bei still has troops > 0 and status 'done'. He must flee to
+   * an adjacent friendly city, not remain stranded in Puyang.
+   */
+  test('Bug #42: losing officer with troops > 0 and status "done" still flees', () => {
+    const puyang = makeCity({ id: 16, name: '濮陽', factionId: 2, adjacentCityIds: [6] });
+    const pingyuan = makeCity({ id: 6, name: '平原', factionId: 2, adjacentCityIds: [16] });
+
+    const liuBei = makeOfficer({ id: 169, name: '劉備', factionId: 2, cityId: 16, isGovernor: true });
+    const dianWei = makeOfficer({ id: 50, name: '典韋', factionId: 1, cityId: 99 });
+
+    useGameStore.setState({
+      cities: [puyang, pingyuan],
+      officers: [liuBei, dianWei],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 50 }),
+        makeFaction({ id: 2, name: '劉備', rulerId: 169 }),
+      ],
+      log: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, // winner: Cao Cao
+      2, // loser: Liu Bei
+      16, // cityId: Puyang
+      [
+        { officerId: 50, troops: 5820, factionId: 1, status: 'active' },
+        { officerId: 169, troops: 4850, factionId: 2, status: 'done' }, // Bug #39 scenario: alive but 'done'
+      ],
+      [] // no captures
+    );
+
+    const state = useGameStore.getState();
+    const liu = state.officers.find(o => o.id === 169)!;
+
+    // Liu Bei MUST flee to Pingyuan (adjacent friendly), NOT stay stranded in Puyang
+    expect(liu.cityId).toBe(6); // Pingyuan
+    expect(liu.factionId).toBe(2); // Still Liu Bei's faction
+
+    // Puyang should now belong to Cao Cao
+    expect(state.cities.find(c => c.id === 16)!.factionId).toBe(1);
+  });
+
+  test('Bug #42: losing officer with troops > 0 and status "active" still flees', () => {
+    const puyang = makeCity({ id: 16, name: '濮陽', factionId: 2, adjacentCityIds: [6] });
+    const pingyuan = makeCity({ id: 6, name: '平原', factionId: 2, adjacentCityIds: [16] });
+
+    const liuBei = makeOfficer({ id: 169, name: '劉備', factionId: 2, cityId: 16, isGovernor: true });
+    const dianWei = makeOfficer({ id: 50, name: '典韋', factionId: 1, cityId: 99 });
+
+    useGameStore.setState({
+      cities: [puyang, pingyuan],
+      officers: [liuBei, dianWei],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 50 }),
+        makeFaction({ id: 2, name: '劉備', rulerId: 169 }),
+      ],
+      log: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, 2, 16,
+      [
+        { officerId: 50, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 169, troops: 3000, factionId: 2, status: 'active' }, // alive and active
+      ],
+      []
+    );
+
+    const state = useGameStore.getState();
+    const liu = state.officers.find(o => o.id === 169)!;
+
+    // Must flee regardless of troops/status — battle was lost
+    expect(liu.cityId).toBe(6);
+    expect(liu.factionId).toBe(2);
+  });
+
+  test('Bug #42: losing officer with troops > 0, no flee destination → captured', () => {
+    // Only one city, no adjacent friendly or unoccupied
+    const puyang = makeCity({ id: 16, name: '濮陽', factionId: 2, adjacentCityIds: [8] });
+    const ye = makeCity({ id: 8, name: '鄴', factionId: 1, adjacentCityIds: [16] }); // enemy
+
+    const liuBei = makeOfficer({ id: 169, name: '劉備', factionId: 2, cityId: 16, isGovernor: true });
+    const dianWei = makeOfficer({ id: 50, name: '典韋', factionId: 1, cityId: 8 });
+
+    useGameStore.setState({
+      cities: [puyang, ye],
+      officers: [liuBei, dianWei],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 50 }),
+        makeFaction({ id: 2, name: '劉備', rulerId: 169 }),
+      ],
+      log: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, 2, 16,
+      [
+        { officerId: 50, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 169, troops: 4000, factionId: 2, status: 'done' },
+      ],
+      []
+    );
+
+    const state = useGameStore.getState();
+    const liu = state.officers.find(o => o.id === 169)!;
+
+    // Nowhere to flee → captured
+    expect(liu.factionId).toBe(-1);
+    expect(liu.cityId).toBe(16);
+  });
 });

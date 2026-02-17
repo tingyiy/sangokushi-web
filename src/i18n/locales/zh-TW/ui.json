@@ -181,7 +181,11 @@
       "manufactureWarHorses": "軍馬",
       "manufactureBatteringRams": "衝車",
       "manufactureCatapults": "投石機",
-      "disasterRelief": "賑災（500金+1000糧）"
+      "disasterRelief": "賑災（500金+1000糧）",
+      "buyFood": "糶米（1金＝2糧）",
+      "buyFoodConfirm": "購入",
+      "buyFoodMax": "最大",
+      "buyFoodInfo": "金 {{gold}} → 最多可買 {{max}} 糧"
     },
     "action": {
       "developCommerce": "商業開發",
@@ -206,6 +210,7 @@
       "draftConfirm": "徵兵",
       "draftCapInfo": "兵力上限 {{cap}} / 現有 {{current}} / 餘 {{room}}",
       "draftAtCap": "兵力已達上限",
+      "transferTransport": "移動 / 輸送",
       "transport": "輸送",
       "transportTo": "至 {{cityName}}",
       "attack": "出征",
@@ -219,7 +224,7 @@
       "execute": "處斬",
       "reward": "褒賞 (1000金)",
       "officerLoyalty": "{{name}} (忠{{loyalty}})",
-      "appointTransfer": "任命 / 移動",
+      "appointTransfer": "任命",
       "appointGovernor": "太守",
       "appointAdvisor": "軍師",
       "transfer": "移動",
@@ -263,15 +268,19 @@
     "archer": "弓兵"
   },
   "transport": {
-    "title": "資源輸送：{{cityName}}",
-    "officer": "護送武將",
+    "title": "移動 / 輸送：至 {{cityName}}",
+    "officer": "執行武將",
     "noOfficer": "城中無可用武將",
     "resourceType": "資源類型",
     "goldOption": "金 (現有: {{amount}})",
     "foodOption": "糧 (現有: {{amount}})",
     "troopsOption": "兵 (現有: {{amount}})",
     "amount": "輸送數量",
-    "confirm": "輸送"
+    "confirm": "輸送",
+    "confirmTransfer": "移動",
+    "modeTransferOnly": "僅移動武將（不帶資源）",
+    "modeWithResources": "附帶資源輸送",
+    "officerWillMove": "※ 武將將移動至目的地城市"
   },
   "officer": {
     "colName": "姓名",
@@ -308,6 +317,7 @@
     "deleted": "存檔 {{slot}} 已刪除",
     "emptySlot": "空存檔",
     "slotLabel": "存檔 {{slot}}",
+    "slotDate": "{{year}}年{{month}}月",
     "delete": "刪除",
     "currentProgress": "目前進度: {{year}}年{{month}}月 · {{factionName}}"
   },

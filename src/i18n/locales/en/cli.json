@@ -55,6 +55,8 @@
     "manufacture": "  manufacture <city> <type> [off] — Manufacture weapons (crossbows|horses|rams|catapults, 1000g)",
     "relief": "  relief <city> [officer]         — Disaster relief (+loyalty, costs 500g+1000f)",
     "tax": "  tax <city> <low|med|high>       — Set tax rate",
+    "buyfood": "  buyfood <city> <amount>         — Buy food with gold (1 gold = 2 food)",
+    "buyfoodUsage": "  Usage: buyfood <city> <amount>",
     "actionNote": "  NOTE: Each officer can perform ONE action per turn (acted = done for the turn)",
     "personnelHeader": "  --- Personnel ---",
     "recruit": "  recruit <officer name>          — Recruit unaffiliated officer",

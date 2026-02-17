@@ -55,6 +55,7 @@ export async function chatCompletion(
     model?: string;
     temperature?: number;
     maxTokens?: number;
+    signal?: AbortSignal;
   }
 ): Promise<{ text: string; model: string; usage?: ChatCompletionResponse['usage'] }> {
   const token = getAccessToken();
@@ -91,6 +92,7 @@ export async function chatCompletion(
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal: options?.signal,
   });
 
   if (!res.ok) {

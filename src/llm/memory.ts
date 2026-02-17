@@ -87,6 +87,21 @@ export function resetMemory(): void {
   };
 }
 
+/** Restore memory from serialized data (e.g., from a save file) */
+export function restoreMemory(data: Partial<AgentMemory>): void {
+  memory = {
+    turnHistory: data.turnHistory ?? [],
+    strategyNotes: data.strategyNotes ?? '',
+    currentBattle: data.currentBattle ?? null,
+    battleHistory: data.battleHistory ?? [],
+  };
+}
+
+/** Serialize memory for persistence (e.g., save file) */
+export function serializeMemory(): AgentMemory {
+  return { ...memory };
+}
+
 // ── Turn Journal ────────────────────────────────────────
 
 /** Start a new turn entry */

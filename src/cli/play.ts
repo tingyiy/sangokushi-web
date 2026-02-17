@@ -170,18 +170,13 @@ function runUnitAI(unitId: string) {
   );
   const atkRange = getAttackRange(unit.type);
 
-  // 1. If enemy is in attack range, attack directly
-  if (distToNearest <= atkRange) {
-    battle.getState().attackUnit(unit.id, nearest.id);
-    return;
-  }
-
-  // 2. In siege with intact gates: prioritize gate attacks
+  // 1. In siege with intact gates: PRIORITIZE gate attacks over unit attacks
+  const isAttackerUnit = state.isSiege && unit.factionId === state.attackerId;
   const intactGates = state.isSiege
     ? state.gates.filter(g => g.hp > 0)
     : [];
 
-  if (intactGates.length > 0) {
+  if (isAttackerUnit && intactGates.length > 0) {
     const nearestGate = findNearestIntactGate(unit, intactGates);
     if (nearestGate) {
       const gateDist = getDistance(
@@ -214,6 +209,12 @@ function runUnitAI(unitId: string) {
       }
       return;
     }
+  }
+
+  // 2. If enemy is in attack range (non-siege or gates breached), attack directly
+  if (distToNearest <= atkRange) {
+    battle.getState().attackUnit(unit.id, nearest.id);
+    return;
   }
 
   // 3. No intact gates (field battle or gates breached): move toward enemy
@@ -464,6 +465,7 @@ function showHelp() {
   log(t('help.manufacture'));
   log(t('help.relief'));
   log(t('help.tax'));
+  log(t('help.buyfood'));
   log(t('help.actionNote'));
   log('');
   log(t('help.personnelHeader'));
@@ -837,6 +839,15 @@ function handleCommand(input: string, factionId: number): boolean {
       const rate = rateMap[(parts[2] || '').toLowerCase()];
       if (!city || !rate) { log(t('error.taxUsage')); return false; }
       game.getState().setTaxRate(city.id, rate);
+      return false;
+    }
+
+    case 'buyfood': {
+      const city = findCityByIdOrName(parts[1] || '');
+      const amount = parseInt(parts[2] || '0', 10);
+      if (!city || amount <= 0) { log(t('error.buyfoodUsage')); return false; }
+      game.getState().selectCity(city.id);
+      game.getState().buyFood(city.id, amount);
       return false;
     }
 

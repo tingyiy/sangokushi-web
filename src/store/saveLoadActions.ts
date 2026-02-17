@@ -1,9 +1,20 @@
 import i18next from 'i18next';
-import type { Faction } from '../types';
+import type { Faction, Officer } from '../types';
 import type { GameState } from './gameStore';
+import { serializeMemory, restoreMemory } from '../llm/memory';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
+
+interface SaveSlotInfo {
+  slot: number;
+  date: string | null;
+  version: string | null;
+  scenarioName?: string;
+  rulerName?: string;
+  year?: number;
+  month?: number;
+}
 
 export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'saveGame' | 'loadGame' | 'getSaveSlots' | 'deleteSave'> {
   return {
@@ -24,6 +35,7 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
           selectedCityId: state.selectedCityId,
           log: state.log,
           revealedCities: state.revealedCities,
+          llmMemory: serializeMemory(),
         };
 
         localStorage.setItem(`rtk4_save_${slot}`, JSON.stringify(saveData));
@@ -70,6 +82,11 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
           revealedCities: saveData.revealedCities || {},
         });
 
+        // Restore LLM agent memory if present in save data
+        if (saveData.llmMemory) {
+          restoreMemory(saveData.llmMemory);
+        }
+
         return true;
       } catch (e) {
         console.error('Load game failed:', e);
@@ -78,17 +95,25 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
       }
     },
 
-    getSaveSlots: () => {
-      const slots = [];
+    getSaveSlots: (): SaveSlotInfo[] => {
+      const slots: SaveSlotInfo[] = [];
       for (let i = 1; i <= 3; i++) {
         const saveDataStr = localStorage.getItem(`rtk4_save_${i}`);
         if (saveDataStr) {
           try {
             const saveData = JSON.parse(saveDataStr);
+            const playerFaction = saveData.factions?.find((f: Faction) => f.id === saveData.playerFactionId);
+            const ruler = playerFaction
+              ? saveData.officers?.find((o: Officer) => o.id === playerFaction.rulerId)
+              : null;
             slots.push({
               slot: i,
               date: saveData.timestamp,
               version: saveData.version || 'unknown',
+              scenarioName: saveData.scenario?.name,
+              rulerName: ruler?.name ?? playerFaction?.name,
+              year: saveData.year,
+              month: saveData.month,
             });
           } catch {
             slots.push({ slot: i, date: null, version: null });

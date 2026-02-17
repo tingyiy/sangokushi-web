@@ -55,6 +55,8 @@
     "manufacture": "  manufacture <城市> <種類> [武將] — 製造武器（crossbows|horses|rams|catapults，1000 金）",
     "relief": "  relief <城市> [武將]         — 賑災（+民忠，花費 500 金 + 1000 糧）",
     "tax": "  tax <城市> <low|med|high>    — 設定稅率",
+    "buyfood": "  buyfood <城市> <數量>        — 糶米（1 金 = 2 糧）",
+    "buyfoodUsage": "  用法：buyfood <城市> <數量>",
     "actionNote": "  注意：每位武將每回合只能行動一次（行動後即無法再執行）",
     "personnelHeader": "  --- 人事 ---",
     "recruit": "  recruit <武將名>            — 招攬在野武將",

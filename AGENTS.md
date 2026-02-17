@@ -214,8 +214,8 @@ Display names resolved via `t('data:category.domestic')` → "內政" (zh-TW) / 
 
 ### Key Files
 - `src/store/gameStore.ts` - Core state, phase, setup, UI, visibility queries (~580 lines)
-- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train (~350 lines)
-- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss (~370 lines)
+- `src/store/domesticActions.ts` - Tax, commerce, agriculture, defense, tech, train, buyFood (~400 lines)
+- `src/store/personnelActions.ts` - Recruit, search, POW, reward, dismiss, transport, transfer (~500 lines)
 - `src/store/militaryActions.ts` - Formation, duel, battle start, AI battle, retreat (~690 lines)
 - `src/store/diplomacyActions.ts` - Relations, alliance, joint attack, ceasefire (~330 lines)
 - `src/store/strategyActions.ts` - Rumor, spy, rebellion, arson, counter-espionage (~320 lines)
@@ -389,7 +389,7 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 461 tests across 34 test files
+- Current test suite: 668 tests across 43 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 - Ruler-governor rule tests: `src/store/rulerGovernor.test.ts` (9 tests enforcing R-001)

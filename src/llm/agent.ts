@@ -29,9 +29,24 @@ import {
 let _isRunning = false;
 let _shouldStop = false;
 let _lastSeenBattleLogIndex = 0;
+let _abortController: AbortController | null = null;
 
 export function isAgentRunning(): boolean { return _isRunning; }
-export function stopAgent(): void { _shouldStop = true; }
+export function stopAgent(): void {
+  _shouldStop = true;
+  // Abort any in-flight chat completion immediately
+  if (_abortController) {
+    _abortController.abort();
+    _abortController = null;
+  }
+}
+
+/** Reset internal agent flags (for tests only). */
+export function resetAgentForTest(): void {
+  _isRunning = false;
+  _shouldStop = false;
+  _abortController = null;
+}
 
 /**
  * Drain new battle log entries since last check.
@@ -45,7 +60,7 @@ function drainBattleLog(): string[] {
 }
 
 /**
- * Confirm all pending game events, collecting their descriptions.
+ * Confirm all pending game events, collecting their descriptions with quantitative impact.
  * Returns a summary string of all events (empty string if none).
  */
 async function drainEvents(): Promise<string> {
@@ -54,12 +69,31 @@ async function drainEvents(): Promise<string> {
     const evt = useGameStore.getState().pendingEvents[0];
     const parts: string[] = [];
     if (evt.name) parts.push(evt.name);
-    if (evt.description) parts.push(evt.description);
-    if (parts.length > 0) summaries.push(parts.join(': '));
+    // Add city name if available
+    if (evt.cityId != null) {
+      const city = useGameStore.getState().cities.find(c => c.id === evt.cityId);
+      if (city) parts.push(city.name);
+    }
+    // Add quantitative impact based on event type
+    switch (evt.type) {
+      case 'flood':
+        parts.push('Pop -5%, Gold -10%, Food -15%, Defense -10');
+        break;
+      case 'locusts':
+        parts.push('Food -30%');
+        break;
+      case 'plague':
+        parts.push('Pop -10%, Troops -15%');
+        break;
+      case 'harvest':
+        parts.push('Food +5000~10000');
+        break;
+    }
+    summaries.push(parts.join(' — '));
     rtkApi.confirmEvent();
     await sleep(100);
   }
-  return summaries.length > 0 ? `[Events] ${summaries.join(' | ')}` : '';
+  return summaries.length > 0 ? `[Events]\n${summaries.map(s => `  - ${s}`).join('\n')}` : '';
 }
 
 // ── Response Parsing ────────────────────────────────────
@@ -130,6 +164,8 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
         return rtkApi.reinforceDefense(cmd.cityId as number, cmd.officerId as number);
       case 'developTechnology':
         return rtkApi.developTechnology(cmd.cityId as number, cmd.officerId as number);
+      case 'developFloodControl':
+        return rtkApi.developFloodControl(cmd.cityId as number, cmd.officerId as number);
       case 'trainTroops':
         return rtkApi.trainTroops(cmd.cityId as number, cmd.officerId as number);
       case 'manufacture':
@@ -138,6 +174,8 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
         return rtkApi.setTaxRate(cmd.cityId as number, cmd.rate as 'low' | 'medium' | 'high');
       case 'disasterRelief':
         return rtkApi.disasterRelief(cmd.cityId as number, cmd.officerId as number);
+      case 'buyFood':
+        return rtkApi.buyFood(cmd.cityId as number, cmd.amount as number);
 
       // Military
       case 'draftTroops':
@@ -193,6 +231,10 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
         return rtkApi.demandSurrender(cmd.targetFactionId as number, cmd.officerId as number | undefined);
       case 'breakAlliance':
         return rtkApi.breakAlliance(cmd.targetFactionId as number);
+      case 'requestJointAttack':
+        return rtkApi.requestJointAttack(cmd.allyFactionId as number, cmd.targetCityId as number, cmd.officerId as number | undefined);
+      case 'exchangeHostage':
+        return rtkApi.exchangeHostage(cmd.officerId as number, cmd.targetFactionId as number);
 
       // Strategy
       case 'spy':
@@ -205,6 +247,8 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
         return rtkApi.inciteRebellion(cmd.targetCityId as number, cmd.officerId as number | undefined);
       case 'arson':
         return rtkApi.arson(cmd.targetCityId as number, cmd.officerId as number | undefined);
+      case 'gatherIntelligence':
+        return rtkApi.gatherIntelligence(cmd.targetCityId as number, cmd.officerId as number | undefined);
 
       // Events
       case 'confirmEvent':
@@ -272,8 +316,15 @@ export async function runStrategicTurn(): Promise<boolean> {
     let response;
     try {
       setLLMStatus('thinking', isFirstAction ? 'Planning turn...' : 'Deciding next action...');
-      response = await chatCompletion(messages, { temperature: 0.7 });
+      _abortController = new AbortController();
+      response = await chatCompletion(messages, { temperature: 0.7, signal: _abortController.signal });
+      _abortController = null;
     } catch (e) {
+      _abortController = null;
+      if (_shouldStop) {
+        llmLog('decision', 'Agent stopped during API call');
+        return false;
+      }
       const errMsg = e instanceof Error ? e.message : String(e);
       llmLog('error', `API call failed: ${errMsg}`);
       setLLMStatus('error', errMsg);
@@ -318,8 +369,11 @@ export async function runStrategicTurn(): Promise<boolean> {
       rtkApi.endTurn();
       await sleep(300);
 
-      // Clear any events generated by end turn
-      await drainEvents();
+      // Clear any events generated by end turn (and log them)
+      const endEvents = await drainEvents();
+      if (endEvents) {
+        llmLog('result', endEvents);
+      }
       return true;
     }
 
@@ -328,6 +382,7 @@ export async function runStrategicTurn(): Promise<boolean> {
     if (cityId != null) {
       const needsSelect = [
         'startBattle', 'spy', 'rumor', 'counterEspionage', 'inciteRebellion', 'arson',
+        'gatherIntelligence',
         'improveRelations', 'formAlliance', 'proposeCeasefire', 'demandSurrender', 'breakAlliance',
       ];
       if (needsSelect.includes(cmdType)) {
@@ -408,8 +463,9 @@ export async function runStrategicTurn(): Promise<boolean> {
     }
   }
 
-  // Safety: if we hit max actions without endTurn, force it
-  if (useGameStore.getState().phase === 'playing') {
+  // Safety: if we hit max actions without endTurn, force it.
+  // But if user pressed stop, leave the turn active for manual control.
+  if (!_shouldStop && useGameStore.getState().phase === 'playing') {
     llmLog('action', 'Max actions reached, ending turn');
     rtkApi.endTurn();
     await sleep(300);
@@ -578,12 +634,19 @@ async function runBattlePhase(): Promise<void> {
     let action: Record<string, unknown>;
     try {
       setLLMStatus('thinking', `Battle: ${activeUnit.officer.name} deciding...`);
-      const response = await chatCompletion(messages, { temperature: 0.5 });
+      _abortController = new AbortController();
+      const response = await chatCompletion(messages, { temperature: 0.5, signal: _abortController.signal });
+      _abortController = null;
       const parsed = parseJsonResponse<BattleResponse>(response.text);
       action = parsed.action;
       llmLog('battle', `${activeUnit.officer.name}: ${parsed.thinking}`);
       setLLMStatus('executing', `Battle: ${activeUnit.officer.name} ${(action.action as string) ?? ''}`);
     } catch (e) {
+      _abortController = null;
+      if (_shouldStop) {
+        llmLog('decision', 'Agent stopped during battle API call');
+        return;
+      }
       const errMsg = e instanceof Error ? e.message : String(e);
       llmLog('error', `Battle LLM error, defaulting to wait: ${errMsg}`);
       setLLMStatus('error', `Battle API error: ${errMsg}`);
