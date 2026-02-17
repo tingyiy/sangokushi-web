@@ -578,5 +578,127 @@ describe('Zero-Troop Overrun (no battle screen)', () => {
       expect(logs).not.toContainEqual(expect.stringContaining('勢力已被消滅'));
       expect(logs).not.toContainEqual(expect.stringContaining('has been destroyed'));
     });
+
+    it('Bug #43: unaffiliated officers do NOT defend null-faction city — auto-capture', () => {
+      // When a city has factionId: null (abandoned/unowned) but has unaffiliated officers
+      // with troops, the city should STILL be auto-captured. Unaffiliated officers are
+      // free agents and do not defend.
+      const srcCity = makeCity({ id: 1, name: '北海', factionId: 1, troops: 10000, food: 50000, adjacentCityIds: [2] });
+      const targetCity = makeCity({ id: 2, name: '下邳', factionId: null, troops: 4000, adjacentCityIds: [1] });
+
+      const attacker = makeOfficer({ id: 100, name: '關羽', factionId: 1, cityId: 1, isGovernor: true, war: 98 });
+      const stayBehind = makeOfficer({ id: 169, name: '劉備', factionId: 1, cityId: 1 });
+      // Unaffiliated officers in the target city — should NOT defend
+      const unaffiliated1 = makeOfficer({ id: 355, name: '嚴顏', factionId: null, cityId: 2 });
+      const unaffiliated2 = makeOfficer({ id: 8, name: '蔡中', factionId: null, cityId: 2 });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, targetCity],
+        officers: [attacker, stayBehind, unaffiliated1, unaffiliated2],
+        factions: [
+          makeFaction({ id: 1, name: '劉備', rulerId: 169, isPlayer: true }),
+        ],
+        playerFaction: makeFaction({ id: 1, name: '劉備', rulerId: 169, isPlayer: true }),
+        battleFormation: { officerIds: [100], unitTypes: ['infantry'], troops: [4000], food: 40000 },
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().startBattle(2);
+
+      const state = useGameStore.getState();
+
+      // Phase should remain 'playing' — no battle screen, auto-capture
+      expect(state.phase).toBe('playing');
+
+      // Target city should be captured by player
+      const captured = state.cities.find(c => c.id === 2);
+      expect(captured?.factionId).toBe(1);
+
+      // Unaffiliated officers should remain unaffiliated and still in the city
+      const yanYan = state.officers.find(o => o.id === 355);
+      const caiZhong = state.officers.find(o => o.id === 8);
+      expect(yanYan?.factionId).toBeNull();
+      expect(yanYan?.cityId).toBe(2);
+      expect(caiZhong?.factionId).toBeNull();
+      expect(caiZhong?.cityId).toBe(2);
+    });
+
+    it('Bug #43: AI aiStartBattle also auto-captures null-faction city with unaffiliated officers', () => {
+      const srcCity = makeCity({ id: 1, name: '鄴', factionId: 2, troops: 15000, food: 50000, adjacentCityIds: [2] });
+      const targetCity = makeCity({ id: 2, name: '濮陽', factionId: null, troops: 3000, adjacentCityIds: [1] });
+
+      const aiAttacker = makeOfficer({ id: 50, name: '袁紹', factionId: 2, cityId: 1, isGovernor: true });
+      const aiStay = makeOfficer({ id: 51, name: '審配', factionId: 2, cityId: 1 });
+      const unaffiliated = makeOfficer({ id: 90, name: '張任', factionId: null, cityId: 2 });
+
+      useGameStore.setState({
+        phase: 'playing',
+        selectedCityId: 1,
+        cities: [srcCity, targetCity],
+        officers: [aiAttacker, aiStay, unaffiliated],
+        factions: [
+          makeFaction({ id: 2, name: '袁紹', rulerId: 50 }),
+        ],
+        playerFaction: null,
+        log: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().aiStartBattle(1, 2);
+
+      const state = useGameStore.getState();
+
+      // Phase should remain 'playing' — auto-capture, no battle
+      expect(state.phase).toBe('playing');
+
+      // City should be captured by AI
+      const captured = state.cities.find(c => c.id === 2);
+      expect(captured?.factionId).toBe(2);
+
+      // Unaffiliated officer stays unaffiliated
+      const zhangRen = state.officers.find(o => o.id === 90);
+      expect(zhangRen?.factionId).toBeNull();
+      expect(zhangRen?.cityId).toBe(2);
+    });
+
+    it('Bug #45: AI auto-capture of null-faction city does NOT produce war log with "?" defender', () => {
+      const srcCity = makeCity({ id: 1, name: '陳留', factionId: 1, troops: 20000, food: 80000, adjacentCityIds: [2] });
+      const targetCity = makeCity({ id: 2, name: '許昌', factionId: null, troops: 0, adjacentCityIds: [1] });
+
+      const attacker1 = makeOfficer({ id: 11, name: '曹操', factionId: 1, cityId: 1, isGovernor: true });
+      const attacker2 = makeOfficer({ id: 12, name: '夏侯惇', factionId: 1, cityId: 1 });
+
+      useGameStore.setState({
+        phase: 'playing',
+        year: 189, month: 7,
+        selectedCityId: 1,
+        cities: [srcCity, targetCity],
+        officers: [attacker1, attacker2],
+        factions: [
+          makeFaction({ id: 1, name: '曹操', rulerId: 11 }),
+        ],
+        playerFaction: null,
+        log: [],
+        warLog: [],
+        battleResolved: false,
+      });
+
+      useGameStore.getState().aiStartBattle(1, 2);
+
+      const state = useGameStore.getState();
+
+      // City should be captured
+      expect(state.cities.find(c => c.id === 2)?.factionId).toBe(1);
+
+      // War log should NOT contain an entry for null-faction city capture
+      expect(state.warLog.length).toBe(0);
+
+      // Log should contain the capture message, not an overrun/battle message
+      const logText = state.log.join(' ');
+      expect(logText).toContain('許昌');
+    });
   });
 });

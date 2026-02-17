@@ -879,16 +879,17 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
     ];
 
-    // Siege defender sortie decision: only move through gates if we have troop advantage.
-    // Otherwise stay inside walls and let attacker waste time breaking gates.
+    // Siege defender sortie decision: RTK IV defenders almost never leave the walls.
+    // Staying behind walls forces the attacker to waste time breaking gates and risks
+    // losing on the 30-day time limit. Only sortie with overwhelming troop advantage.
     const isDefenderUnit = state.isSiege && activeUnit.factionId === state.defenderId;
     let shouldSortie = true;
     if (isDefenderUnit) {
       const allyTroops = state.units.filter(u => u.factionId === activeUnit.factionId && u.troops > 0 && u.status !== 'routed')
         .reduce((sum, u) => sum + u.troops, 0);
       const enemyTroops = enemies.reduce((sum, u) => sum + u.troops, 0);
-      // Only sortie if defender has >= 80% of attacker troops
-      shouldSortie = allyTroops >= enemyTroops * 0.8;
+      // Only sortie if defender has >= 2x attacker troops (overwhelming advantage)
+      shouldSortie = allyTroops >= enemyTroops * 2;
     }
 
     let bestHex = { q: activeUnit.x, r: activeUnit.y };

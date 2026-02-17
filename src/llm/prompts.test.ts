@@ -12,7 +12,7 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { SYSTEM_PROMPT_STRATEGIC, SYSTEM_PROMPT_BATTLE, buildQuickStats } from './prompts';
+import { SYSTEM_PROMPT_STRATEGIC, SYSTEM_PROMPT_BATTLE, buildQuickStats, buildStrategicContext } from './prompts';
 import { useGameStore } from '../store/gameStore';
 import type { RTK4Skill } from '../types';
 
@@ -152,5 +152,157 @@ describe('LLM quick stats content (Gap #1)', () => {
     expect(stats).toContain('Gold:5000');
     expect(stats).toContain('Food:8000');
     expect(stats).toContain('Troops:2000');
+  });
+});
+
+describe('LLM strategic context: revealed enemy cities', () => {
+  test('buildStrategicContext includes REVEALED ENEMY CITIES section for spied cities', () => {
+    useGameStore.setState({
+      phase: 'playing',
+      year: 190, month: 3,
+      playerFaction: { id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: { 2: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      cities: [
+        {
+          id: 1, name: 'MyCity', x: 0, y: 0, factionId: 1, population: 10000,
+          gold: 5000, food: 8000, commerce: 300, agriculture: 450, defense: 60,
+          troops: 2000, adjacentCityIds: [2],
+          floodControl: 20, technology: 30, peopleLoyalty: 70, morale: 75, training: 55,
+          crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+        },
+        {
+          id: 2, name: 'EnemyCity', x: 10, y: 10, factionId: 2, population: 20000,
+          gold: 9000, food: 15000, commerce: 400, agriculture: 500, defense: 80,
+          troops: 8000, adjacentCityIds: [1],
+          floodControl: 30, technology: 40, peopleLoyalty: 60, morale: 70, training: 65,
+          crossbows: 100, warHorses: 50, batteringRams: 10, catapults: 5, taxRate: 'medium' as const,
+        },
+      ],
+      officers: [
+        {
+          id: 1, name: 'MyOff', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+          skills: [] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 230, treasureId: null,
+          factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: true,
+          rank: 'common' as const, relationships: [],
+        },
+        {
+          id: 2, name: 'EnemyOff', leadership: 90, war: 85, intelligence: 70, politics: 60, charisma: 75,
+          skills: ['firePlot'] as RTK4Skill[], portraitId: 2, birthYear: 155, deathYear: 220, treasureId: null,
+          factionId: 2, cityId: 2, acted: false, loyalty: 100, isGovernor: true,
+          rank: 'governor' as const, relationships: [],
+        },
+      ],
+      factions: [
+        { id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: { 2: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+        { id: 2, name: 'Enemy', rulerId: 2, color: '#00f', isPlayer: false, relations: { 1: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      ],
+      // City 2 is revealed (spied)
+      revealedCities: { 2: { untilYear: 191, untilMonth: 1 } },
+      warLog: [],
+      pendingEvents: [],
+      log: [],
+    });
+
+    const context = buildStrategicContext();
+
+    // Should contain the revealed section
+    expect(context).toContain('REVEALED ENEMY CITIES');
+    expect(context).toContain('EnemyCity');
+    expect(context).toContain('Troops: 8000');
+    expect(context).toContain('Gold: 9000');
+    expect(context).toContain('EnemyOff');
+    expect(context).toContain('L=90');
+    expect(context).toContain('firePlot');
+  });
+
+  test('buildStrategicContext does NOT show unrevealed enemy cities', () => {
+    useGameStore.setState({
+      phase: 'playing',
+      year: 190, month: 3,
+      playerFaction: { id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: { 2: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      cities: [
+        {
+          id: 1, name: 'MyCity', x: 0, y: 0, factionId: 1, population: 10000,
+          gold: 5000, food: 8000, commerce: 300, agriculture: 450, defense: 60,
+          troops: 2000, adjacentCityIds: [2],
+          floodControl: 20, technology: 30, peopleLoyalty: 70, morale: 75, training: 55,
+          crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+        },
+        {
+          id: 2, name: 'SecretCity', x: 10, y: 10, factionId: 2, population: 20000,
+          gold: 9000, food: 15000, commerce: 400, agriculture: 500, defense: 80,
+          troops: 8000, adjacentCityIds: [1],
+          floodControl: 30, technology: 40, peopleLoyalty: 60, morale: 70, training: 65,
+          crossbows: 100, warHorses: 50, batteringRams: 10, catapults: 5, taxRate: 'medium' as const,
+        },
+      ],
+      officers: [
+        {
+          id: 1, name: 'MyOff', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+          skills: [] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 230, treasureId: null,
+          factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: true,
+          rank: 'common' as const, relationships: [],
+        },
+      ],
+      factions: [
+        { id: 1, name: 'T', rulerId: 1, color: '#f00', isPlayer: true, relations: { 2: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+        { id: 2, name: 'Enemy', rulerId: 2, color: '#00f', isPlayer: false, relations: { 1: 80 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      ],
+      // NOT revealed
+      revealedCities: {},
+      warLog: [],
+      pendingEvents: [],
+      log: [],
+    });
+
+    const context = buildStrategicContext();
+
+    // Should NOT show revealed section or enemy troop details
+    expect(context).not.toContain('REVEALED ENEMY CITIES');
+    expect(context).not.toContain('Troops: 8000');
+    expect(context).not.toContain('Gold: 9000');
+  });
+});
+
+describe('LLM strategic context: war history', () => {
+  test('buildStrategicContext includes WAR HISTORY section from warLog', () => {
+    useGameStore.setState({
+      phase: 'playing',
+      year: 190, month: 5,
+      playerFaction: { id: 1, name: 'Liu', rulerId: 1, color: '#f00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      cities: [{
+        id: 1, name: 'C', x: 0, y: 0, factionId: 1, population: 10000,
+        gold: 5000, food: 8000, commerce: 300, agriculture: 450, defense: 60,
+        troops: 2000, adjacentCityIds: [],
+        floodControl: 20, technology: 30, peopleLoyalty: 70, morale: 75, training: 55,
+        crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const,
+      }],
+      officers: [{
+        id: 1, name: 'O', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
+        skills: [] as RTK4Skill[], portraitId: 1, birthYear: 160, deathYear: 230, treasureId: null,
+        factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: true,
+        rank: 'common' as const, relationships: [],
+      }],
+      factions: [
+        { id: 1, name: 'Liu', rulerId: 1, color: '#f00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
+      ],
+      warLog: [
+        { year: 190, month: 2, attackerFaction: '袁紹', attackerFactionId: 2, defenderFaction: '曹操', defenderFactionId: 3, city: '鄴', cityId: 5, attackerWon: true, type: 'battle' },
+        { year: 190, month: 3, attackerFaction: '曹操', attackerFactionId: 3, defenderFaction: 'Liu', defenderFactionId: 1, city: '平原', cityId: 6, attackerWon: false, type: 'battle' },
+      ],
+      revealedCities: {},
+      pendingEvents: [],
+      log: [],
+    });
+
+    const context = buildStrategicContext();
+
+    expect(context).toContain('WAR HISTORY');
+    // AI vs AI war
+    expect(context).toContain('袁紹 attacked 曹操 at 鄴');
+    expect(context).toContain('袁紹 captured 鄴');
+    // Attack on us (★ marker for involvement)
+    expect(context).toContain('曹操 attacked Liu at 平原');
+    expect(context).toContain('Liu repelled the attack');
+    expect(context).toContain('★');
   });
 });

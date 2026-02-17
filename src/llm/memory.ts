@@ -41,6 +41,47 @@ export interface BattleEntry {
   actions: ActionRecord[];
   /** Battle outcome */
   outcome?: string;
+  /** Siege or field battle */
+  type?: 'siege' | 'field';
+  /** How many days the battle lasted */
+  days?: number;
+  /** Reason the battle ended: commander killed, all units eliminated, rout, time limit, retreat */
+  outcomeReason?: string;
+  /** Our troops at start and end */
+  ourTroopsStart?: number;
+  ourTroopsEnd?: number;
+  /** Enemy troops at start and end */
+  enemyTroopsStart?: number;
+  enemyTroopsEnd?: number;
+  /** Officers we lost (captured/fled) */
+  officersLost?: string[];
+  /** Enemy officers we captured */
+  officersCaptured?: string[];
+  /** Our officers that participated */
+  ourOfficers?: string[];
+  /** Enemy officers that participated */
+  enemyOfficers?: string[];
+}
+
+/** Permanent record of a war/diplomatic event — never pruned */
+export interface WarRecord {
+  /** When it happened */
+  year: number;
+  month: number;
+  /** Who initiated the attack */
+  aggressorFaction: string;
+  /** Who was attacked */
+  defenderFaction: string;
+  /** City that was attacked */
+  city: string;
+  /** Did the aggressor win? */
+  aggressorWon: boolean;
+  /** Was our faction the attacker? */
+  weAttacked: boolean;
+  /** Was our faction the defender? */
+  weWereAttacked: boolean;
+  /** Brief summary */
+  summary: string;
 }
 
 export interface AgentMemory {
@@ -52,6 +93,8 @@ export interface AgentMemory {
   currentBattle: BattleEntry | null;
   /** Completed battles (kept for context) */
   battleHistory: BattleEntry[];
+  /** Permanent war/diplomatic history — never pruned, shapes foreign policy */
+  warRecords: WarRecord[];
 }
 
 // ── Constants ───────────────────────────────────────────
@@ -70,6 +113,7 @@ let memory: AgentMemory = {
   strategyNotes: '',
   currentBattle: null,
   battleHistory: [],
+  warRecords: [],
 };
 
 // ── Accessors ───────────────────────────────────────────
@@ -84,6 +128,7 @@ export function resetMemory(): void {
     strategyNotes: '',
     currentBattle: null,
     battleHistory: [],
+    warRecords: [],
   };
 }
 
@@ -94,6 +139,7 @@ export function restoreMemory(data: Partial<AgentMemory>): void {
     strategyNotes: data.strategyNotes ?? '',
     currentBattle: data.currentBattle ?? null,
     battleHistory: data.battleHistory ?? [],
+    warRecords: data.warRecords ?? [],
   };
 }
 
@@ -151,6 +197,22 @@ export function startBattle(city: string): void {
   memory.currentBattle = { city, actions: [] };
 }
 
+/** Record initial battle state (troop counts, officers, battle type) */
+export function recordBattleStart(data: {
+  type: 'siege' | 'field';
+  ourOfficers: string[];
+  enemyOfficers: string[];
+  ourTroops: number;
+  enemyTroops: number;
+}): void {
+  if (!memory.currentBattle) return;
+  memory.currentBattle.type = data.type;
+  memory.currentBattle.ourOfficers = data.ourOfficers;
+  memory.currentBattle.enemyOfficers = data.enemyOfficers;
+  memory.currentBattle.ourTroopsStart = data.ourTroops;
+  memory.currentBattle.enemyTroopsStart = data.enemyTroops;
+}
+
 /** Record an action during battle */
 export function recordBattleAction(action: string, reasoning: string, result: string): void {
   if (!memory.currentBattle) return;
@@ -163,14 +225,36 @@ export function recordBattleAction(action: string, reasoning: string, result: st
 }
 
 /** End the current battle and archive it */
-export function endBattle(outcome: string): void {
+export function endBattle(outcome: string, details?: {
+  days?: number;
+  outcomeReason?: string;
+  ourTroopsEnd?: number;
+  enemyTroopsEnd?: number;
+  officersLost?: string[];
+  officersCaptured?: string[];
+}): void {
   if (!memory.currentBattle) return;
   memory.currentBattle.outcome = outcome;
+  if (details) {
+    memory.currentBattle.days = details.days;
+    memory.currentBattle.outcomeReason = details.outcomeReason;
+    memory.currentBattle.ourTroopsEnd = details.ourTroopsEnd;
+    memory.currentBattle.enemyTroopsEnd = details.enemyTroopsEnd;
+    memory.currentBattle.officersLost = details.officersLost;
+    memory.currentBattle.officersCaptured = details.officersCaptured;
+  }
   memory.battleHistory.unshift(memory.currentBattle);
   if (memory.battleHistory.length > MAX_BATTLE_HISTORY) {
     memory.battleHistory = memory.battleHistory.slice(0, MAX_BATTLE_HISTORY);
   }
   memory.currentBattle = null;
+}
+
+// ── War Records (permanent diplomatic memory) ───────────
+
+/** Record a war event — never pruned, shapes long-term foreign policy */
+export function recordWar(record: WarRecord): void {
+  memory.warRecords.push(record);
 }
 
 // ── Serialization for LLM context ───────────────────────
@@ -260,9 +344,56 @@ export function formatMemoryForPrompt(): string {
 
   // Recent battle outcomes
   if (memory.battleHistory.length > 0) {
-    parts.push('=== PAST BATTLES ===');
+    parts.push('=== PAST BATTLES (戰報) ===');
     for (const b of memory.battleHistory.slice(0, 3)) {
-      parts.push(`  ${b.city}: ${b.outcome ?? 'unknown'} (${b.actions.length} actions)`);
+      const typeStr = b.type === 'siege' ? 'Siege' : b.type === 'field' ? 'Field' : '';
+      const daysStr = b.days ? `Day ${b.days}` : '';
+      const header = [b.city, b.outcome, typeStr, daysStr].filter(Boolean).join(' | ');
+      parts.push(`  [${header}]`);
+      if (b.outcomeReason) {
+        parts.push(`    Reason: ${b.outcomeReason}`);
+      }
+      if (b.ourOfficers?.length) {
+        parts.push(`    Our officers: ${b.ourOfficers.join(', ')}`);
+      }
+      if (b.enemyOfficers?.length) {
+        parts.push(`    Enemy officers: ${b.enemyOfficers.join(', ')}`);
+      }
+      if (b.ourTroopsStart != null && b.ourTroopsEnd != null) {
+        const loss = b.ourTroopsStart - b.ourTroopsEnd;
+        parts.push(`    Our troops: ${b.ourTroopsStart} → ${b.ourTroopsEnd} (lost ${loss})`);
+      }
+      if (b.enemyTroopsStart != null && b.enemyTroopsEnd != null) {
+        const loss = b.enemyTroopsStart - b.enemyTroopsEnd;
+        parts.push(`    Enemy troops: ${b.enemyTroopsStart} → ${b.enemyTroopsEnd} (lost ${loss})`);
+      }
+      if (b.officersCaptured?.length) {
+        parts.push(`    Captured: ${b.officersCaptured.join(', ')}`);
+      }
+      if (b.officersLost?.length) {
+        parts.push(`    Lost: ${b.officersLost.join(', ')}`);
+      }
+    }
+    parts.push('');
+  }
+
+  // Permanent war history — shapes long-term foreign policy
+  if (memory.warRecords.length > 0) {
+    parts.push('=== WAR HISTORY (permanent) ===');
+    for (const w of memory.warRecords) {
+      let direction: string;
+      let result: string;
+      if (w.weAttacked) {
+        direction = `We attacked ${w.defenderFaction}`;
+        result = w.aggressorWon ? 'we won' : 'we lost';
+      } else if (w.weWereAttacked) {
+        direction = `⚠ ATTACKED BY ${w.aggressorFaction}`;
+        result = w.aggressorWon ? 'they won' : 'we repelled them';
+      } else {
+        direction = `${w.aggressorFaction} attacked ${w.defenderFaction}`;
+        result = w.aggressorWon ? `${w.aggressorFaction} won` : `${w.defenderFaction} repelled`;
+      }
+      parts.push(`  ${w.year}/${w.month}: ${direction} at ${w.city} — ${result}. ${w.summary}`);
     }
     parts.push('');
   }

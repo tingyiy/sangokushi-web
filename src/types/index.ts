@@ -214,6 +214,25 @@ export interface TurnCommand {
   execute: () => void;
 }
 
+/** Public war record — visible to all factions (like a news bulletin) */
+export interface WarLogEntry {
+  year: number;
+  month: number;
+  /** Faction that initiated the attack */
+  attackerFaction: string;
+  attackerFactionId: number;
+  /** Faction that was attacked */
+  defenderFaction: string;
+  defenderFactionId: number;
+  /** City that was attacked */
+  city: string;
+  cityId: number;
+  /** Did the attacker win? */
+  attackerWon: boolean;
+  /** Brief description (e.g., "overrun", "battle", "auto-capture") */
+  type: 'auto-capture' | 'overrun' | 'battle';
+}
+
 /** 遊戲設定 (Game Settings) - Phase 0.5 */
 export interface GameSettings {
   /** 戰爭方式 - watch: 觀看戰鬥, skip: 跳過戰鬥 */

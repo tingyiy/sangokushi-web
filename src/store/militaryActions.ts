@@ -271,7 +271,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         ? Math.min(state.battleFormation.food, city.food)
         : Math.min(defaultFood, city.food);
 
-      const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
+      // Unaffiliated officers do NOT defend unowned cities — only faction-affiliated officers defend.
+      const defenderOfficers = targetCity.factionId !== null
+        ? state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5)
+        : [];
 
       // ── Auto-capture undefended city ──
       // If the target city has NO defending officers, skip the battle and capture it directly.
@@ -312,6 +315,16 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           if (promoted) set({ officers });
         }
         get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
+        // Record war log (public knowledge)
+        if (targetCity.factionId !== null) {
+          get().addWarLog({
+            year: state.year, month: state.month,
+            attackerFaction: state.playerFaction!.name, attackerFactionId: state.playerFaction!.id,
+            defenderFaction: state.factions.find(f => f.id === targetCity.factionId)?.name ?? '?', defenderFactionId: targetCity.factionId,
+            city: targetCity.name, cityId: targetCityId,
+            attackerWon: true, type: 'auto-capture',
+          });
+        }
         // Check if the losing faction has no more cities (skip for truly empty / unaffiliated cities)
         if (targetCity.factionId !== null) {
           const loserFactionId = targetCity.factionId;
@@ -465,7 +478,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       const aiAttackerFood = Math.min(totalTroopsToDeploy * 10, city.food);
       const aiDefenderFood = targetCity.food;
 
-      const defenderOfficers = state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5);
+      // Unaffiliated officers do NOT defend unowned cities
+      const defenderOfficers = targetCity.factionId !== null
+        ? state.officers.filter(o => o.cityId === targetCityId && o.factionId === targetCity.factionId).slice(0, 5)
+        : [];
       const aiDefenderFaction = state.factions.find(f => f.id === targetCity.factionId);
       const aiDefenderRulerId = aiDefenderFaction?.rulerId;
       const defenderTroopsPerOfficer = defenderOfficers.map(off => {
@@ -474,6 +490,66 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return Math.min(equalShare, maxForOfficer);
       });
       const defenderTroopsDeployed = defenderTroopsPerOfficer.reduce((sum, t) => sum + t, 0);
+
+      // ── Auto-capture: target has NO defending officers (empty/abandoned city) ──
+      if (defenderOfficers.length === 0) {
+        set({
+          cities: state.cities.map(c => {
+            if (c.id === city.id) return {
+              ...c,
+              troops: Math.max(0, c.troops - totalTroopsToDeploy),
+              food: Math.max(0, c.food - aiAttackerFood),
+              crossbows: c.crossbows - crossbowsUsed,
+              warHorses: c.warHorses - warHorsesUsed,
+            };
+            if (c.id === targetCityId) return {
+              ...c,
+              factionId: city.factionId,
+              troops: totalTroopsToDeploy,
+            };
+            return c;
+          }),
+          officers: state.officers.map(o =>
+            attackerOfficers.some(ao => ao.id === o.id)
+              ? { ...o, acted: true, cityId: targetCityId, isGovernor: false }
+              : o
+          ),
+        });
+        // Make the first attacker officer the new governor
+        set(s => ({
+          officers: s.officers.map(o =>
+            o.id === attackerOfficers[0].id ? { ...o, isGovernor: true } : o
+          )
+        }));
+        // Auto-assign governor for the source city if the governor left
+        {
+          const officers = get().officers.slice();
+          const promoted = autoAssignGovernorInPlace(officers, city.id, city.factionId!, state.factions);
+          if (promoted) set({ officers });
+        }
+        const aiFaction = state.factions.find(f => f.id === city.factionId);
+        get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(aiFaction?.name ?? '') }));
+        // Record war log only if the city belonged to another faction (not null)
+        if (targetCity.factionId !== null) {
+          get().addWarLog({
+            year: state.year, month: state.month,
+            attackerFaction: aiFaction?.name ?? '?', attackerFactionId: city.factionId!,
+            defenderFaction: state.factions.find(f => f.id === targetCity.factionId)?.name ?? '?', defenderFactionId: targetCity.factionId,
+            city: targetCity.name, cityId: targetCityId,
+            attackerWon: true, type: 'auto-capture',
+          });
+        }
+        // Check if the losing faction has no more cities
+        if (targetCity.factionId !== null) {
+          const loserFactionId = targetCity.factionId;
+          const remainingCities = get().cities.filter(c => c.factionId === loserFactionId);
+          if (remainingCities.length === 0) {
+            const loserFaction = state.factions.find(f => f.id === loserFactionId);
+            get().addLog(i18next.t('logs:military.factionDestroyed', { faction: localizedName(loserFaction?.name ?? '') }));
+          }
+        }
+        return;
+      }
 
       // ── Auto-overrun: defenders have officers but 0 troops ──
       // Skip the battle screen. Use resolveBattle for proper flee/capture logic.
@@ -806,6 +882,22 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         const winnerFaction = state.factions.find(f => f.id === winnerFactionId);
         get().addLog(i18next.t('logs:postBattle.cityFallen', { city: localizedName(city.name), faction: localizedName(winnerFaction?.name ?? ''), troops: Math.floor(totalSurvivingTroops * 0.8) }));
       }
+
+      // ── War log: record this battle as public knowledge ──
+      const attackerWon = city.factionId !== winnerFactionId; // City changed hands = attacker won
+      // Determine attacker/defender: the faction that originally owned the city is the defender
+      const defenderFactionId2 = city.factionId ?? loserFactionId;
+      const attackerFactionId2 = defenderFactionId2 === winnerFactionId ? loserFactionId : winnerFactionId;
+      const attackerFactionForLog = state.factions.find(f => f.id === attackerFactionId2);
+      const defenderFactionForLog = state.factions.find(f => f.id === defenderFactionId2);
+      const battleType = loserTotalTroops === 0 ? 'overrun' as const : 'battle' as const;
+      get().addWarLog({
+        year: state.year, month: state.month,
+        attackerFaction: attackerFactionForLog?.name ?? '?', attackerFactionId: attackerFactionId2,
+        defenderFaction: defenderFactionForLog?.name ?? '?', defenderFactionId: defenderFactionId2,
+        city: city.name, cityId: cityId,
+        attackerWon, type: battleType,
+      });
     },
   };
 }

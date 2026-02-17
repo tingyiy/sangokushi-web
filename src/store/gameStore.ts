@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import i18next from 'i18next';
 import { localizedName } from '../i18n/dataNames';
 import { autoAssignGovernorInPlace } from './storeHelpers';
-import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings } from '../types';
+import type { GamePhase, Scenario, Faction, City, Officer, CommandCategory, GameSettings, WarLogEntry } from '../types';
 import type { UnitType } from '../types/battle';
 import type { AIDecision } from '../ai/types';
 
@@ -178,6 +178,8 @@ export interface GameState {
   pendingEvents: import('../types').GameEvent[];
   /** Guard for double-resolution - Phase 3.9 */
   battleResolved: boolean;
+  /** Public war log — all battles between any factions (public knowledge) */
+  warLog: WarLogEntry[];
 
   // ── Core Actions ──
   setPhase: (phase: GamePhase) => void;
@@ -189,6 +191,7 @@ export interface GameState {
   selectCity: (cityId: number | null) => void;
   setActiveCommandCategory: (cat: CommandCategory | null) => void;
   addLog: (message: string) => void;
+  addWarLog: (entry: WarLogEntry) => void;
   popEvent: () => void;
   isCityRevealed: (cityId: number) => boolean;
   /** Returns a fog-gated view of a city. Unrevealed cities have numeric fields set to null. */
@@ -329,6 +332,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   battleFormation: null,
   pendingEvents: [],
   battleResolved: false,
+  warLog: [],
 
   // ── Core Actions ──
   setPhase: (phase) => set({ phase }),
@@ -426,6 +430,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addLog: (message) => set(state => ({
     log: [...state.log.slice(-49), message],
+  })),
+
+  addWarLog: (entry) => set(state => ({
+    warLog: [...state.warLog, entry],
   })),
 
   popEvent: () => set(state => {

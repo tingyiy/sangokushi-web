@@ -870,3 +870,118 @@ describe('resolveBattle - RTK IV Post-Battle Mechanics', () => {
     expect(liu.cityId).toBe(16);
   });
 });
+
+describe('resolveBattle - War Log (public knowledge)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('resolveBattle records war log entry on attacker victory', () => {
+    const cityA = makeCity({ id: 1, name: '平原', factionId: 2, adjacentCityIds: [2] });
+    const cityB = makeCity({ id: 2, name: '北海', factionId: 2, adjacentCityIds: [1] });
+    const defender = makeOfficer({ id: 10, name: '袁紹', factionId: 2, cityId: 1, isGovernor: true });
+    const attacker = makeOfficer({ id: 20, name: '曹操', factionId: 1, cityId: 99 });
+
+    useGameStore.setState({
+      phase: 'playing',
+      year: 190, month: 3,
+      cities: [cityA, cityB],
+      officers: [defender, attacker],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 20, isPlayer: true }),
+        makeFaction({ id: 2, name: '袁紹', rulerId: 10, relations: { 1: 60 } }),
+      ],
+      playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 20, isPlayer: true }),
+      log: [],
+      warLog: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().resolveBattle(
+      1, 2, 1,
+      [
+        { officerId: 20, troops: 5000, factionId: 1, status: 'active' },
+        { officerId: 10, troops: 0, factionId: 2, status: 'active' },
+      ],
+    );
+
+    const warLog = useGameStore.getState().warLog;
+    expect(warLog.length).toBe(1);
+    expect(warLog[0].attackerFactionId).toBe(1);
+    expect(warLog[0].defenderFactionId).toBe(2);
+    expect(warLog[0].attackerWon).toBe(true);
+    expect(warLog[0].city).toBe('平原');
+    expect(warLog[0].year).toBe(190);
+    expect(warLog[0].month).toBe(3);
+  });
+
+  test('resolveBattle records war log entry on defender victory', () => {
+    const cityA = makeCity({ id: 1, name: '鄴', factionId: 2, adjacentCityIds: [] });
+    const defender = makeOfficer({ id: 10, name: '袁紹', factionId: 2, cityId: 1, isGovernor: true });
+    const attacker = makeOfficer({ id: 20, name: '曹操', factionId: 1, cityId: 99 });
+
+    useGameStore.setState({
+      phase: 'playing',
+      year: 191, month: 7,
+      cities: [cityA],
+      officers: [defender, attacker],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 20, isPlayer: true }),
+        makeFaction({ id: 2, name: '袁紹', rulerId: 10, relations: { 1: 60 } }),
+      ],
+      playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 20, isPlayer: true }),
+      log: [],
+      warLog: [],
+      battleResolved: false,
+    });
+
+    // Defender (faction 2) wins — attacker (faction 1) loses
+    useGameStore.getState().resolveBattle(
+      2, 1, 1,
+      [
+        { officerId: 10, troops: 3000, factionId: 2, status: 'active' },
+        { officerId: 20, troops: 0, factionId: 1, status: 'active' },
+      ],
+    );
+
+    const warLog = useGameStore.getState().warLog;
+    expect(warLog.length).toBe(1);
+    expect(warLog[0].attackerWon).toBe(false); // Defender won
+    expect(warLog[0].defenderFactionId).toBe(2); // Defender owned the city
+    expect(warLog[0].type).toBe('overrun'); // 0 troops = overrun
+  });
+
+  test('auto-capture of empty faction city also records war log', () => {
+    const srcCity = makeCity({ id: 1, name: '許昌', factionId: 1, troops: 20000, adjacentCityIds: [2] });
+    const emptyCity = makeCity({ id: 2, name: '洛陽', factionId: 2, troops: 0, adjacentCityIds: [1] });
+
+    const attacker = makeOfficer({ id: 1, name: '曹操', factionId: 1, cityId: 1, isGovernor: true });
+    const stayBehind = makeOfficer({ id: 2, name: '荀彧', factionId: 1, cityId: 1 });
+
+    useGameStore.setState({
+      phase: 'playing',
+      selectedCityId: 1,
+      year: 189, month: 1,
+      cities: [srcCity, emptyCity],
+      officers: [attacker, stayBehind],
+      factions: [
+        makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+        makeFaction({ id: 2, name: '袁紹', rulerId: 99, relations: { 1: 60 } }),
+      ],
+      playerFaction: makeFaction({ id: 1, name: '曹操', rulerId: 1, isPlayer: true }),
+      battleFormation: { officerIds: [1], unitTypes: ['infantry'] },
+      log: [],
+      warLog: [],
+      battleResolved: false,
+    });
+
+    useGameStore.getState().startBattle(2);
+
+    const warLog = useGameStore.getState().warLog;
+    // Auto-capture records war log for faction-owned cities
+    expect(warLog.length).toBe(1);
+    expect(warLog[0].attackerWon).toBe(true);
+    expect(warLog[0].type).toBe('auto-capture');
+    expect(warLog[0].city).toBe('洛陽');
+  });
+});

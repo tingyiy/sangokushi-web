@@ -329,6 +329,31 @@ export function buildStrategicContext(): string {
     parts.push('');
   }
 
+  // ── Revealed enemy cities (spied) — same data a human player sees via CityPanel ──
+  const revealedEnemyCities = state.cities.filter(c =>
+    c.factionId !== null && c.factionId !== pf.id && state.isCityRevealed(c.id)
+  );
+  if (revealedEnemyCities.length > 0) {
+    parts.push('=== REVEALED ENEMY CITIES (spied) ===');
+    for (const city of revealedEnemyCities) {
+      const view = state.getCityView(city.id);
+      if (!view) continue;
+      const fName = view.factionName ?? '?';
+      parts.push(`[${city.name}] id=${city.id} | Faction: ${fName}`);
+      parts.push(`  Gold: ${view.gold} | Food: ${view.food} | Troops: ${view.troops} | Pop: ${view.population}`);
+      parts.push(`  Commerce: ${view.commerce} | Agri: ${view.agriculture} | Defense: ${view.defense} | Tech: ${view.technology}`);
+      parts.push(`  Training: ${view.training} | Morale: ${view.morale}`);
+      if (view.officers.length > 0) {
+        parts.push(`  Officers (${view.officers.length}):`);
+        for (const o of view.officers) {
+          const skillStr = o.skills.length > 0 ? ` skills=[${o.skills.join(',')}]` : '';
+          parts.push(`    ${o.name} id=${o.id} L=${o.leadership}/W=${o.war}/I=${o.intelligence}/P=${o.politics}/C=${o.charisma} rank=${o.rank}${o.isGovernor ? ' [GOV]' : ''}${skillStr}`);
+        }
+      }
+      parts.push('');
+    }
+  }
+
   // World map — public knowledge (which faction owns which city, roads between them)
   parts.push('=== WORLD MAP ===');
 
@@ -370,6 +395,18 @@ export function buildStrategicContext(): string {
     parts.push(`  ${f.name}(id=${f.id}) ruler=${ruler?.name ?? '?'} | ${dipTags} | ${fCities.length} cities`);
   }
   parts.push('');
+
+  // War history — permanent record of all battles (public knowledge)
+  if (state.warLog.length > 0) {
+    parts.push('=== WAR HISTORY (all factions) ===');
+    for (const w of state.warLog) {
+      const result = w.attackerWon ? `${w.attackerFaction} captured ${w.city}` : `${w.defenderFaction} repelled the attack`;
+      const involves = w.attackerFactionId === pf.id || w.defenderFactionId === pf.id;
+      const tag = involves ? ' ★' : '';
+      parts.push(`  ${w.year}/${w.month}: ${w.attackerFaction} attacked ${w.defenderFaction} at ${w.city} (${w.type}) — ${result}${tag}`);
+    }
+    parts.push('');
+  }
 
   // Pending events
   if (state.pendingEvents.length > 0) {
