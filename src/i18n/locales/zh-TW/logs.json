@@ -58,9 +58,13 @@
     "spyEmptyCity": "{{city}} 是一座空城，沒有情報可供刺探。",
     "spyOwnCity": "{{city}} 是我方城市，不能對自己的城市進行間諜活動。",
     "alreadyHostage": "{{name}} 已經是人質了。",
+    "relationsNotGoodEnough": "與 {{faction}} 的關係不夠好，無法召回人質。",
     "alreadyAllied": "我方與 {{faction}} 已經是同盟了。",
     "rankRequirementsNotMet": "{{name}} 不符合{{rank}}的任命條件。",
-    "rankSlotFull": "{{rank}}的名額已滿。"
+    "rankSlotFull": "{{rank}}的名額已滿。",
+    "cannotEnticeRuler": "無法策反君主。",
+    "loyaltyTooHigh": "{{name}} 忠誠度過高，無法策反。",
+    "notAdjacentForEntice": "目標必須在鄰接城市。"
   },
   "domestic": {
     "taxRateChanged": "{{city}} 稅率已變更為 {{rate}}。",
@@ -102,7 +106,10 @@
     "appointGovernor": "任命 {{name}} 為太守。",
     "appointAdvisor": "任命 {{name}} 為軍師。",
     "moveOfficer": "{{name}} 移動到了 {{city}}。",
-    "cityAbandoned": "{{city}} 已被放棄——城中無武將駐守。"
+    "cityAbandoned": "{{city}} 已被放棄——城中無武將駐守。",
+    "enticeSuccess": "{{enticer}} 成功策反 {{officer}}！",
+    "enticeFail": "{{enticer}} 策反 {{officer}} 失敗。",
+    "enticeCityFlip": "{{enticer}} 策反 {{city}} 太守 {{officer}} 成功！{{city}} 全城歸降！"
   },
   "military": {
     "captureEmptyCity": "{{city}} 是一座空城！{{commander}} 率軍佔領了 {{city}}！",
@@ -126,6 +133,16 @@
     "surrenderAccepted": "{{faction}} 向我軍投降了！",
     "surrenderRejected": "{{faction}} 斬釘截鐵地拒絕了投降的要求。",
     "betrayAlliance": "背棄了與 {{faction}} 的同盟！天下人皆感憤慨。",
+    "hostageBoost": "送出人質，與 {{faction}} 的關係改善。",
+    "hostageExecuted": "{{faction}} 處斬了人質 {{officer}}！",
+    "hostageRecalled": "人質 {{officer}} 已從 {{faction}} 召回。",
+    "molePlanted": "派遣 {{officer}} 潛入 {{faction}}。",
+    "moleAccepted": "{{faction}} 接受了 {{officer}} 的投靠。埋伏成功！",
+    "moleDeclined": "{{faction}} 拒絕了 {{officer}}。{{officer}} 已返回。",
+    "moleRecalled": "召回臥底 {{officer}}。",
+    "moleRecallFailed": "{{officer}} 已不在目標勢力中，無法召回。",
+    "moleExposed": "{{officer}} 被 {{faction}} 流放，已返回我方！",
+    "molePlant_action": "埋伏",
     "gift_action": "進行贈呈",
     "alliance_action": "結盟",
     "ceasefire_action": "提議停戰"
@@ -163,6 +180,8 @@
     "recruitSuccess": "{{faction}} 的 {{recruiter}} 成功招攬了 {{officer}}。",
     "powRecruitSuccess": "{{faction}} 成功勸降了戰俘 {{officer}}。",
     "searchFound": "{{recruiter}} 在 {{city}} 發現了在野武將 {{officer}}。",
+    "enticeSuccess": "{{faction}} 的 {{enticer}} 成功策反了 {{officer}}。",
+    "enticeCityFlip": "{{faction}} 的 {{enticer}} 策反 {{city}} 太守成功，全城歸降！",
     "espionageAction": "{{faction}} 對 {{city}} 進行了諜報活動。",
     "rumorAction": "{{faction}} 在 {{city}} 散佈了流言。",
     "rewardOfficer": "主公賜予 {{officer}} 獎金以安撫其心。",
@@ -253,10 +272,28 @@
     "dayLimitReached": "已到第 {{maxDays}} 日，攻方撤退，守方勝利！",
     "dayHeader": "── 第 {{day}} 日 ──",
     "reinforcements": "{{name}} 的援軍抵達戰場！",
+    "moleBetrayal": "{{officer}} 叛變！率 {{troops}} 兵倒戈！",
+    "moleMoraleDrop": "敵軍因叛變士氣大降！",
     "starvation": "{{side}}軍糧盡（第 {{days}} 日）！全軍士氣 -{{penalty}}。",
     "sideAttacker": "攻方",
     "sideDefender": "守方",
     "monthEnd": "── 第三十日，月末休戰，進入戰略階段。 ──",
     "battleResume": "── 新月開始，戰鬥繼續！ ──"
+  },
+  "duel": {
+    "challenge": "{{p1}} 向 {{city}} 的 {{p2}} 發起了挑戰！",
+    "start": "戰鬥開始！",
+    "battleDuelStart": "{{p1}} 與 {{p2}} 展開了生死決鬥！",
+    "flee": "{{name}} 逃跑了！",
+    "attackHit": "{{name}} 使用 {{type}}，造成了 {{dmg}} 點傷害！",
+    "attackMiss": "{{name}} 的攻擊落空了！",
+    "typeAttack": "攻擊",
+    "typeHeavy": "大喝",
+    "defend": "{{name}} 採取了防禦姿態。",
+    "defendEffect": "（防禦生效！傷害減半）",
+    "defeated": "{{name}} 被擊敗了！",
+    "fallen": "{{name}} 落馬了...",
+    "counterHit": "{{name}} 還擊！造成了 {{dmg}} 點傷害！",
+    "counterMiss": "{{name}} 的攻擊被閃避了！"
   }
 }

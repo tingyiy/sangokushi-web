@@ -498,6 +498,9 @@ function showHelp() {
   log(t('help.ceasefire'));
   log(t('help.surrender'));
   log(t('help.hostage'));
+  log('  recall <officerName>           - Recall a hostage (hostility ≤ 20)');
+  log('  mole <officerName> <factionName> - Plant mole (1000g, espionage skill)');
+  log('  recallmole <officerName>       - Recall a planted mole');
   log('');
   log(t('help.strategyHeader'));
   log(t('help.spy'));
@@ -875,13 +878,17 @@ function handleCommand(input: string, factionId: number): boolean {
       return false;
     }
 
-    case 'search': {
-      const city = findCityByIdOrName(parts[1] || '');
-      if (!city) { log(t('error.cityNotFound')); return false; }
-      const searcherName = parts[2] || '';
-      const searcher = searcherName ? findOfficerByName(searcherName, factionId) : undefined;
-      game.getState().selectCity(city.id);
-      game.getState().searchOfficer(city.id, searcher?.id);
+    case 'entice': {
+      const name = parts[1] || '';
+      // Find the target officer in any enemy faction
+      const target = game.getState().officers.find(o =>
+        o.name.toLowerCase().includes(name.toLowerCase()) &&
+        o.factionId !== null && o.factionId !== -1 && o.factionId !== factionId
+      );
+      if (!target) { log('Target officer not found or not an enemy.'); return false; }
+      const enticerName = parts[2] || '';
+      const enticer = enticerName ? findOfficerByName(enticerName, factionId) : undefined;
+      game.getState().enticeOfficer(target.id, enticer?.id);
       return false;
     }
 
@@ -1250,6 +1257,37 @@ function handleCommand(input: string, factionId: number): boolean {
       const targetFaction = state.factions.find(f => f.name === factionName);
       if (!officer || !targetFaction) { log(t('error.hostageUsage')); return false; }
       game.getState().exchangeHostage(officer.id, targetFaction.id);
+      return false;
+    }
+
+    case 'recall': {
+      const recallOfficerName = parts[1] || '';
+      const recallOfficer = findOfficerByName(recallOfficerName, factionId);
+      if (!recallOfficer) { log('Usage: recall <officerName>'); return false; }
+      game.getState().recallHostage(recallOfficer.id);
+      return false;
+    }
+
+    case 'mole': {
+      const moleOfficerName = parts[1] || '';
+      const moleFactionName = parts[2] || '';
+      const moleOfficer = findOfficerByName(moleOfficerName, factionId);
+      const moleTargetFaction = state.factions.find(f => f.name === moleFactionName);
+      if (!moleOfficer || !moleTargetFaction) { log('Usage: mole <officerName> <factionName>'); return false; }
+      // Select a city that owns the officer
+      const moleCity = state.cities.find(c => c.id === moleOfficer.cityId && c.factionId === factionId);
+      if (moleCity) game.getState().selectCity(moleCity.id);
+      game.getState().plantMole(moleTargetFaction.id, moleOfficer.id);
+      return false;
+    }
+
+    case 'recallmole': {
+      const recallMoleName = parts[1] || '';
+      const recallMoleOfficer = state.officers.find(o =>
+        o.name === recallMoleName && o.moleForFactionId === factionId
+      );
+      if (!recallMoleOfficer) { log('Usage: recallmole <officerName>'); return false; }
+      game.getState().recallMole(recallMoleOfficer.id);
       return false;
     }
 

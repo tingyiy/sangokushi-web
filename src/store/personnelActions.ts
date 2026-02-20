@@ -9,7 +9,7 @@ type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameSta
 type Get = () => GameState;
 
 export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
-  'recruitOfficer' | 'searchOfficer' | 'recruitPOW' | 'rewardOfficer' |
+  'recruitOfficer' | 'enticeOfficer' | 'recruitPOW' | 'rewardOfficer' |
   'executeOfficer' | 'dismissOfficer' | 'appointGovernor' | 'appointAdvisor' |
   'draftTroops' | 'transport' | 'transferOfficer'
 > {
@@ -68,69 +68,116 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       }
     },
 
-    searchOfficer: (cityId, officerId) => {
+    enticeOfficer: (targetOfficerId, enticerId) => {
       const state = get();
-      const city = state.cities.find(c => c.id === cityId);
-      if (!city || city.factionId !== state.playerFaction?.id) return;
+      const playerFaction = state.playerFaction;
+      if (!playerFaction) return;
 
-      let recruiter: Officer | undefined;
-      if (officerId) {
-        recruiter = state.officers.find(o => o.id === officerId && o.cityId === cityId && o.factionId === state.playerFaction?.id);
+      const target = state.officers.find(o => o.id === targetOfficerId);
+      if (!target || target.factionId === null || target.factionId === -1 || target.factionId === playerFaction.id) return;
+
+      // Cannot entice a ruler
+      const targetFaction = state.factions.find(f => f.id === target.factionId);
+      if (targetFaction && targetFaction.rulerId === target.id) {
+        get().addLog(i18next.t('logs:error.cannotEnticeRuler'));
+        return;
+      }
+
+      // Target must be in an adjacent city to one of the player's cities
+      const targetCity = state.cities.find(c => c.id === target.cityId);
+      if (!targetCity) return;
+      const playerCities = state.cities.filter(c => c.factionId === playerFaction.id);
+      const adjacentPlayerCity = playerCities.find(pc => pc.adjacentCityIds.includes(targetCity.id));
+      if (!adjacentPlayerCity) {
+        get().addLog(i18next.t('logs:error.notAdjacentForEntice'));
+        return;
+      }
+
+      // Find the enticer in the adjacent player city
+      let enticer: Officer | undefined;
+      if (enticerId) {
+        enticer = state.officers.find(o => o.id === enticerId && o.cityId === adjacentPlayerCity.id && o.factionId === playerFaction.id);
       } else {
-        const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id && !o.acted);
-        if (recruiters.length === 0) {
+        const candidates = state.officers.filter(o => o.cityId === adjacentPlayerCity.id && o.factionId === playerFaction.id && !o.acted);
+        if (candidates.length === 0) {
           get().addLog(i18next.t('logs:error.noOfficerAvailable'));
           return;
         }
-        recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
+        enticer = candidates.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
       }
 
-      if (!recruiter) {
-        get().addLog(officerId ? i18next.t('logs:error.officerNotInCityOrFaction') : i18next.t('logs:error.noOfficerAvailable'));
+      if (!enticer) {
+        get().addLog(enticerId ? i18next.t('logs:error.officerNotInCityOrFaction') : i18next.t('logs:error.noOfficerAvailable'));
         return;
       }
 
-      if (recruiter.acted) {
-        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(recruiter.name) }));
+      if (enticer.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(enticer.name) }));
         return;
       }
 
-      const unaffiliated = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
-
-      // No unaffiliated officers in city — reject without consuming action
-      if (unaffiliated.length === 0) {
-        get().addLog(i18next.t('logs:personnel.searchNoUnaffiliated', { city: localizedName(city.name) }));
-        return;
-      }
-
-      let found = false;
-      let foundOfficer: Officer | null = null;
-
-      for (const off of unaffiliated) {
-        let chance = 30 + recruiter.charisma / 2;
-        if (hasSkill(recruiter, 'talent')) chance += 15;
-        if (Math.random() * 100 < chance) {
-          foundOfficer = off;
-          found = true;
-          break;
-        }
-      }
-
-      // Mark recruiter as acted, and recruit the found officer if any
-      set({
-        officers: state.officers.map(o => {
-          if (o.id === recruiter!.id) return { ...o, acted: true };
-          if (found && foundOfficer && o.id === foundOfficer.id) {
-            return { ...o, factionId: state.playerFaction!.id, loyalty: 60 };
-          }
-          return o;
-        })
-      });
-
-      if (found && foundOfficer) {
-        get().addLog(i18next.t('logs:personnel.searchFoundOfficer', { recruiter: localizedName(recruiter.name), city: localizedName(city.name), officer: localizedName(foundOfficer.name) }));
+      // Compute success chance: enticer charisma vs target loyalty + target intelligence as resistance
+      const isGovernor = target.isGovernor;
+      const hasDiplomacy = hasSkill(enticer, 'diplomacy');
+      const resistance = Math.floor(target.intelligence / 5); // smart targets harder to entice (0-20)
+      let chance: number;
+      if (isGovernor) {
+        chance = Math.max(0, Math.min(40, enticer.charisma - target.loyalty - resistance - 20 + (hasDiplomacy ? 10 : 0)));
       } else {
-        get().addLog(i18next.t('logs:personnel.searchNothing', { recruiter: localizedName(recruiter.name), city: localizedName(city.name) }));
+        chance = Math.max(0, Math.min(60, enticer.charisma - target.loyalty - resistance + (hasDiplomacy ? 10 : 0)));
+      }
+
+      const success = Math.random() * 100 < chance;
+
+      if (success && isGovernor) {
+        // Governor flip: city switches faction, all officers in city switch
+        const oldFactionId = targetCity.factionId;
+        set({
+          cities: state.cities.map(c =>
+            c.id === targetCity.id ? { ...c, factionId: playerFaction.id } : c
+          ),
+          officers: state.officers.map(o => {
+            if (o.id === enticer!.id) return { ...o, acted: true };
+            if (o.cityId === targetCity.id && o.factionId === oldFactionId) {
+              return { ...o, factionId: playerFaction.id, loyalty: 50 };
+            }
+            return o;
+          }),
+        });
+
+        get().addLog(i18next.t('logs:personnel.enticeCityFlip', { enticer: localizedName(enticer.name), city: localizedName(targetCity.name), officer: localizedName(target.name) }));
+
+        // Check if old faction lost all cities (elimination)
+        const postState = get();
+        const oldFactionCities = postState.cities.filter(c => c.factionId === oldFactionId);
+        if (oldFactionCities.length === 0 && oldFactionId !== null) {
+          const oldFac = postState.factions.find(f => f.id === oldFactionId);
+          if (oldFac) {
+            get().addLog(i18next.t('logs:military.factionDestroyed', { faction: localizedName(oldFac.name) }));
+          }
+        }
+      } else if (success) {
+        // Regular officer defects: move to enticer's city
+        set({
+          officers: state.officers.map(o => {
+            if (o.id === enticer!.id) return { ...o, acted: true };
+            if (o.id === targetOfficerId) {
+              return { ...o, factionId: playerFaction.id, loyalty: 50, cityId: adjacentPlayerCity.id, isGovernor: false };
+            }
+            return o;
+          }),
+        });
+
+        get().addLog(i18next.t('logs:personnel.enticeSuccess', { enticer: localizedName(enticer.name), officer: localizedName(target.name) }));
+      } else {
+        // Failure
+        set({
+          officers: state.officers.map(o =>
+            o.id === enticer!.id ? { ...o, acted: true } : o
+          ),
+        });
+
+        get().addLog(i18next.t('logs:personnel.enticeFail', { enticer: localizedName(enticer.name), officer: localizedName(target.name) }));
       }
     },
 
@@ -226,6 +273,48 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
       if (!officer || officer.factionId !== state.playerFaction?.id || officer.id === state.playerFaction?.rulerId) return;
+
+      // Mole check: if this officer is a mole, return them to their original faction
+      if (officer.moleForFactionId != null) {
+        const moleFaction = state.factions.find(f => f.id === officer.moleForFactionId);
+        if (moleFaction) {
+          const moleRuler = state.officers.find(o => o.id === moleFaction.rulerId);
+          const moleRulerCityId = moleRuler?.cityId ?? state.cities.find(c => c.factionId === moleFaction.id)?.id;
+          if (moleRulerCityId) {
+            const updatedOfficers = state.officers.map(o =>
+              o.id === officerId
+                ? { ...o, factionId: moleFaction.id, cityId: moleRulerCityId, isGovernor: false, moleForFactionId: null }
+                : o
+            );
+            const dismissedCityId = officer.cityId;
+            const { cities: updatedCities, abandoned } = abandonCityIfEmpty(
+              state.cities, updatedOfficers, dismissedCityId!, state.playerFaction!.id
+            );
+            set({ officers: updatedOfficers, cities: updatedCities });
+
+            // If mole faction is the player, generate moleExposed event
+            if (moleFaction.isPlayer) {
+              set({
+                pendingEvents: [...get().pendingEvents, {
+                  id: `moleExposed-${officerId}-${Date.now()}`,
+                  type: 'moleExposed' as const,
+                  name: i18next.t('logs:diplomacy.moleExposed', { officer: localizedName(officer.name), faction: localizedName(state.playerFaction!.name) }),
+                  description: i18next.t('logs:diplomacy.moleExposed', { officer: localizedName(officer.name), faction: localizedName(state.playerFaction!.name) }),
+                  year: state.year,
+                  month: state.month,
+                  officerId: officer.id,
+                }],
+              });
+            }
+            get().addLog(i18next.t('logs:personnel.banish', { name: localizedName(officer.name) }));
+            if (abandoned) {
+              const abandonedCity = updatedCities.find(c => c.id === dismissedCityId);
+              get().addLog(i18next.t('logs:personnel.cityAbandoned', { city: localizedName(abandonedCity?.name ?? '') }));
+            }
+            return;
+          }
+        }
+      }
 
       const dismissedCityId = officer.cityId;
       const updatedOfficers = state.officers.map(o => o.id === officerId ? { ...o, factionId: null, isGovernor: false, loyalty: 30 } : o);

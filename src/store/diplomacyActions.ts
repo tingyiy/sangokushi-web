@@ -6,7 +6,44 @@ import { hasSkill } from '../utils/skills';
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
 
-export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'improveRelations' | 'formAlliance' | 'requestJointAttack' | 'proposeCeasefire' | 'demandSurrender' | 'breakAlliance' | 'exchangeHostage'> {
+/**
+ * Execute all player hostages held by a faction.
+ * Removes them from the officers array and from the faction's hostageOfficerIds.
+ */
+export function executeHostages(holdingFactionId: number, state: ReturnType<Get>, get: Get, set: Set): void {
+  const faction = state.factions.find(f => f.id === holdingFactionId);
+  if (!faction || faction.hostageOfficerIds.length === 0) return;
+
+  const playerFactionId = state.playerFaction?.id;
+  // Only execute player hostages
+  const playerHostageIds = faction.hostageOfficerIds.filter(id =>
+    state.officers.some(o => o.id === id && o.factionId === playerFactionId)
+  );
+  if (playerHostageIds.length === 0) return;
+
+  // Log each execution
+  for (const id of playerHostageIds) {
+    const officer = state.officers.find(o => o.id === id);
+    if (officer) {
+      get().addLog(i18next.t('logs:diplomacy.hostageExecuted', {
+        faction: localizedName(faction.name),
+        officer: localizedName(officer.name),
+      }));
+    }
+  }
+
+  const hostageSet = new Set(playerHostageIds);
+  set({
+    officers: get().officers.filter(o => !hostageSet.has(o.id)),
+    factions: get().factions.map(f =>
+      f.id === holdingFactionId
+        ? { ...f, hostageOfficerIds: f.hostageOfficerIds.filter(id => !hostageSet.has(id)) }
+        : f
+    ),
+  });
+}
+
+export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'improveRelations' | 'formAlliance' | 'requestJointAttack' | 'proposeCeasefire' | 'demandSurrender' | 'breakAlliance' | 'exchangeHostage' | 'recallHostage' | 'plantMole' | 'recallMole'> {
   return {
     improveRelations: (targetFactionId: number, officerId?: number) => {
       const state = get();
@@ -111,7 +148,11 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       // Success Check
       // (Politics * 0.6) + (100 - Hostility) * 0.4 > 60?
       const hostility = state.playerFaction?.relations[targetFactionId] ?? 60;
-      const score = (messenger.politics * 0.6) + ((100 - hostility) * 0.4);
+      let score = (messenger.politics * 0.6) + ((100 - hostility) * 0.4);
+      // Hostage bonus: if target faction holds any of our hostages, +15
+      if (targetFaction.hostageOfficerIds?.some(id => state.officers.some(o => o.id === id && o.factionId === state.playerFaction?.id))) {
+        score += 15;
+      }
       const success = score > 50 + (Math.random() * 20); // Threshold 50-70
 
       set({
@@ -321,8 +362,11 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
       const state = get();
       if (!state.playerFaction) return;
 
+      // Execute hostages held by the target faction (betrayal consequence)
+      executeHostages(targetFactionId, state, get, set);
+
       set({
-        factions: state.factions.map(f => {
+        factions: get().factions.map(f => {
           if (f.id === state.playerFaction?.id) {
             return {
               ...f,
@@ -342,7 +386,7 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
           return { ...f, relations: { ...f.relations, [state.playerFaction!.id]: Math.min(100, currentH + 10) } };
         })
       });
-      const targetFaction = state.factions.find(f => f.id === targetFactionId);
+      const targetFaction = get().factions.find(f => f.id === targetFactionId);
       get().addLog(i18next.t('logs:diplomacy.betrayAlliance', { faction: localizedName(targetFaction?.name ?? '') }));
     },
 
@@ -356,12 +400,183 @@ export function createDiplomacyActions(set: Set, get: Get): Pick<GameState, 'imp
         return;
       }
 
+      // Add hostage and reduce hostility by 15 (bidirectional)
+      const updatedFactions = state.factions.map(f => {
+        if (f.id === targetFactionId) {
+          const currentH = f.relations[state.playerFaction!.id] ?? 60;
+          return {
+            ...f,
+            hostageOfficerIds: [...f.hostageOfficerIds, officerId],
+            relations: { ...f.relations, [state.playerFaction!.id]: Math.max(0, currentH - 15) },
+          };
+        }
+        if (f.id === state.playerFaction!.id) {
+          const currentH = f.relations[targetFactionId] ?? 60;
+          return {
+            ...f,
+            relations: { ...f.relations, [targetFactionId]: Math.max(0, currentH - 15) },
+          };
+        }
+        return f;
+      });
+
       set({
-        factions: state.factions.map(f => f.id === targetFactionId ? { ...f, hostageOfficerIds: [...f.hostageOfficerIds, officerId] } : f),
+        factions: updatedFactions,
+        playerFaction: updatedFactions.find(f => f.id === state.playerFaction?.id) || state.playerFaction,
         officers: state.officers.map(o => o.id === officerId ? { ...o, cityId: -2 } : o) // -2 indicates hostage
       });
-      const targetFaction = state.factions.find(f => f.id === targetFactionId);
+      const targetFaction = updatedFactions.find(f => f.id === targetFactionId);
       get().addLog(i18next.t('logs:military.hostage', { officer: localizedName(officer.name), faction: localizedName(targetFaction?.name ?? '') }));
+      get().addLog(i18next.t('logs:diplomacy.hostageBoost', { faction: localizedName(targetFaction?.name ?? '') }));
+    },
+
+    recallHostage: (officerId) => {
+      const state = get();
+      if (!state.playerFaction) return;
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!officer || officer.factionId !== state.playerFaction.id || officer.cityId !== -2) return;
+
+      // Find which faction holds this hostage
+      const holdingFaction = state.factions.find(f => f.hostageOfficerIds.includes(officerId));
+      if (!holdingFaction) return;
+
+      // Require hostility ≤ 20
+      const hostility = state.playerFaction.relations[holdingFaction.id] ?? 60;
+      if (hostility > 20) {
+        get().addLog(i18next.t('logs:error.relationsNotGoodEnough', { faction: localizedName(holdingFaction.name) }));
+        return;
+      }
+
+      // Return officer to first player-owned city
+      const firstCity = state.cities.find(c => c.factionId === state.playerFaction!.id);
+      if (!firstCity) return;
+
+      set({
+        officers: state.officers.map(o =>
+          o.id === officerId ? { ...o, cityId: firstCity.id } : o
+        ),
+        factions: state.factions.map(f =>
+          f.id === holdingFaction.id
+            ? { ...f, hostageOfficerIds: f.hostageOfficerIds.filter(id => id !== officerId) }
+            : f
+        ),
+      });
+      get().addLog(i18next.t('logs:diplomacy.hostageRecalled', {
+        officer: localizedName(officer.name),
+        faction: localizedName(holdingFaction.name),
+      }));
+    },
+
+    plantMole: (targetFactionId: number, officerId?: number) => {
+      const state = get();
+      const city = state.cities.find(c => c.id === state.selectedCityId);
+      if (!city || city.factionId !== state.playerFaction?.id) return;
+      if (city.gold < 1000) {
+        get().addLog(i18next.t('logs:error.goldInsufficient', { action: i18next.t('logs:diplomacy.molePlant_action'), required: 1000, current: city.gold }));
+        return;
+      }
+
+      const officersInCity = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
+      if (officersInCity.length === 0) {
+        get().addLog(i18next.t('logs:error.noOfficerAvailable'));
+        return;
+      }
+
+      // Find an officer with espionage skill
+      const candidates = officersInCity.filter(o => hasSkill(o, 'espionage'));
+      const mole = officerId
+        ? candidates.find(o => o.id === officerId)
+        : candidates[0];
+
+      if (!mole) {
+        get().addLog(i18next.t('logs:error.noSkillEspionage', { name: '' }));
+        return;
+      }
+
+      if (mole.acted) {
+        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(mole.name) }));
+        return;
+      }
+
+      const targetFaction = state.factions.find(f => f.id === targetFactionId);
+      if (!targetFaction) return;
+
+      // Deduct gold and mark acted
+      set({
+        cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
+        officers: state.officers.map(o =>
+          o.id === mole.id ? { ...o, acted: true } : o
+        ),
+      });
+
+      get().addLog(i18next.t('logs:diplomacy.molePlanted', {
+        officer: localizedName(mole.name),
+        faction: localizedName(targetFaction.name),
+      }));
+
+      // For AI target: evaluate acceptance
+      // Base 50% + war/10 + leadership/10, capped at 90%
+      const acceptChance = Math.min(90, 50 + mole.war / 10 + mole.leadership / 10);
+      const accepted = Math.random() * 100 < acceptChance;
+
+      if (accepted) {
+        // Officer joins target faction at their capital (ruler's city)
+        const targetRuler = get().officers.find(o => o.id === targetFaction.rulerId);
+        const targetCapitalId = targetRuler?.cityId ?? get().cities.find(c => c.factionId === targetFactionId)?.id;
+        if (!targetCapitalId) return;
+
+        set({
+          officers: get().officers.map(o =>
+            o.id === mole.id
+              ? { ...o, factionId: targetFactionId, cityId: targetCapitalId, loyalty: 60, moleForFactionId: state.playerFaction!.id }
+              : o
+          ),
+        });
+        get().addLog(i18next.t('logs:diplomacy.moleAccepted', {
+          officer: localizedName(mole.name),
+          faction: localizedName(targetFaction.name),
+        }));
+      } else {
+        // Declined — officer returns home (already in city, just restore faction)
+        set({
+          officers: get().officers.map(o =>
+            o.id === mole.id
+              ? { ...o, factionId: state.playerFaction!.id }
+              : o
+          ),
+        });
+        get().addLog(i18next.t('logs:diplomacy.moleDeclined', {
+          officer: localizedName(mole.name),
+          faction: localizedName(targetFaction.name),
+        }));
+      }
+    },
+
+    recallMole: (officerId: number) => {
+      const state = get();
+      if (!state.playerFaction) return;
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!officer || officer.moleForFactionId !== state.playerFaction.id) return;
+
+      // Check that officer is still in an enemy faction
+      if (officer.factionId === null || officer.factionId === state.playerFaction.id) {
+        get().addLog(i18next.t('logs:diplomacy.moleRecallFailed', { officer: localizedName(officer.name) }));
+        return;
+      }
+
+      // Return to ruler's city
+      const ruler = state.officers.find(o => o.id === state.playerFaction!.rulerId);
+      const rulerCityId = ruler?.cityId ?? state.cities.find(c => c.factionId === state.playerFaction!.id)?.id;
+      if (!rulerCityId) return;
+
+      set({
+        officers: state.officers.map(o =>
+          o.id === officerId
+            ? { ...o, factionId: state.playerFaction!.id, cityId: rulerCityId, moleForFactionId: null }
+            : o
+        ),
+      });
+      get().addLog(i18next.t('logs:diplomacy.moleRecalled', { officer: localizedName(officer.name) }));
     },
   };
 }

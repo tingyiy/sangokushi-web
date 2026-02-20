@@ -60,7 +60,7 @@ You issue ONE command at a time. After each command, you see the result and upda
 
 ### Personnel
 - { "cmd": "recruitOfficer", "officerId": <id>, "recruiterId": <id> }
-- { "cmd": "searchOfficer", "cityId": <id>, "officerId": <id> }
+- { "cmd": "enticeOfficer", "targetOfficerId": <id>, "enticerId": <id> }  (convince enemy officer to defect; target must be in adjacent city, not a ruler)
 - { "cmd": "recruitPOW", "officerId": <id>, "recruiterId": <id> }
 - { "cmd": "rewardOfficer", "officerId": <id>, "type": "gold", "amount": 100 }
 - { "cmd": "appointGovernor", "cityId": <id>, "officerId": <id> }
@@ -76,7 +76,10 @@ You issue ONE command at a time. After each command, you see the result and upda
 - { "cmd": "demandSurrender", "cityId": <yourCity>, "targetFactionId": <id>, "officerId": <id> }
 - { "cmd": "breakAlliance", "targetFactionId": <id> }
 - { "cmd": "requestJointAttack", "allyFactionId": <id>, "targetCityId": <id>, "officerId": <id> }  (request allied faction to attack a city)
-- { "cmd": "exchangeHostage", "officerId": <id>, "targetFactionId": <id> }  (send officer as hostage to strengthen alliance)
+- { "cmd": "exchangeHostage", "officerId": <id>, "targetFactionId": <id> }  (send officer as hostage: -15 hostility, +15 alliance score, but if war breaks out the hostage is executed!)
+- { "cmd": "recallHostage", "officerId": <id> }  (recall a hostage officer back to your first city; requires hostility ≤ 20 with holding faction)
+- { "cmd": "plantMole", "targetFactionId": <id>, "officerId": <id> }  (send officer with 'espionage' skill to infiltrate enemy faction; costs 1000 gold; officer leaves your faction and joins the target as a hidden mole)
+- { "cmd": "recallMole", "officerId": <id> }  (recall a planted mole back to your ruler's city)
 
 ### Strategy (REQUIRES specific officer skills — check officer skills before using)
 - { "cmd": "spy", "cityId": <yourCity>, "targetCityId": <id>, "officerId": <id> }  (requires 'intelligence' or 'espionage' skill)
@@ -122,7 +125,7 @@ Action 4:
 
 KEY MECHANICS:
 - Gold and food income arrives EVERY month (not quarterly). Higher commerce → more gold, higher agriculture → more food. Developing these pays off immediately.
-- searchOfficer searches your own city for hidden unaffiliated officers. If found, the officer immediately joins your faction (loyalty 60). Only works if unaffiliated officers exist in that city. Check the "Unaffiliated:N" count in the status display — cities showing no count have zero searchable officers. Do NOT waste actions searching cities with 0 unaffiliated officers.
+- enticeOfficer convinces an enemy officer (not a ruler) in an adjacent city to defect. The enticer must be in YOUR city adjacent to the target's city. Success chance: min(60, enticer_CHA - target_loyalty - target_INT/5). High-loyalty and high-intelligence officers are very hard to entice. If target is a governor, extra -20 penalty but success flips the ENTIRE city. Officers with 'diplomacy' skill get +10 bonus. Only attempt when you can see the enemy city (use spy first).
 - recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
 - rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
 - transferOfficer and transport both relocate the officer. If you move the LAST officer out of a city, that city is ABANDONED (becomes unowned) and any remaining gold/food/troops are left behind. Any faction can then capture it for free. Plan carefully — count officers before moving!
@@ -130,6 +133,8 @@ KEY MECHANICS:
 - spy reveals an enemy city's data (troops, officers, resources) for several turns. REQUIRES an officer with the 'intelligence' or 'espionage' skill — check skills=[...] in officer listings. Officers without these skills will always fail.
 - Strategy commands (spy, rumor, arson, inciteRebellion, counterEspionage) each require specific officer skills. Only assign officers whose skills match the command.
 - Diplomacy (alliances, ceasefires) can secure borders.
+- HOSTAGE SYSTEM: Sending a hostage (exchangeHostage) reduces hostility by 15 and gives +15 to alliance success. BUT if you attack that faction, break alliance, or they attack you, the hostage is EXECUTED (permanently removed). Recall a hostage (recallHostage) when hostility ≤ 20. Use hostages strategically to build alliances, but don't send officers you can't afford to lose.
+- MOLE SYSTEM: plantMole sends an officer with 'espionage' skill to infiltrate an enemy faction (costs 1000 gold). If accepted, the mole joins the enemy as a normal officer but secretly works for you. Benefits: (1) the mole's city is always visible through fog of war, (2) if the mole is defending a city you attack, you can trigger betrayal mid-battle — the mole's unit switches to your side and all other defenders lose 15 morale. Use recallMole to bring the mole home. If the enemy dismisses the mole, they auto-return to you.
 
 BATTLE FORMATION RULES:
 - Before startBattle, you MUST first issue setBattleFormation.
@@ -326,6 +331,11 @@ export function buildStrategicContext(): string {
     }
     if (adjacentEmpty.length > 0) {
       parts.push(`  Adjacent empty: ${adjacentEmpty.map(c => `${c.name}(id=${c.id})`).join(', ')}`);
+    }
+    // Enticeable officers in adjacent revealed enemy cities
+    const enticeTargets = state.getEnticeTargets(city.id);
+    if (enticeTargets.length > 0) {
+      parts.push(`  Entice targets: ${enticeTargets.map(o => `${o.name}(id=${o.id}) loy=${o.loyalty ?? '?'}${o.isGovernor ? ' [GOV]' : ''}`).join(', ')}`);
     }
     parts.push('');
   }

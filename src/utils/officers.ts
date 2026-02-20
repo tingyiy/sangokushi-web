@@ -30,10 +30,18 @@ const RULER_TROOP_MULTIPLIER = 1.30;
  * @param isRuler Whether this officer is the ruler of their faction
  * @returns Maximum troops (integer)
  */
+/**
+ * Ruler floor: guarantees the ruler can always command more troops than any
+ * other officer.  Highest non-ruler max = 100 ldr × 1000 × 1.20 (viceroy) = 120 000.
+ * We set the floor above that so the ruler is always #1.
+ */
+const RULER_TROOP_FLOOR = 150_000;
+
 export function getMaxTroops(officer: Officer, isRuler = false): number {
   const stats = getEffectiveStats(officer);
   const multiplier = isRuler ? RULER_TROOP_MULTIPLIER : RANK_TROOP_MULTIPLIER[officer.rank];
-  return Math.floor(stats.leadership * 1000 * multiplier);
+  const base = Math.floor(stats.leadership * 1000 * multiplier);
+  return isRuler ? Math.max(base, RULER_TROOP_FLOOR) : base;
 }
 
 /** Get officer stats with treasure bonuses applied */

@@ -58,9 +58,13 @@
     "spyEmptyCity": "{{city}} is an empty city — there is nothing to spy on.",
     "spyOwnCity": "{{city}} is your own city — you cannot spy on yourself.",
     "alreadyHostage": "{{name}} is already a hostage.",
+    "relationsNotGoodEnough": "Relations with {{faction}} not good enough to recall hostage.",
     "alreadyAllied": "We are already allied with {{faction}}.",
     "rankRequirementsNotMet": "{{name}} does not meet the requirements for {{rank}}.",
-    "rankSlotFull": "No more {{rank}} slots available."
+    "rankSlotFull": "No more {{rank}} slots available.",
+    "cannotEnticeRuler": "Cannot entice a faction ruler.",
+    "loyaltyTooHigh": "{{name}}'s loyalty is too high to entice.",
+    "notAdjacentForEntice": "Target must be in an adjacent city."
   },
   "domestic": {
     "taxRateChanged": "{{city}} tax rate changed to {{rate}}.",
@@ -102,7 +106,10 @@
     "appointGovernor": "Appointed {{name}} as governor.",
     "appointAdvisor": "Appointed {{name}} as advisor.",
     "moveOfficer": "{{name}} moved to {{city}}.",
-    "cityAbandoned": "{{city}} has been abandoned — no officers remain."
+    "cityAbandoned": "{{city}} has been abandoned — no officers remain.",
+    "enticeSuccess": "{{enticer}} convinced {{officer}} to defect!",
+    "enticeFail": "{{enticer}} failed to convince {{officer}} to defect.",
+    "enticeCityFlip": "{{enticer}} convinced governor {{officer}} to defect! {{city}} has switched sides!"
   },
   "military": {
     "captureEmptyCity": "{{city}} is undefended! {{commander}} captured {{city}}!",
@@ -126,6 +133,16 @@
     "surrenderAccepted": "{{faction}} has surrendered to us!",
     "surrenderRejected": "{{faction}} firmly refused to surrender.",
     "betrayAlliance": "Betrayed the alliance with {{faction}}! Public outrage ensues.",
+    "hostageBoost": "Hostage sent — relations with {{faction}} improved.",
+    "hostageExecuted": "{{faction}} executed hostage {{officer}}!",
+    "hostageRecalled": "Hostage {{officer}} recalled from {{faction}}.",
+    "molePlanted": "Dispatched {{officer}} to infiltrate {{faction}}.",
+    "moleAccepted": "{{faction}} accepted {{officer}}. Infiltration successful!",
+    "moleDeclined": "{{faction}} declined {{officer}}. {{officer}} returned.",
+    "moleRecalled": "Recalled mole {{officer}}.",
+    "moleRecallFailed": "{{officer}} is no longer with the target faction.",
+    "moleExposed": "{{officer}} was exposed by {{faction}} and has returned!",
+    "molePlant_action": "plant mole",
     "gift_action": "send gift",
     "alliance_action": "form alliance",
     "ceasefire_action": "propose ceasefire"
@@ -163,6 +180,8 @@
     "recruitSuccess": "{{faction}}'s {{recruiter}} successfully recruited {{officer}}.",
     "powRecruitSuccess": "{{faction}} convinced POW {{officer}} to join.",
     "searchFound": "{{recruiter}} discovered unaffiliated officer {{officer}} in {{city}}.",
+    "enticeSuccess": "{{faction}}'s {{enticer}} convinced {{officer}} to defect.",
+    "enticeCityFlip": "{{faction}}'s {{enticer}} convinced the governor of {{city}} to defect! The entire city has switched sides!",
     "espionageAction": "{{faction}} conducted espionage on {{city}}.",
     "rumorAction": "{{faction}} spread rumors in {{city}}.",
     "rewardOfficer": "The ruler rewarded {{officer}} to secure their loyalty.",
@@ -253,10 +272,28 @@
     "dayLimitReached": "Day {{maxDays}} reached. Attackers retreat, defenders win!",
     "dayHeader": "── Day {{day}} ──",
     "reinforcements": "{{name}}'s reinforcements have arrived!",
+    "moleBetrayal": "{{officer}} betrayed! Defected with {{troops}} troops!",
+    "moleMoraleDrop": "Enemy morale plummeted from betrayal!",
     "starvation": "{{side}} army has no food (day {{days}})! Morale -{{penalty}} for all units.",
     "sideAttacker": "Attacking",
     "sideDefender": "Defending",
     "monthEnd": "── Day 30 reached. Battle pauses for month transition. ──",
     "battleResume": "── A new month begins. Battle resumes! ──"
+  },
+  "duel": {
+    "challenge": "{{p1}} challenges {{p2}} of {{city}}!",
+    "start": "The duel begins!",
+    "battleDuelStart": "{{p1}} and {{p2}} engage in a duel to the death!",
+    "flee": "{{name}} flees!",
+    "attackHit": "{{name}} uses {{type}}, dealing {{dmg}} damage!",
+    "attackMiss": "{{name}}'s attack misses!",
+    "typeAttack": "Attack",
+    "typeHeavy": "Heavy Strike",
+    "defend": "{{name}} takes a defensive stance.",
+    "defendEffect": "(Defense active! Damage halved)",
+    "defeated": "{{name}} is defeated!",
+    "fallen": "{{name}} has fallen...",
+    "counterHit": "{{name}} counterattacks! Deals {{dmg}} damage!",
+    "counterMiss": "{{name}}'s counterattack is dodged!"
   }
 }

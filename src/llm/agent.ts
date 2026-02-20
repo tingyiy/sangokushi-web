@@ -232,8 +232,8 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
       // Personnel
       case 'recruitOfficer':
         return rtkApi.recruitOfficer(cmd.officerId as number, cmd.recruiterId as number | undefined);
-      case 'searchOfficer':
-        return rtkApi.searchOfficer(cmd.cityId as number, cmd.officerId as number | undefined);
+      case 'enticeOfficer':
+        return rtkApi.enticeOfficer(cmd.targetOfficerId as number, cmd.enticerId as number | undefined);
       case 'recruitPOW':
         return rtkApi.recruitPOW(cmd.officerId as number, cmd.recruiterId as number | undefined);
       case 'rewardOfficer':
@@ -266,6 +266,12 @@ function executeCommand(cmd: Record<string, unknown>): CommandResult {
         return rtkApi.requestJointAttack(cmd.allyFactionId as number, cmd.targetCityId as number, cmd.officerId as number | undefined);
       case 'exchangeHostage':
         return rtkApi.exchangeHostage(cmd.officerId as number, cmd.targetFactionId as number);
+      case 'recallHostage':
+        return rtkApi.recallHostage(cmd.officerId as number);
+      case 'plantMole':
+        return rtkApi.plantMole(cmd.targetFactionId as number, cmd.officerId as number | undefined);
+      case 'recallMole':
+        return rtkApi.recallMole(cmd.officerId as number);
 
       // Strategy
       case 'spy':
@@ -848,6 +854,10 @@ export async function startAgent(): Promise<void> {
         await runBattlePhase();
         consecutiveErrors = 0;
         await sleep(500);
+      } else if (state.phase === 'duel') {
+        await runDuelPhase();
+        consecutiveErrors = 0;
+        await sleep(300);
       } else {
         // Not in a phase we can act on — wait and check again
         await sleep(500);
@@ -863,6 +873,51 @@ export async function startAgent(): Promise<void> {
     resetLLMStatus();
     llmLog('decision', '=== LLM Agent Stopped ===');
   }
+}
+
+// ── Duel Phase (heuristic, no LLM call needed) ──────────
+
+async function runDuelPhase(): Promise<void> {
+  const state = useGameStore.getState();
+  const ds = state.duelState;
+  if (!ds) return;
+
+  // If duel is over, end it
+  if (ds.result) {
+    await sleep(1000);
+    useGameStore.getState().endDuel();
+    llmLog('decision', `Duel ended: ${ds.result}`);
+    return;
+  }
+
+  // Only act on p1's turn (the LLM-controlled fighter)
+  if (ds.turn !== 0) return;
+
+  // Pick action based on simple heuristics
+  const warDiff = ds.p1.war - ds.p2.war;
+  let action: 'attack' | 'heavy' | 'defend' | 'flee';
+
+  if (ds.p1Hp <= 15 && warDiff < -10) {
+    // Very low HP and outmatched — flee
+    action = 'flee';
+  } else if (ds.p2Hp <= 25) {
+    // Enemy is weak — go for the kill
+    action = 'heavy';
+  } else if (ds.p1Hp <= 30 && ds.p2Hp > 50) {
+    // Low HP, enemy is healthy — defend to survive
+    action = 'defend';
+  } else if (warDiff >= 15) {
+    // Significantly stronger — heavy attack
+    action = 'heavy';
+  } else {
+    // Default — normal attack
+    action = 'attack';
+  }
+
+  setLLMStatus('thinking', `Duel: ${action}`);
+  await sleep(600);
+  useGameStore.getState().duelAction(action);
+  llmLog('decision', `Duel action: ${action} (p1Hp=${ds.p1Hp}, p2Hp=${ds.p2Hp}, war=${ds.p1.war}v${ds.p2.war})`);
 }
 
 // ── Utility ─────────────────────────────────────────────

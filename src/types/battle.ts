@@ -100,4 +100,6 @@ export interface BattleState {
   attackerStarveDays: number;
   /** Consecutive days the defender has had 0 food (for escalating morale drain) */
   defenderStarveDays: number;
+  /** Officer IDs of moles among defender units that the attacker can trigger betrayal on */
+  moleOfficerIds: number[];
 }

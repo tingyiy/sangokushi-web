@@ -216,7 +216,7 @@ function findAIExecutor(state: GameState, cityId: number, sortBy: 'politics' | '
   return candidates.sort((a, b) => b[sortBy] - a[sortBy])[0];
 }
 
-export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn' | 'applyAIDecisions' | 'aiFormAlliance' | 'aiImproveRelations' | 'aiRecruitOfficer' | 'aiRecruitPOW' | 'aiSearchOfficer' | 'aiSpy' | 'aiRumor' | 'aiDevelopCommerce' | 'aiDevelopAgriculture' | 'aiReinforceDefense' | 'aiDevelopFloodControl' | 'aiDevelopTechnology' | 'aiTrainTroops' | 'aiManufacture' | 'aiDisasterRelief' | 'aiDraftTroops' | 'aiTransport' | 'aiRewardOfficer' | 'aiAppointGovernor'> {
+export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn' | 'applyAIDecisions' | 'aiFormAlliance' | 'aiImproveRelations' | 'aiRecruitOfficer' | 'aiRecruitPOW' | 'aiEnticeOfficer' | 'aiSpy' | 'aiRumor' | 'aiDevelopCommerce' | 'aiDevelopAgriculture' | 'aiReinforceDefense' | 'aiDevelopFloodControl' | 'aiDevelopTechnology' | 'aiTrainTroops' | 'aiManufacture' | 'aiDisasterRelief' | 'aiDraftTroops' | 'aiTransport' | 'aiRewardOfficer' | 'aiAppointGovernor' | 'aiPlantMole'> {
   return {
     /**
      * End the player's turn.
@@ -504,39 +504,72 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       // AI POW recruitment success is not logged to the player (fog of war)
     },
 
-    aiSearchOfficer: (cityId) => {
+    aiEnticeOfficer: (targetOfficerId: number, fromCityId: number) => {
       const state = get();
-      const city = state.cities.find(c => c.id === cityId);
-      if (!city) return;
-      const recruiters = state.officers.filter(o => o.cityId === cityId && o.factionId === city.factionId);
-      if (recruiters.length === 0) return;
-      const recruiter = recruiters.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
-      if (recruiter.acted) return;
+      const fromCity = state.cities.find(c => c.id === fromCityId);
+      if (!fromCity || fromCity.factionId === null) return;
+      const factionId = fromCity.factionId;
 
-      const unaffiliated = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
-      let found = false;
-      let foundOfficer: Officer | null = null;
+      const target = state.officers.find(o => o.id === targetOfficerId);
+      if (!target || target.factionId === null || target.factionId === -1 || target.factionId === factionId) return;
 
-      for (const officer of unaffiliated) {
-        let chance = 30 + recruiter.charisma / 2;
-        if (hasSkill(recruiter, 'talent')) chance += 15;
-        if (Math.random() * 100 < chance) {
-          foundOfficer = officer;
-          found = true;
-          break;
-        }
+      // Cannot entice a ruler
+      const targetFaction = state.factions.find(f => f.id === target.factionId);
+      if (targetFaction && targetFaction.rulerId === target.id) return;
+
+      const targetCity = state.cities.find(c => c.id === target.cityId);
+      if (!targetCity) return;
+      // Must be adjacent
+      if (!fromCity.adjacentCityIds.includes(targetCity.id)) return;
+
+      // Find enticer
+      const candidates = state.officers.filter(o => o.cityId === fromCityId && o.factionId === factionId && !o.acted);
+      if (candidates.length === 0) return;
+      const enticer = candidates.reduce((prev, curr) => (prev.charisma > curr.charisma ? prev : curr));
+
+      const isGovernor = target.isGovernor;
+      const hasDiplomacy = hasSkill(enticer, 'diplomacy');
+      const resistance = Math.floor(target.intelligence / 5);
+      let chance: number;
+      if (isGovernor) {
+        chance = Math.max(0, Math.min(40, enticer.charisma - target.loyalty - resistance - 20 + (hasDiplomacy ? 10 : 0)));
+      } else {
+        chance = Math.max(0, Math.min(60, enticer.charisma - target.loyalty - resistance + (hasDiplomacy ? 10 : 0)));
       }
 
-      // Mark recruiter as acted, and recruit the found officer if any
-      set({
-        officers: state.officers.map(o => {
-          if (o.id === recruiter.id) return { ...o, acted: true };
-          if (found && foundOfficer && o.id === foundOfficer.id) {
-            return { ...o, factionId: city.factionId, loyalty: 60 };
-          }
-          return o;
-        })
-      });
+      const success = Math.random() * 100 < chance;
+
+      if (success && isGovernor) {
+        const oldFactionId = targetCity.factionId;
+        set({
+          cities: state.cities.map(c =>
+            c.id === targetCity.id ? { ...c, factionId: factionId } : c
+          ),
+          officers: state.officers.map(o => {
+            if (o.id === enticer.id) return { ...o, acted: true };
+            if (o.cityId === targetCity.id && o.factionId === oldFactionId) {
+              return { ...o, factionId: factionId, loyalty: 50 };
+            }
+            return o;
+          }),
+        });
+      } else if (success) {
+        set({
+          officers: state.officers.map(o => {
+            if (o.id === enticer.id) return { ...o, acted: true };
+            if (o.id === targetOfficerId) {
+              return { ...o, factionId: factionId, loyalty: 50, cityId: fromCityId, isGovernor: false };
+            }
+            return o;
+          }),
+        });
+      } else {
+        set({
+          officers: state.officers.map(o =>
+            o.id === enticer.id ? { ...o, acted: true } : o
+          ),
+        });
+      }
     },
 
     aiSpy: (cityId, targetCityId) => {
@@ -834,6 +867,79 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
           return o;
         }),
       });
+    },
+
+    aiPlantMole: (officerId: number, targetFactionId: number) => {
+      const state = get();
+      const officer = state.officers.find(o => o.id === officerId);
+      if (!officer || officer.factionId === null) return;
+      const aiFaction = state.factions.find(f => f.id === officer.factionId);
+      if (!aiFaction) return;
+
+      const city = state.cities.find(c => c.id === officer.cityId && c.factionId === aiFaction.id);
+      if (!city || city.gold < 1000) return;
+      if (officer.acted) return;
+
+      const targetFaction = state.factions.find(f => f.id === targetFactionId);
+      if (!targetFaction) return;
+
+      // Deduct gold, mark officer acted
+      set({
+        cities: state.cities.map(c => c.id === city.id ? { ...c, gold: c.gold - 1000 } : c),
+        officers: state.officers.map(o => o.id === officer.id ? { ...o, acted: true } : o),
+      });
+
+      // For player targets: generate 武將求見 event (player doesn't know it's a mole)
+      if (targetFaction.isPlayer) {
+        const playerCapital = get().cities.find(c => c.factionId === targetFactionId);
+        if (!playerCapital) return;
+
+        // Officer leaves AI faction temporarily (becomes unaffiliated for the visit event)
+        set({
+          officers: get().officers.map(o =>
+            o.id === officer.id
+              ? { ...o, factionId: null, cityId: playerCapital.id, moleForFactionId: aiFaction.id }
+              : o
+          ),
+        });
+
+        // Generate officer visit event
+        set({
+          pendingEvents: [...get().pendingEvents, {
+            id: `officerVisit-mole-${officer.id}-${Date.now()}`,
+            type: 'officerVisit' as const,
+            name: i18next.t('logs:event.officerVisit.name'),
+            description: i18next.t('logs:event.officerVisit.description', {
+              officer: localizedName(officer.name),
+              city: localizedName(playerCapital.name),
+            }),
+            cityId: playerCapital.id,
+            officerId: officer.id,
+            year: get().year,
+            month: get().month,
+          }],
+        });
+      } else {
+        // For AI targets: evaluate acceptance
+        const acceptChance = Math.min(90, 50 + officer.war / 10 + officer.leadership / 10);
+        const accepted = Math.random() * 100 < acceptChance;
+
+        if (accepted) {
+          const targetRuler = get().officers.find(o => o.id === targetFaction.rulerId);
+          const targetCapitalId = targetRuler?.cityId ?? get().cities.find(c => c.factionId === targetFactionId)?.id;
+          if (!targetCapitalId) return;
+
+          set({
+            officers: get().officers.map(o =>
+              o.id === officer.id
+                ? { ...o, factionId: targetFactionId, cityId: targetCapitalId, loyalty: 60, moleForFactionId: aiFaction.id }
+                : o
+            ),
+          });
+        } else {
+          // Declined — return to own faction
+        }
+      }
     },
   };
 }

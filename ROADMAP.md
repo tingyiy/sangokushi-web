@@ -4,7 +4,7 @@
 
 ## RTK IV Gap Analysis
 
-We cover 5 of RTK IV's 7 command categories. Two entire systems are missing: **商人 (Merchant)** — a trading economy with seasonal price fluctuation, and **助言 (Advisor)** — interactive counsel where the player asks their advisor for strategic recommendations before acting. Additionally, RTK IV features **旅人 (Travelers)** — 8 wandering NPCs who teach skills and give treasures, **埋伏 (Plant Spy)** — a mole infiltration system where officers defect to spy and betray in battle, and **異民族 (Barbarian Invasions)** — four border tribes that raid cities. None of these exist in our codebase.
+We cover 5 of RTK IV's 7 command categories. Two entire systems are missing: **商人 (Merchant)** — a trading economy with seasonal price fluctuation, and **助言 (Advisor)** — interactive counsel where the player asks their advisor for strategic recommendations before acting. Additionally, RTK IV features **旅人 (Travelers)** — 8 wandering NPCs who teach skills and give treasures, **埋伏 (Plant Spy)** — ✅ implemented: a mole infiltration system where officers are planted as double agents in enemy factions, reveal intelligence through fog of war, and can betray their host in battle, and **異民族 (Barbarian Invasions)** — four border tribes that raid cities. Travelers and Barbarian Invasions do not yet exist in our codebase.
 
 See [plans/rtk4-gap-analysis.md](plans/rtk4-gap-analysis.md) for the full comparison table, implementation plans, effort estimates, and phased rollout order.
 

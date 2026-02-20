@@ -69,6 +69,8 @@ interface RTKApi {
     allies(): number[];
     /** Diplomacy: get active ceasefires */
     ceasefires(): { factionId: number; expiresYear: number; expiresMonth: number }[];
+    /** Moles: get all officers currently planted as moles (own officers in enemy factions) */
+    moles(): { officerId: number; targetFactionId: number }[];
     /** Currently selected city */
     selectedCity(): City | null;
     /** Game log messages */
@@ -135,6 +137,8 @@ interface RTKApi {
   demandSurrender(targetFactionId: number): Result;
   breakAlliance(targetFactionId: number): Result;
   exchangeHostage(officerId: number, targetFactionId: number): Result;
+  plantMole(targetFactionId: number, officerId?: number): Result;
+  recallMole(officerId: number): Result;
 
   // Strategy (謀略)
   rumor(targetCityId: number): Result;
@@ -557,6 +561,12 @@ rtk.save(1);
 ---
 
 ## Changelog
+
+**v2.6 (2026-02-20):** Mole infiltration system (埋伏).
+
+- **`plantMole(targetFactionId, officerId?)`:** Send an officer into an enemy faction as a double agent. Auto-selects an officer if none specified. Moles reveal fog-of-war for the target city and betray in battle.
+- **`recallMole(officerId)`:** Withdraw a planted mole back to the player faction.
+- **`query.moles()`:** List all officers currently operating as moles, with their target faction.
 
 **v2.5 (2026-02-13):** Sync API with one-action-per-turn, multi-resource transport, and rank-based troop caps.
 

@@ -164,6 +164,7 @@
     },
     "notYourCity": "{{city}}不是你的城市。",
     "noOfficersAvailable": "本城無可用武將。",
+    "noSkilledOfficers": "本城無擁有該技能的武將。",
     "officerExecute": "{{name}} 執行「{{action}}」。",
     "domestic": {
       "developCommerce": "商業開發（500金）",
@@ -218,6 +219,7 @@
     },
     "personnel": {
       "search": "搜索",
+      "entice": "策反",
       "recruit": "招攬",
       "handlePOW": "處置俘虜",
       "recruitPOW": "登用 {{name}}",
@@ -239,7 +241,10 @@
       "jointAttack": "共同",
       "ceasefire": "停戰",
       "demandSurrender": "勸降",
-      "hostage": "人質"
+      "hostage": "人質",
+      "recall": "召回",
+      "plantMole": "埋伏（1000金）",
+      "recallMole": "召回臥底"
     },
     "strategy": {
       "rumor": "流言",
@@ -322,9 +327,13 @@
     "currentProgress": "目前進度: {{year}}年{{month}}月 · {{factionName}}"
   },
   "event": {
-    "officerRecruited": "【登庸】{{name}} 答應了您的邀請，正式加入我軍！",
+    "officerRecruited": "【來投】{{name}} 前來投靠，正式加入我軍！",
     "recruitButton": "接見並招攬",
-    "declineButton": "婉拒"
+    "declineButton": "婉拒",
+    "moleExposed": "{{officer}} 被 {{faction}} 流放，已返回我方！"
+  },
+  "battle": {
+    "triggerBetrayal": "叛變"
   },
   "governor": {
     "title": "任命太守",

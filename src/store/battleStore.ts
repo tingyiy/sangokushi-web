@@ -21,6 +21,7 @@ import { getDistance } from '../utils/hex';
 import { hasSkill } from '../utils/skills';
 import { getMoveRange } from '../utils/pathfinding';
 import { cityBaseStats } from '../data/cities';
+import { useGameStore } from './gameStore';
 
 interface BattleActions {
   initBattle: (
@@ -59,6 +60,7 @@ interface BattleActions {
   checkBattleEnd: () => void;
   addBattleLog: (msg: string) => void;
   inspectUnit: (unitId: string | null) => void;
+  triggerBetrayal: (unitId: string) => void;
 }
 
 const DEFAULT_MAP_WIDTH = 15;
@@ -94,10 +96,52 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
   defenderFood: 0,
   attackerStarveDays: 0,
   defenderStarveDays: 0,
+  moleOfficerIds: [],
 
   addBattleLog: (msg) => set(s => ({ battleLog: [...s.battleLog.slice(-49), msg] })),
 
   inspectUnit: (unitId) => set({ inspectedUnitId: unitId }),
+
+  triggerBetrayal: (unitId: string) => {
+    const state = get();
+    const unit = state.units.find(u => u.id === unitId);
+    if (!unit) return;
+    if (!state.moleOfficerIds.includes(unit.officerId)) return;
+
+    // Switch unit factionId to attacker
+    const updatedUnits = state.units.map(u => {
+      if (u.id === unitId) {
+        return { ...u, factionId: state.attackerId };
+      }
+      // All active defender units lose 15 morale
+      if (u.factionId === state.defenderId && u.status === 'active') {
+        const newMorale = Math.max(0, u.morale - 15);
+        return { ...u, morale: newMorale, status: newMorale < 20 ? 'routed' as const : u.status };
+      }
+      return u;
+    });
+
+    set({
+      units: updatedUnits,
+      moleOfficerIds: state.moleOfficerIds.filter(id => id !== unit.officerId),
+    });
+
+    // Clear moleForFactionId on the game store officer
+    useGameStore.setState(gs => ({
+      officers: gs.officers.map(o =>
+        o.id === unit.officerId ? { ...o, moleForFactionId: null } : o
+      ),
+    }));
+
+    get().addBattleLog(i18next.t('logs:battle.moleBetrayal', {
+      officer: localizedName(unit.officer.name),
+      troops: unit.troops,
+    }));
+    get().addBattleLog(i18next.t('logs:battle.moleMoraleDrop'));
+
+    // Check if battle ends after betrayal
+    get().checkBattleEnd();
+  },
 
   setMode: (mode) => set({ mode, selectedTactic: mode === 'tactic' ? get().selectedTactic : null }),
 
@@ -237,6 +281,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     // Select the first player unit as active (not enemy unit)
     const firstPlayerUnit = units.find(u => u.factionId === playerFactionId);
 
+    // Scan defender officers for moles (moleForFactionId === attackerId)
+    const moleOfficerIds = defenderOfficers
+      .filter(o => o.moleForFactionId === attackerId)
+      .map(o => o.id);
+
     set({
       units,
       attackerId,
@@ -267,6 +316,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       defenderFood,
       attackerStarveDays: 0,
       defenderStarveDays: 0,
+      moleOfficerIds,
     });
 
     // Check if battle should end immediately (e.g. all defenders have 0 troops)

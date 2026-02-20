@@ -189,9 +189,9 @@ describe('officers', () => {
       expect(getMaxTroops(baseOfficer)).toBe(80000);
     });
 
-    test('ruler: leadership × 1000 × 1.30', () => {
-      // leadership 80, isRuler → 80 × 1000 × 1.30 = 104000
-      expect(getMaxTroops(baseOfficer, true)).toBe(104000);
+    test('ruler: guaranteed floor of 150000 (always highest)', () => {
+      // leadership 80, isRuler → max(80 × 1000 × 1.30, 150000) = 150000
+      expect(getMaxTroops(baseOfficer, true)).toBe(150000);
     });
 
     test('governor: leadership × 1000 × 1.10', () => {
@@ -224,9 +224,9 @@ describe('officers', () => {
     });
 
     test('ruler overrides any rank', () => {
-      // Even an advisor who is ruler gets the ruler multiplier
+      // Even an advisor who is ruler gets the ruler floor
       const rulerAdvisor = { ...baseOfficer, rank: 'advisor' as const };
-      expect(getMaxTroops(rulerAdvisor, true)).toBe(104000);
+      expect(getMaxTroops(rulerAdvisor, true)).toBe(150000);
     });
 
     test('applies treasure leadership bonus', () => {
@@ -239,8 +239,8 @@ describe('officers', () => {
 
     test('realistic example: 曹操 (leadership 95, ruler)', () => {
       const caoCao = { ...baseOfficer, leadership: 95 };
-      // 95 × 1000 × 1.30 = 123500
-      expect(getMaxTroops(caoCao, true)).toBe(123500);
+      // max(95 × 1000 × 1.30, 150000) = 150000 (floor applies)
+      expect(getMaxTroops(caoCao, true)).toBe(150000);
     });
 
     test('realistic example: 關羽 (leadership 96, governor)', () => {

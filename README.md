@@ -28,12 +28,14 @@ Core RTK IV mechanics and the visual overhaul are complete. The game is playable
   **6 個歷史劇本**，橫跨西元 189-234 年（從董卓亂政到星落五丈原）
 - **400+ officers** with 25 distinct skills across 4 skill groups
   **400 餘名武將**，擁有 4 大類共 25 種特殊技能
-- **25 commands** across 5 categories: 內政, 軍事, 人事, 外交, 謀略
-  **25 項指令**，涵蓋內政、軍事、人事、外交、謀略五大類
+- **27 commands** across 5 categories: 內政, 軍事, 人事, 外交, 謀略
+  **27 項指令**，涵蓋內政、軍事、人事、外交、謀略五大類
 - **Hex-based tactical battles** with unit type differentiation (infantry/cavalry/archer), siege warfare, 13 battle tactics, morale/routing, POW capture, mode-based turn system (move → attack/tactic → wait), enemy AI, battle log, and range visualization
   **六角格戰術戰鬥**，含兵種分化（步兵/騎兵/弓兵）、攻城戰、13 種戰術、士氣潰敗、俘虜系統、模式制回合系統（移動→攻擊/戰術→待機）、敵方 AI、戰鬥紀錄、範圍顯示
 - **AI system** with subsystems for development, military, personnel, diplomacy, and strategy
   **AI 系統**，包含開發、軍事、人事、外交、謀略五大子系統
+- **Mole infiltration system** (埋伏): plant officers as double agents in enemy factions; moles reveal intelligence and betray their host faction in battle
+  **埋伏系統**：派遣武將潛入敵方陣營，臥底武將可回報情報，並在戰鬥中倒戈叛變
 - **24 treasures**, duel system, save/load (3 slots), victory/defeat detection
 - **RTK IV-style UI/visuals**: brocade backgrounds, ornamental frames, classic dialog styling, title menu rework
 - **Strategic map upgrades**: banner-style city flags, improved terrain visibility, gameplay minimap, date badge overlay
@@ -64,7 +66,7 @@ If you want to track future enhancements, use issues or a new roadmap doc.
 - **TypeScript** -- strict mode, `verbatimModuleSyntax`
 - **Zustand** -- single-store state management
 - **Vite** -- dev server and build tooling
-- **Vitest** -- unit and component tests (714 tests across 46 test files)
+- **Vitest** -- unit and component tests (738 tests across 48 test files)
 - **i18next** + **react-i18next** -- internationalization (Traditional Chinese + English)
 
 ## Getting Started

@@ -181,6 +181,18 @@ const BattleScreen: React.FC = () => {
           <button onClick={handleRetreat} style={{ background: '#600', color: 'white', padding: '4px 12px', border: 'none', cursor: 'pointer', borderRadius: 3 }}>
             {t('battle:action.retreat')}
           </button>
+          {isPlayerTurn && battle.moleOfficerIds.length > 0 && battle.units
+            .filter(u => u.factionId === battle.defenderId && battle.moleOfficerIds.includes(u.officerId) && u.status === 'active')
+            .map(moleUnit => (
+              <button
+                key={moleUnit.id}
+                onClick={() => battle.triggerBetrayal(moleUnit.id)}
+                style={{ background: '#d4af37', color: 'black', padding: '4px 12px', border: 'none', cursor: 'pointer', borderRadius: 3, fontWeight: 'bold' }}
+              >
+                {t('ui:battle.triggerBetrayal')} ({localizedName(moleUnit.officer.name)})
+              </button>
+            ))
+          }
         </div>
       </div>
 

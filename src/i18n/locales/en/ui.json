@@ -164,6 +164,7 @@
     },
     "notYourCity": "{{city}} is not your city.",
     "noOfficersAvailable": "No officers available in this city.",
+    "noSkilledOfficers": "No officers with the required skill in this city.",
     "officerExecute": "{{name}} performed \"{{action}}\".",
     "domestic": {
       "developCommerce": "Develop Commerce (500g)",
@@ -218,6 +219,7 @@
     },
     "personnel": {
       "search": "Search",
+      "entice": "Entice",
       "recruit": "Recruit",
       "handlePOW": "Handle POWs",
       "recruitPOW": "Enlist {{name}}",
@@ -239,7 +241,10 @@
       "jointAttack": "Joint Attack",
       "ceasefire": "Ceasefire",
       "demandSurrender": "Demand Surrender",
-      "hostage": "Hostage"
+      "hostage": "Hostage",
+      "recall": "Recall",
+      "plantMole": "Plant Mole (1000g)",
+      "recallMole": "Recall Mole"
     },
     "strategy": {
       "rumor": "Rumor",
@@ -322,9 +327,13 @@
     "currentProgress": "Current: {{month}}/{{year}} - {{factionName}}"
   },
   "event": {
-    "officerRecruited": "{{name}} has accepted your invitation and joined your forces!",
+    "officerRecruited": "{{name}} has come to pledge allegiance and joined your forces!",
     "recruitButton": "Recruit",
-    "declineButton": "Decline"
+    "declineButton": "Decline",
+    "moleExposed": "{{officer}} was exposed by {{faction}} and has returned!"
+  },
+  "battle": {
+    "triggerBetrayal": "Betray"
   },
   "governor": {
     "title": "Appoint Governor",

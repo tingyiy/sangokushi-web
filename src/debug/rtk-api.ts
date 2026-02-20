@@ -205,6 +205,17 @@ export const rtkApi = {
       return player?.relations[targetFactionId] ?? 60;
     },
     allies: () => useGameStore.getState().playerFaction?.allies || [],
+    moles: () => {
+      const state = useGameStore.getState();
+      return state.officers
+        .filter(o => o.moleForFactionId === state.playerFaction?.id)
+        .map(o => ({
+          id: o.id, name: o.name,
+          currentFactionId: o.factionId, cityId: o.cityId,
+          cityName: state.cities.find(c => c.id === o.cityId)?.name ?? '?',
+          hostFaction: state.factions.find(f => f.id === o.factionId)?.name ?? '?',
+        }));
+    },
     ceasefires: () => useGameStore.getState().playerFaction?.ceasefires || [],
     selectedCity: () => {
       const state = useGameStore.getState();
@@ -630,67 +641,57 @@ export const rtkApi = {
     return logCmd('👤', `recruitOfficer(${officer.name})`, { ok: true, data: { success: false, reason: `${officer.name} refused (probability-based). Try again next turn with a high-charisma officer.` } });
   },
 
-  searchOfficer(cityId: number, officerId?: number): Result {
+  enticeOfficer(targetOfficerId: number, enticerId?: number): Result {
     const state = useGameStore.getState();
-    const cn = cityName(cityId);
-    if (state.phase !== 'playing') return logCmd('👤', `searchOfficer(${cn})`, { ok: false, error: 'Not in playing phase' });
+    const tn = officerName(targetOfficerId);
+    if (state.phase !== 'playing') return logCmd('👤', `enticeOfficer(${tn})`, { ok: false, error: 'Not in playing phase' });
 
-    const err = requireOwnCity('👤', `searchOfficer(${cn})`, cityId);
-    if (err) return err;
-    const city = state.cities.find(c => c.id === cityId)!;
+    const target = state.officers.find(o => o.id === targetOfficerId);
+    if (!target) return logCmd('👤', `enticeOfficer(${tn})`, { ok: false, error: `Target officer id=${targetOfficerId} not found` });
+    if (target.factionId === null || target.factionId === -1 || target.factionId === state.playerFaction?.id) {
+      return logCmd('👤', `enticeOfficer(${tn})`, { ok: false, error: `${target.name} is not an enemy officer` });
+    }
 
-    // Check for unaffiliated officers in the city (informational)
-    const unaffiliatedBefore = state.officers.filter(o => o.cityId === cityId && o.factionId === null);
-
-    // Snapshot acted states to detect if the store consumed the action
-    const actedBefore = new Map(
-      state.officers
-        .filter(o => o.cityId === cityId && o.factionId === state.playerFaction?.id)
-        .map(o => [o.id, o.acted])
-    );
-
-    // Track officers in player faction before search
+    // Snapshot to detect state changes
     const myOfficerIdsBefore = new Set(state.officers.filter(o => o.factionId === state.playerFaction?.id).map(o => o.id));
+    const targetCityFactionBefore = state.cities.find(c => c.id === target.cityId)?.factionId;
 
-    state.searchOfficer(cityId, officerId);
+    state.enticeOfficer(targetOfficerId, enticerId);
 
     const stateAfter = useGameStore.getState();
 
-    // Check if any officer's acted state changed (action was consumed)
-    const actionConsumed = stateAfter.officers.some(o =>
-      actedBefore.has(o.id) && o.acted !== actedBefore.get(o.id)
-    );
-
-    // If no action was consumed, the store rejected the command
-    if (!actionConsumed) {
-      const hint = unaffiliatedBefore.length === 0
-        ? `No unaffiliated officers in ${city.name}. Check which of your cities have unaffiliated officers in the status display.`
-        : officerId
-          ? `Officer already acted or is not available.`
-          : `No available officer to perform the search.`;
-      return logCmd('👤', `searchOfficer(${city.name})`, { ok: false, error: hint });
-    }
-
-    // Detect newly recruited officer by comparing faction membership
-    const newlyRecruited = stateAfter.officers.find(o =>
-      o.factionId === state.playerFaction?.id && !myOfficerIdsBefore.has(o.id)
-    );
-
-    if (newlyRecruited) {
-      return logCmd('👤', `searchOfficer(${city.name})`, {
+    // Check if the city flipped (governor entice)
+    const targetCityAfter = stateAfter.cities.find(c => c.id === target.cityId);
+    if (targetCityAfter && targetCityAfter.factionId !== targetCityFactionBefore && targetCityAfter.factionId === state.playerFaction?.id) {
+      return logCmd('👤', `enticeOfficer(${target.name})`, {
         ok: true,
-        data: {
-          type: 'officer',
-          name: newlyRecruited.name,
-          officerId: newlyRecruited.id,
-          message: `Found and recruited ${newlyRecruited.name}! They joined your faction with loyalty 60.`,
-        },
+        data: { type: 'cityFlip', city: targetCityAfter.name, message: `Governor ${target.name} defected! ${targetCityAfter.name} has switched to your faction!` },
       });
     }
 
-    // Action was consumed but nothing found — probability-based failure
-    const hint = `${unaffiliatedBefore.length} unaffiliated officer(s) in ${city.name} but search failed (probability-based). Try again next turn with a high-charisma officer.`;
-    return logCmd('👤', `searchOfficer(${city.name})`, { ok: true, data: { type: 'nothing', hint } });
+    // Check if target defected (regular officer)
+    const targetAfter = stateAfter.officers.find(o => o.id === targetOfficerId);
+    if (targetAfter && targetAfter.factionId === state.playerFaction?.id) {
+      return logCmd('👤', `enticeOfficer(${target.name})`, {
+        ok: true,
+        data: { type: 'defect', message: `${target.name} defected to your faction!` },
+      });
+    }
+
+    // Check if action was consumed (enticer acted changed)
+    const actionConsumed = stateAfter.officers.some(o =>
+      myOfficerIdsBefore.has(o.id) && o.acted && !state.officers.find(ob => ob.id === o.id)?.acted
+    );
+
+    if (actionConsumed) {
+      return logCmd('👤', `enticeOfficer(${target.name})`, {
+        ok: true,
+        data: { type: 'failed', message: `${target.name} refused to defect (probability-based).` },
+      });
+    }
+
+    // Store rejected the command entirely
+    return logCmd('👤', `enticeOfficer(${target.name})`, { ok: false, error: `Entice failed — check that target is enemy, not a ruler, and in an adjacent city.` });
   },
 
   recruitPOW(officerId: number, recruiterId?: number): Result {
@@ -1130,6 +1131,45 @@ export const rtkApi = {
     const after = useGameStore.getState().officers.find(o => o.id === officerId)!;
     if (after.cityId === HOSTAGE_CITY_ID) return logCmd('🤝', label, { ok: true });
     return logCmd('🤝', label, { ok: false, error: 'Action failed' });
+  },
+
+  recallHostage(officerId: number): Result {
+    const state = useGameStore.getState();
+    const label = `recallHostage(${officerName(officerId)})`;
+    if (state.phase !== 'playing') return logCmd('🤝', label, { ok: false, error: 'Not in playing phase' });
+    const before = state.officers.find(o => o.id === officerId);
+    if (!before || before.cityId !== HOSTAGE_CITY_ID) return logCmd('🤝', label, { ok: false, error: 'Officer is not a hostage' });
+    state.recallHostage(officerId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId);
+    if (after && after.cityId !== HOSTAGE_CITY_ID) return logCmd('🤝', label, { ok: true });
+    return logCmd('🤝', label, { ok: false, error: 'Action failed — hostility too high or no city available' });
+  },
+
+  plantMole(targetFactionId: number, officerId?: number): Result {
+    const state = useGameStore.getState();
+    const label = `plantMole(faction#${targetFactionId}, officer#${officerId ?? 'auto'})`;
+    if (state.phase !== 'playing') return logCmd('🤝', label, { ok: false, error: 'Not in playing phase' });
+    const err = requireSelectedCity('🤝', label);
+    if (err) return err;
+    const city = state.cities.find(c => c.id === state.selectedCityId);
+    if (!city || city.gold < 1000) return logCmd('🤝', label, { ok: false, error: 'Need 1000 gold' });
+    const before = state.officers.filter(o => o.factionId === state.playerFaction?.id).length;
+    state.plantMole(targetFactionId, officerId);
+    const after = useGameStore.getState().officers.filter(o => o.factionId === state.playerFaction?.id).length;
+    if (after < before) return logCmd('🤝', label, { ok: true });
+    return logCmd('🤝', label, { ok: false, error: 'Plant mole failed — check espionage skill or gold' });
+  },
+
+  recallMole(officerId: number): Result {
+    const state = useGameStore.getState();
+    const label = `recallMole(${officerName(officerId)})`;
+    if (state.phase !== 'playing') return logCmd('🤝', label, { ok: false, error: 'Not in playing phase' });
+    const before = state.officers.find(o => o.id === officerId);
+    if (!before || !before.moleForFactionId) return logCmd('🤝', label, { ok: false, error: 'Officer is not a mole' });
+    state.recallMole(officerId);
+    const after = useGameStore.getState().officers.find(o => o.id === officerId);
+    if (after && after.factionId === state.playerFaction?.id) return logCmd('🤝', label, { ok: true });
+    return logCmd('🤝', label, { ok: false, error: 'Recall failed' });
   },
 
   // Strategy

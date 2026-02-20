@@ -394,7 +394,7 @@ The CLI (`src/cli/play.ts`, ~1520 lines):
 - Use `@testing-library/react` for component tests
 - Mock store state when needed
 - Aim for coverage on utility functions and store logic
-- Current test suite: 714 tests across 46 test files
+- Current test suite: 738 tests across 48 test files
 - Battle store tests: `src/store/battleStore.test.ts`, `src/store/battleStore.fixes.test.ts`
 - Game store command tests: `src/store/gameStore.commands.test.ts`
 - Ruler-governor rule tests: `src/store/rulerGovernor.test.ts` (9 tests enforcing R-001)

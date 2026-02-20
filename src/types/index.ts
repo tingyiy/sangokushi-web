@@ -80,6 +80,8 @@ export interface Officer {
   relationships: { type: 'father' | 'spouse' | 'sworn'; targetId: number }[];
   /** 裝備的寶物ID，null = 無裝備 - Phase 1.4 */
   treasureId: number | null;
+  /** 埋伏: this officer is secretly a mole for another faction. null/undefined = not a mole */
+  moleForFactionId?: number | null;
 }
 
 export type BaseOfficer = Omit<Officer, 'factionId' | 'cityId' | 'acted' | 'loyalty' | 'isGovernor' | 'treasureId' | 'rank' | 'relationships'>;
@@ -196,7 +198,7 @@ export type CommandCategory = 'domestic' | 'military' | 'personnel' | 'diplomacy
 /** 遊戲事件 (Game Event) - Phase 6.4 */
 export interface GameEvent {
   id: string;
-  type: 'flood' | 'locusts' | 'plague' | 'harvest' | 'officerVisit' | 'historical';
+  type: 'flood' | 'locusts' | 'plague' | 'harvest' | 'officerVisit' | 'historical' | 'moleExposed';
   name: string;
   description: string;
   cityId?: number;

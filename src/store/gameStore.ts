@@ -133,6 +133,8 @@ interface DuelState {
   logs: string[];
   result: 'win' | 'lose' | 'draw' | 'flee' | null;
   isBattleDuel?: boolean;
+  /** Tracks p1's last action so AI turn can apply defense bonus */
+  p1Action?: 'attack' | 'heavy' | 'defend';
 }
 
 export interface GameState {
@@ -219,7 +221,8 @@ export interface GameState {
 
   // ── Personnel Actions ──
   recruitOfficer: (officerId: number, recruiterId?: number) => void;
-  searchOfficer: (cityId: number, officerId?: number) => void;
+  enticeOfficer: (targetOfficerId: number, enticerId?: number) => void;
+  getEnticeTargets: (cityId: number) => OfficerView[];
   recruitPOW: (officerId: number, recruiterId?: number) => void;
   rewardOfficer: (officerId: number, type: 'gold' | 'treasure', amount?: number) => void;
   executeOfficer: (officerId: number) => void;
@@ -235,6 +238,7 @@ export interface GameState {
   startDuel: () => void;
   initMidBattleDuel: (p1: Officer, p2: Officer) => void;
   duelAction: (action: 'attack' | 'heavy' | 'defend' | 'flee') => void;
+  duelAiTurn: () => void;
   endDuel: () => void;
   startBattle: (targetCityId: number) => void;
   aiStartBattle: (fromCityId: number, targetCityId: number) => void;
@@ -249,6 +253,9 @@ export interface GameState {
   demandSurrender: (targetFactionId: number, officerId?: number) => void;
   breakAlliance: (targetFactionId: number) => void;
   exchangeHostage: (officerId: number, targetFactionId: number) => void;
+  recallHostage: (officerId: number) => void;
+  plantMole: (targetFactionId: number, officerId?: number) => void;
+  recallMole: (officerId: number) => void;
 
   // ── Strategy Actions ──
   rumor: (targetCityId: number, officerId?: number) => void;
@@ -265,7 +272,7 @@ export interface GameState {
   aiImproveRelations: (fromCityId: number, targetFactionId: number) => void;
   aiRecruitOfficer: (cityId: number, officerId: number) => void;
   aiRecruitPOW: (cityId: number, officerId: number) => void;
-  aiSearchOfficer: (cityId: number) => void;
+  aiEnticeOfficer: (targetOfficerId: number, fromCityId: number) => void;
   aiSpy: (cityId: number, targetCityId: number) => void;
   aiRumor: (cityId: number, targetCityId: number) => void;
   // AI domestic actions
@@ -282,6 +289,7 @@ export interface GameState {
   aiTransport: (fromCityId: number, toCityId: number, resources: { gold?: number; food?: number; troops?: number }) => void;
   aiRewardOfficer: (officerId: number, cityId: number, amount: number) => void;
   aiAppointGovernor: (cityId: number, officerId: number) => void;
+  aiPlantMole: (officerId: number, targetFactionId: number) => void;
 
   // ── Save/Load Actions ──
   saveGame: (slot: number) => boolean;
@@ -454,6 +462,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.year < revealInfo.untilYear) return true;
       if (state.year === revealInfo.untilYear && state.month <= revealInfo.untilMonth) return true;
     }
+    // Rule 3: Mole in the city reveals it to the planting faction
+    if (state.officers.some(o => o.cityId === cityId && o.moleForFactionId === state.playerFaction!.id)) return true;
     // RTK IV: adjacent cities are NOT revealed without spying
     return false;
   },
@@ -608,6 +618,33 @@ export const useGameStore = create<GameState>((set, get) => ({
         isAlly,
       };
     });
+  },
+
+  getEnticeTargets: (cityId) => {
+    const state = get();
+    if (!state.playerFaction) return [];
+    const city = state.cities.find(c => c.id === cityId);
+    if (!city || city.factionId !== state.playerFaction.id) return [];
+
+    // Find enemy officers in adjacent revealed cities, excluding rulers
+    const targets: ReturnType<typeof state.getOfficerView>[] = [];
+    for (const adjId of city.adjacentCityIds) {
+      const adjCity = state.cities.find(c => c.id === adjId);
+      if (!adjCity || adjCity.factionId === null || adjCity.factionId === state.playerFaction.id) continue;
+      if (!state.isCityRevealed(adjId)) continue;
+
+      const adjFaction = state.factions.find(f => f.id === adjCity.factionId);
+      const enemyOfficers = state.officers.filter(o =>
+        o.cityId === adjId && o.factionId === adjCity.factionId
+      );
+      for (const eo of enemyOfficers) {
+        // Exclude rulers
+        if (adjFaction && adjFaction.rulerId === eo.id) continue;
+        const view = state.getOfficerView(eo.id);
+        if (view) targets.push(view);
+      }
+    }
+    return targets.filter(Boolean) as OfficerView[];
   },
 
   checkVictoryCondition: () => {
