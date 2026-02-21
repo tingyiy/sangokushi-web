@@ -195,14 +195,11 @@ describe('Authorization - City Ownership Checks', () => {
       expect(after1.gold).toBe(before1.gold);
     });
 
-    it('searchOfficer does nothing on enemy city', () => {
-      const logBefore = useGameStore.getState().log.length;
-      useGameStore.getState().searchOfficer(2);
-      // Should not search — no acted flag set on player officer
+    it('enticeOfficer does nothing on own-faction officer', () => {
+      // Try to entice a player officer (should be rejected — target must be enemy)
+      useGameStore.getState().enticeOfficer(1);
       const officer = useGameStore.getState().officers.find(o => o.id === 1)!;
       expect(officer.acted).toBe(false);
-      // No meaningful log added (just silent return)
-      expect(useGameStore.getState().log.length).toBe(logBefore);
     });
   });
 

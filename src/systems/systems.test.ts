@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAdvisorSuggestions } from './advisor';
 import { rollRandomEvents, rollOfficerVisits, applyEventEffects } from './events';
 import { checkHistoricalEvents } from '../data/historicalEvents';
+import { useGameStore } from '../store/gameStore';
 import type { City, GameEvent } from '../types';
 import type { GameState } from '../store/gameStore';
 
@@ -123,6 +124,61 @@ describe('Events System', () => {
     expect(events.length).toBe(1);
     expect(events[0].type).toBe('officerVisit');
     spy.mockRestore();
+  });
+});
+
+describe('Officer Visit — recruit via EventDialog', () => {
+  beforeEach(() => {
+    useGameStore.setState({
+      phase: 'playing',
+      playerFaction: { id: 1, name: '劉備', rulerId: 1, advisorId: null, color: '#00ff00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+      factions: [
+        { id: 1, name: '劉備', rulerId: 1, advisorId: null, color: '#00ff00', isPlayer: true, relations: {}, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [] },
+      ],
+      cities: [
+        { id: 5, name: '下邳', factionId: 1, x: 0, y: 0, population: 100000, gold: 5000, food: 10000, commerce: 500, agriculture: 500, defense: 50, troops: 10000, adjacentCityIds: [], floodControl: 50, technology: 30, peopleLoyalty: 70, morale: 60, training: 40, crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' },
+      ],
+      officers: [
+        { id: 1, name: '劉備', factionId: 1, cityId: 5, leadership: 80, war: 70, intelligence: 70, politics: 70, charisma: 95, skills: [], acted: false, loyalty: 100, isGovernor: true, rank: 'viceroy', relationships: [], portraitId: 1, birthYear: 161, deathYear: 223, treasureId: null },
+        { id: 999, name: '嚴顏', factionId: null, cityId: 5, leadership: 70, war: 80, intelligence: 50, politics: 40, charisma: 60, skills: ['infantry'], acted: false, loyalty: 0, isGovernor: false, rank: 'common', relationships: [], portraitId: 999, birthYear: 150, deathYear: 220, treasureId: null },
+      ],
+      pendingEvents: [
+        { id: 'visit-1', type: 'officerVisit', name: '武將求見', description: '', cityId: 5, officerId: 999, year: 189, month: 4 },
+      ],
+      log: [],
+    } as any);
+  });
+
+  it('should assign officer to the event city and player faction when recruited', () => {
+    const event = useGameStore.getState().pendingEvents[0];
+    const playerFaction = useGameStore.getState().playerFaction!;
+
+    // Simulate EventDialog handleRecruit
+    useGameStore.setState(state => ({
+      officers: state.officers.map(o =>
+        o.id === event.officerId
+          ? { ...o, factionId: playerFaction.id, cityId: event.cityId!, loyalty: 60 }
+          : o
+      )
+    }));
+    useGameStore.getState().popEvent();
+
+    const state = useGameStore.getState();
+    const officer = state.officers.find(o => o.id === 999)!;
+    expect(officer.factionId).toBe(1);
+    expect(officer.cityId).toBe(5);
+    expect(officer.loyalty).toBe(60);
+    expect(state.pendingEvents.length).toBe(0);
+  });
+
+  it('should not assign officer when declined', () => {
+    useGameStore.getState().popEvent();
+
+    const state = useGameStore.getState();
+    const officer = state.officers.find(o => o.id === 999)!;
+    expect(officer.factionId).toBeNull();
+    expect(officer.cityId).toBe(5);
+    expect(state.pendingEvents.length).toBe(0);
   });
 });
 

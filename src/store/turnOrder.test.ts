@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from './gameStore';
+import * as aiEngine from '../ai/aiEngine';
 import type { Officer, City, Faction, RTK4Skill } from '../types';
 
 // ── Test Helpers ──
@@ -331,6 +332,8 @@ describe('Turn Order System', () => {
 
     it('economy runs for all factions simultaneously, not per-faction', () => {
       const spy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      // Suppress AI actions so they don't muddy the economy math
+      const aiSpy = vi.spyOn(aiEngine, 'runAIForFaction').mockReturnValue([]);
 
       const playerFaction = createTestFaction({ id: 1, name: '玩家', rulerId: 50, isPlayer: true });
       const aiFaction = createTestFaction({ id: 2, name: 'AI', rulerId: 10, isPlayer: false });
@@ -366,6 +369,7 @@ describe('Turn Order System', () => {
       expect(aiCity.gold).toBe(25970);
 
       spy.mockRestore();
+      aiSpy.mockRestore();
     });
   });
 

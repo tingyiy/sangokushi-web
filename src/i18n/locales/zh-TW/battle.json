@@ -113,6 +113,7 @@
     "resultWin": "勝利！",
     "resultLose": "敗北...",
     "resultDraw": "平局",
-    "resultFlee": "戰鬥結束"
+    "resultFlee": "戰鬥結束",
+    "vsLabel": "單挑"
   }
 }

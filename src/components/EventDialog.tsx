@@ -18,9 +18,9 @@ export function EventDialog() {
     if (event.type === 'officerVisit' && event.officerId && playerFaction) {
       // Direct recruitment from visit
       useGameStore.setState(state => ({
-        officers: state.officers.map(o => 
-          o.id === event.officerId 
-            ? { ...o, factionId: playerFaction.id, loyalty: 60 } 
+        officers: state.officers.map(o =>
+          o.id === event.officerId
+            ? { ...o, factionId: playerFaction.id, cityId: event.cityId!, loyalty: 60 }
             : o
         )
       }));

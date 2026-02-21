@@ -51,16 +51,26 @@ export function evaluatePersonnel(context: AIFactionContext): AIDecision[] {
         continue;
     }
 
-    // 4. Search for officers
-    if (officersInCity.length < 3 && city.gold >= 500) {
-      decisions.push({
-        action: 'aiSearchOfficer',
-        params: [city.id],
-        description: i18next.t('logs:ai.searchOfficer', { city: localizedName(city.name) })
-      });
-      continue;
+    // 4. Entice enemy officers in adjacent cities (prefer lowest loyalty)
+    for (const adjId of city.adjacentCityIds) {
+      const adjCity = state.cities.find((c: City) => c.id === adjId);
+      if (!adjCity || adjCity.factionId === null || adjCity.factionId === context.faction.id) continue;
+      const adjFaction = state.factions.find((f: { id: number; rulerId: number }) => f.id === adjCity.factionId);
+      const enemies = state.officers.filter((o: Officer) =>
+        o.cityId === adjId && o.factionId === adjCity.factionId &&
+        !(adjFaction && adjFaction.rulerId === o.id)
+      ).sort((a: Officer, b: Officer) => a.loyalty - b.loyalty);
+      if (enemies.length > 0 && officersInCity.length > 0) {
+        const target = enemies[0]; // lowest loyalty first
+        decisions.push({
+          action: 'aiEnticeOfficer',
+          params: [target.id, city.id],
+          description: i18next.t('logs:ai.enticeSuccess', { faction: localizedName(context.faction.name), enticer: localizedName(officersInCity[0].name), officer: localizedName(target.name) })
+        });
+        break; // one entice per city per turn
+      }
     }
-    
+
     // 5. Appoint governor
     const hasGovernor = factionOfficers.some((o: Officer) => o.cityId === city.id && o.isGovernor);
     if (!hasGovernor && officersInCity.length > 0) {

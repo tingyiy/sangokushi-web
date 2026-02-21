@@ -113,6 +113,7 @@
     "resultWin": "Victory!",
     "resultLose": "Defeat...",
     "resultDraw": "Draw",
-    "resultFlee": "Duel Over"
+    "resultFlee": "Duel Over",
+    "vsLabel": "VS"
   }
 }

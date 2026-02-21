@@ -128,83 +128,72 @@ describe('rtk-api — spy rejection detection', () => {
   });
 });
 
-describe('rtk-api — searchOfficer rejection detection', () => {
+describe('rtk-api — enticeOfficer rejection detection', () => {
   beforeEach(setupTestState);
 
-  it('returns ok:false when no unaffiliated officers in city', () => {
-    // City 1 has no unaffiliated officers in default setup
-    const result = rtkApi.searchOfficer(1, 1);
+  it('returns ok:false when target is not an enemy officer', () => {
+    // Officer 1 belongs to the player — cannot entice
+    const result = rtkApi.enticeOfficer(1, 1);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('No unaffiliated officers');
+    expect(result.error).toContain('not an enemy officer');
     // Officer should NOT have acted
     expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
   });
 
-  it('returns ok:false when officer already acted', () => {
-    // Add unaffiliated officer so the "no unaffiliated" guard doesn't fire first
-    useGameStore.setState({
-      officers: [
-        ...useGameStore.getState().officers,
-        {
-          id: 10, name: '在野', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
-          skills: [] as RTK4Skill[], portraitId: 10, birthYear: 170, deathYear: 230, treasureId: null,
-          factionId: null, cityId: 1, acted: false, loyalty: 0, isGovernor: false,
-          rank: 'common' as const, relationships: [],
-        },
-      ],
-    });
-    // Mark officer 1 as acted
-    useGameStore.setState({
-      officers: useGameStore.getState().officers.map(o =>
-        o.id === 1 ? { ...o, acted: true } : o
-      ),
-    });
-    const result = rtkApi.searchOfficer(1, 1);
+  it('returns ok:false when target is a ruler and not adjacent', () => {
+    // Officer 2 (呂布) is the ruler of faction 2 — cannot entice rulers
+    // Also, the store rejects this before reaching probability roll
+    const result = rtkApi.enticeOfficer(2, 1);
     expect(result.ok).toBe(false);
+    // Officer should NOT have acted
+    expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(false);
   });
 
-  it('returns ok:true when search succeeds', () => {
-    // Add unaffiliated officer
+  it('returns ok:true with type=defect when entice succeeds', () => {
+    // Add a non-ruler enemy officer with low loyalty in city 2 (adjacent to city 1)
     useGameStore.setState({
       officers: [
         ...useGameStore.getState().officers,
         {
-          id: 10, name: '在野', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
-          skills: [] as RTK4Skill[], portraitId: 10, birthYear: 170, deathYear: 230, treasureId: null,
-          factionId: null, cityId: 1, acted: false, loyalty: 0, isGovernor: false,
+          id: 10, name: '張遼', leadership: 90, war: 92, intelligence: 75, politics: 60, charisma: 80,
+          skills: [] as RTK4Skill[], portraitId: 10, birthYear: 169, deathYear: 222, treasureId: null,
+          factionId: 2, cityId: 2, acted: false, loyalty: 50, isGovernor: false,
           rank: 'common' as const, relationships: [],
         },
       ],
     });
     const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.01); // force success
-    const result = rtkApi.searchOfficer(1, 1);
+    const result = rtkApi.enticeOfficer(10, 1);
     expect(result.ok).toBe(true);
-    expect((result.data as { type: string }).type).toBe('officer');
-    // Officer should have acted
+    expect((result.data as { type: string }).type).toBe('defect');
+    // Enticer officer should have acted
     expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(true);
+    // Target should now be in player faction
+    expect(useGameStore.getState().officers.find(o => o.id === 10)!.factionId).toBe(1);
     mockRandom.mockRestore();
   });
 
-  it('returns ok:true with type=nothing on probability-based failure', () => {
-    // Add unaffiliated officer
+  it('returns ok:true with type=failed on probability-based failure', () => {
+    // Add a non-ruler enemy officer with low loyalty in city 2
     useGameStore.setState({
       officers: [
         ...useGameStore.getState().officers,
         {
-          id: 10, name: '在野', leadership: 50, war: 50, intelligence: 50, politics: 50, charisma: 50,
-          skills: [] as RTK4Skill[], portraitId: 10, birthYear: 170, deathYear: 230, treasureId: null,
-          factionId: null, cityId: 1, acted: false, loyalty: 0, isGovernor: false,
+          id: 10, name: '張遼', leadership: 90, war: 92, intelligence: 75, politics: 60, charisma: 80,
+          skills: [] as RTK4Skill[], portraitId: 10, birthYear: 169, deathYear: 222, treasureId: null,
+          factionId: 2, cityId: 2, acted: false, loyalty: 50, isGovernor: false,
           rank: 'common' as const, relationships: [],
         },
       ],
     });
     const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99); // force failure
-    const result = rtkApi.searchOfficer(1, 1);
+    const result = rtkApi.enticeOfficer(10, 1);
     expect(result.ok).toBe(true);
-    expect((result.data as { type: string }).type).toBe('nothing');
-    expect((result.data as { hint: string }).hint).toContain('probability-based');
-    // Officer should have acted (action consumed)
+    expect((result.data as { type: string }).type).toBe('failed');
+    // Enticer officer should have acted (action consumed)
     expect(useGameStore.getState().officers.find(o => o.id === 1)!.acted).toBe(true);
+    // Target should still be in enemy faction
+    expect(useGameStore.getState().officers.find(o => o.id === 10)!.factionId).toBe(2);
     mockRandom.mockRestore();
   });
 });

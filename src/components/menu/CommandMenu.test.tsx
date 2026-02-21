@@ -81,7 +81,8 @@ describe('CommandMenu', () => {
       draftTroops: vi.fn(),
       startDuel: vi.fn(),
       startBattle: vi.fn(),
-      searchOfficer: vi.fn(),
+      enticeOfficer: vi.fn(),
+      getEnticeTargets: vi.fn().mockReturnValue([]),
       recruitOfficerByName: vi.fn(),
       recruitOfficerByItem: vi.fn(),
       improveRelations: vi.fn(),
@@ -139,6 +140,55 @@ describe('CommandMenu', () => {
       fireEvent.click(officerRow);
     }
     expect(mockDevelopCommerce).toHaveBeenCalledWith(1, 1);
+  });
+
+  describe('Acted officers excluded from selection', () => {
+    it('does not show acted officers in officer selection overlay', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'domestic',
+        selectedCityId: 1,
+        cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000, food: 10000, population: 50000, troops: 3000 }],
+        playerFaction: { id: 1 },
+        officers: [
+          { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: true, skills: ['manufacture'], loyalty: 100 },
+          { id: 2, name: '曹操', cityId: 1, factionId: 1, isGovernor: false, acted: false, skills: [], loyalty: 100 },
+        ],
+      });
+
+      render(<CommandMenu />);
+      fireEvent.click(screen.getByText('command.domestic.developCommerce'));
+
+      // 荀彧 (acted=true) should NOT appear
+      expect(screen.queryByText('荀彧')).toBeNull();
+      // 曹操 (acted=false) should appear
+      expect(screen.getByText('曹操')).toBeDefined();
+    });
+
+    it('logs error when all officers have acted', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'domestic',
+        selectedCityId: 1,
+        cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000, food: 10000, population: 50000, troops: 3000 }],
+        playerFaction: { id: 1 },
+        officers: [
+          { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: true, skills: ['manufacture'], loyalty: 100 },
+        ],
+      });
+
+      render(<CommandMenu />);
+      fireEvent.click(screen.getByText('command.domestic.developCommerce'));
+
+      // No officers available — should log error
+      expect(mockAddLog).toHaveBeenCalledWith('command.noOfficersAvailable');
+      // No officer overlay should be shown
+      expect(screen.queryByText('荀彧')).toBeNull();
+    });
   });
 
   describe('Personnel UI: ruler/governor/advisor rendering', () => {
@@ -269,6 +319,116 @@ describe('CommandMenu', () => {
       // Should have rank select only (transfer moved to military)
       const selects = regularRow!.querySelectorAll('select');
       expect(selects.length).toBe(1);
+    });
+  });
+
+  describe('Hostage officer picker', () => {
+    it('opens officer selection overlay for hostage instead of auto-picking first', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      const mockExchangeHostage = vi.fn();
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'diplomacy',
+        selectedCityId: 1,
+        cities: [{ id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000 }],
+        playerFaction: { id: 1, relations: { 2: 60 }, allies: [] },
+        officers: [
+          { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: false, skills: [], loyalty: 100 },
+          { id: 2, name: '曹操', cityId: 1, factionId: 1, isGovernor: false, acted: false, skills: [], loyalty: 100 },
+        ],
+        factions: [
+          { id: 1, name: '曹操', color: '#ff0000', relations: { 2: 60 }, allies: [] },
+          { id: 2, name: '董卓', color: '#0000ff', relations: { 1: 60 }, allies: [] },
+        ],
+        exchangeHostage: mockExchangeHostage,
+      });
+
+      render(<CommandMenu />);
+      fireEvent.click(screen.getByText('command.diplomacy.hostage'));
+
+      // Should show officer selection overlay with both officers
+      expect(screen.getByText('荀彧')).toBeDefined();
+      expect(screen.getByText('曹操')).toBeDefined();
+
+      // Pick 曹操 (second officer)
+      const row = screen.getByText('曹操').closest('tr');
+      expect(row).toBeTruthy();
+      fireEvent.click(row!);
+
+      // Should call exchangeHostage with the picked officer's id, not the first
+      expect(mockExchangeHostage).toHaveBeenCalledWith(2, 2);
+    });
+  });
+
+  describe('Strategy shows only skilled officers in picker', () => {
+    it('only shows officers with arson skill when clicking arson', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'strategy',
+        selectedCityId: 1,
+        cities: [
+          { id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000 },
+          { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1] },
+        ],
+        playerFaction: { id: 1, relations: { 2: 60 }, allies: [] },
+        officers: [
+          { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: false, skills: [], loyalty: 100 },
+          { id: 2, name: '曹操', cityId: 1, factionId: 1, isGovernor: false, acted: false, skills: ['arson'], loyalty: 100 },
+        ],
+        factions: [
+          { id: 1, name: '曹操', color: '#ff0000', relations: { 2: 60 }, allies: [] },
+          { id: 2, name: '董卓', color: '#0000ff', relations: { 1: 60 }, allies: [] },
+        ],
+      });
+
+      render(<CommandMenu />);
+
+      // Button should NOT be disabled
+      const arsonBtn = screen.getByText('command.strategy.arson');
+      expect(arsonBtn.hasAttribute('disabled')).toBe(false);
+
+      fireEvent.click(arsonBtn);
+
+      // Only 曹操 (has arson skill) should appear, not 荀彧
+      expect(screen.getByText('曹操')).toBeDefined();
+      expect(screen.queryByText('荀彧')).toBeNull();
+    });
+
+    it('logs error when no officer has the required skill', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockFn = useGameStore as any;
+      mockFn.mockReturnValue({
+        ...mockFn(),
+        activeCommandCategory: 'strategy',
+        selectedCityId: 1,
+        cities: [
+          { id: 1, name: '許昌', factionId: 1, adjacentCityIds: [2], gold: 5000 },
+          { id: 2, name: '洛陽', factionId: 2, adjacentCityIds: [1] },
+        ],
+        playerFaction: { id: 1, relations: { 2: 60 }, allies: [] },
+        officers: [
+          { id: 1, name: '荀彧', cityId: 1, factionId: 1, isGovernor: true, acted: false, skills: [], loyalty: 100 },
+        ],
+        factions: [
+          { id: 1, name: '曹操', color: '#ff0000', relations: { 2: 60 }, allies: [] },
+          { id: 2, name: '董卓', color: '#0000ff', relations: { 1: 60 }, allies: [] },
+        ],
+      });
+
+      render(<CommandMenu />);
+
+      // Button is clickable (not disabled)
+      const arsonBtn = screen.getByText('command.strategy.arson');
+      expect(arsonBtn.hasAttribute('disabled')).toBe(false);
+
+      fireEvent.click(arsonBtn);
+
+      // No skilled officer — should log message, no overlay
+      expect(mockAddLog).toHaveBeenCalledWith('command.noSkilledOfficers');
+      expect(screen.queryByText('荀彧')).toBeNull();
     });
   });
 });

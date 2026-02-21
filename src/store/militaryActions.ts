@@ -7,11 +7,12 @@ import { getMaxTroops } from '../utils/officers';
 import { useBattleStore } from './battleStore';
 import { hasSkill } from '../utils/skills';
 import { autoAssignGovernorInPlace, getAttackDirection } from './storeHelpers';
+import { executeHostages } from './diplomacyActions';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
 
-export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setBattleFormation' | 'startDuel' | 'initMidBattleDuel' | 'duelAction' | 'endDuel' | 'startBattle' | 'aiStartBattle' | 'retreat' | 'resolveBattle'> {
+export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setBattleFormation' | 'startDuel' | 'initMidBattleDuel' | 'duelAction' | 'duelAiTurn' | 'endDuel' | 'startBattle' | 'aiStartBattle' | 'retreat' | 'resolveBattle'> {
   return {
     setBattleFormation: (formation) => set({ battleFormation: formation }),
 
@@ -58,7 +59,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           p2Hp: 100,
           round: 1,
           turn: 0,
-          logs: [`${p1.name} 向 ${duelCity.name} 的 ${p2.name} 發起了挑戰！`, '戰鬥開始！'],
+          logs: [
+            i18next.t('logs:duel.challenge', { p1: localizedName(p1.name), p2: localizedName(p2.name), city: localizedName(duelCity.name) }),
+            i18next.t('logs:duel.start'),
+          ],
           result: null,
         }
       });
@@ -74,7 +78,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           p2Hp: 100,
           round: 1,
           turn: 0,
-          logs: [`${p1.name} 與 ${p2.name} 展開了生死決鬥！`],
+          logs: [i18next.t('logs:duel.battleDuelStart', { p1: localizedName(p1.name), p2: localizedName(p2.name) })],
           result: null,
           isBattleDuel: true
         }
@@ -84,22 +88,17 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
     duelAction: (action) => {
       const state = get();
       const ds = state.duelState;
-      if (!ds || ds.result) return;
+      if (!ds || ds.result || ds.turn !== 0) return;
 
-      let p1Dmg = 0;
-      let p2Dmg = 0;
-      let logMsg = '';
       const logs = [...ds.logs];
 
-      // Player Phase
+      // Flee — immediate result, no AI turn
       if (action === 'flee') {
-        set({ duelState: { ...ds, logs: [...logs, `${ds.p1.name} 逃跑了！`], result: 'flee' } });
+        set({ duelState: { ...ds, logs: [...logs, i18next.t('logs:duel.flee', { name: localizedName(ds.p1.name) })], result: 'flee' } });
         return;
       }
 
-      // Hit calculation
-      // Base damage = War / 10 + Random(1-10)
-
+      // p1 attack phase
       let hitChance = 80 + (ds.p1.war - ds.p2.war);
       let damageMult = 1;
 
@@ -107,32 +106,51 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         hitChance -= 20;
         damageMult = 1.5;
       } else if (action === 'defend') {
-        damageMult = 0; // Don't attack
+        damageMult = 0;
       }
 
+      let p2Dmg = 0;
       if (action !== 'defend') {
         const roll = Math.random() * 100;
         if (roll < hitChance) {
           const base = Math.max(1, ds.p1.war / 5);
           const dmg = Math.floor((base + Math.random() * 10) * damageMult);
           p2Dmg = dmg;
-          logMsg = `${ds.p1.name} 使用 ${action === 'heavy' ? '大喝' : '攻擊'}，造成了 ${dmg} 點傷害！`;
+          logs.push(i18next.t('logs:duel.attackHit', { name: localizedName(ds.p1.name), type: action === 'heavy' ? i18next.t('logs:duel.typeHeavy') : i18next.t('logs:duel.typeAttack'), dmg }));
         } else {
-          logMsg = `${ds.p1.name} 的攻擊落空了！`;
+          logs.push(i18next.t('logs:duel.attackMiss', { name: localizedName(ds.p1.name) }));
         }
       } else {
-        logMsg = `${ds.p1.name} 採取了防禦姿態。`;
+        logs.push(i18next.t('logs:duel.defend', { name: localizedName(ds.p1.name) }));
       }
-      logs.push(logMsg);
 
       const newP2Hp = Math.max(0, ds.p2Hp - p2Dmg);
 
       if (newP2Hp === 0) {
-        set({ duelState: { ...ds, p2Hp: 0, logs: [...logs, `${ds.p2.name} 被擊敗了！`], result: 'win' } });
+        set({ duelState: { ...ds, p2Hp: 0, logs: [...logs, i18next.t('logs:duel.defeated', { name: localizedName(ds.p2.name) })], result: 'win' } });
         return;
       }
 
-      // AI Phase
+      // Switch to AI turn — store which action p1 chose (for defense bonus)
+      set({
+        duelState: {
+          ...ds,
+          p2Hp: newP2Hp,
+          logs,
+          turn: 1,
+          p1Action: action,
+        }
+      });
+    },
+
+    duelAiTurn: () => {
+      const state = get();
+      const ds = state.duelState;
+      if (!ds || ds.result || ds.turn !== 1) return;
+
+      const logs = [...ds.logs];
+
+      // AI picks action
       const aiAction = ds.p2Hp < 30 ? 'heavy' : 'attack';
       let aiHitChance = 80 + (ds.p2.war - ds.p1.war);
       let aiDamageMult = 1;
@@ -142,26 +160,27 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         aiDamageMult = 1.5;
       }
 
-      // Player defense bonus
-      if (action === 'defend') {
+      // p1 defense bonus from previous action
+      if (ds.p1Action === 'defend') {
         aiDamageMult *= 0.5;
-        logs.push(`(防禦生效！傷害減半)`);
+        logs.push(i18next.t('logs:duel.defendEffect'));
       }
 
+      let p1Dmg = 0;
       const aiRoll = Math.random() * 100;
       if (aiRoll < aiHitChance) {
         const base = Math.max(1, ds.p2.war / 5);
         const dmg = Math.floor((base + Math.random() * 10) * aiDamageMult);
         p1Dmg = dmg;
-        logs.push(`${ds.p2.name} 還擊！造成了 ${dmg} 點傷害！`);
+        logs.push(i18next.t('logs:duel.counterHit', { name: localizedName(ds.p2.name), dmg }));
       } else {
-        logs.push(`${ds.p2.name} 的攻擊被閃避了！`);
+        logs.push(i18next.t('logs:duel.counterMiss', { name: localizedName(ds.p2.name) }));
       }
 
       const newP1Hp = Math.max(0, ds.p1Hp - p1Dmg);
 
       if (newP1Hp === 0) {
-        set({ duelState: { ...ds, p1Hp: 0, p2Hp: newP2Hp, logs: [...logs, `${ds.p1.name} 落馬了...`], result: 'lose' } });
+        set({ duelState: { ...ds, p1Hp: 0, logs: [...logs, i18next.t('logs:duel.fallen', { name: localizedName(ds.p1.name) })], result: 'lose', turn: 0, p1Action: undefined } });
         return;
       }
 
@@ -169,9 +188,10 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         duelState: {
           ...ds,
           p1Hp: newP1Hp,
-          p2Hp: newP2Hp,
-          logs: logs,
+          logs,
           round: ds.round + 1,
+          turn: 0,
+          p1Action: undefined,
         }
       });
     },
@@ -192,6 +212,16 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
     },
 
     startBattle: (targetCityId: number) => {
+      {
+        // Betrayal consequence: if target faction holds player hostages, execute them
+        const preState = get();
+        const preTargetCity = preState.cities.find(c => c.id === targetCityId);
+        if (preTargetCity?.factionId !== null && preTargetCity?.factionId !== undefined) {
+          executeHostages(preTargetCity.factionId, preState, get, set);
+        }
+      }
+
+      // Re-read state after potential hostage execution
       const state = get();
       const city = state.cities.find(c => c.id === state.selectedCityId);
       const targetCity = state.cities.find(c => c.id === targetCityId);
@@ -314,7 +344,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
           const promoted = autoAssignGovernorInPlace(officers, city.id, state.playerFaction!.id, state.factions);
           if (promoted) set({ officers });
         }
-        get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(commander.name) }));
+        get().addLog(i18next.t('logs:military.captureEmptyCity', { city: localizedName(targetCity.name), commander: localizedName(state.playerFaction!.name) }));
         // Record war log (public knowledge)
         if (targetCity.factionId !== null) {
           get().addWarLog({
@@ -434,6 +464,17 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
     },
 
     aiStartBattle: (fromCityId: number, targetCityId: number) => {
+      {
+        // Betrayal consequence: if attacking AI faction holds player hostages, execute them
+        const preState = get();
+        const preCity = preState.cities.find(c => c.id === fromCityId);
+        const preTarget = preState.cities.find(c => c.id === targetCityId);
+        if (preCity?.factionId !== null && preCity?.factionId !== undefined && preTarget?.factionId === preState.playerFaction?.id) {
+          executeHostages(preCity.factionId, preState, get, set);
+        }
+      }
+
+      // Re-read state after potential hostage execution
       const state = get();
       const city = state.cities.find(c => c.id === fromCityId);
       const targetCity = state.cities.find(c => c.id === targetCityId);

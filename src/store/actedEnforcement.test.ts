@@ -9,7 +9,7 @@
  * This test file covers ALL command categories:
  *   - Domestic: developCommerce, developAgriculture, reinforceDefense, developFloodControl,
  *               developTechnology, trainTroops, manufacture, disasterRelief
- *   - Personnel: recruitOfficer, searchOfficer, recruitPOW, draftTroops, transport, transferOfficer
+ *   - Personnel: recruitOfficer, enticeOfficer, recruitPOW, draftTroops, transport, transferOfficer
  *   - Military: startBattle (commander check)
  *   - Diplomacy: improveRelations, formAlliance, requestJointAttack, proposeCeasefire, demandSurrender
  *   - Strategy: rumor, counterEspionage, inciteRebellion, arson, spy, gatherIntelligence
@@ -89,6 +89,12 @@ function setupState() {
         portraitId: 12, birthYear: 170, deathYear: 230, treasureId: null,
         factionId: -1 as unknown as number, cityId: 1,
         acted: false, loyalty: 30, isGovernor: false, rank: 'common' as const, relationships: [],
+      },
+      {
+        id: 13, name: '張遼', leadership: 90, war: 92, intelligence: 75, politics: 60, charisma: 80,
+        skills: [] as RTK4Skill[],
+        portraitId: 13, birthYear: 169, deathYear: 222, treasureId: null, factionId: 2, cityId: 2,
+        acted: false, loyalty: 50, isGovernor: false, rank: 'common' as const, relationships: [],
       },
     ],
     factions: [
@@ -182,8 +188,8 @@ describe('Acted Flag Enforcement (one action per turn)', () => {
     expectRejectedWhenActed('recruitOfficer', 1, () => useGameStore.getState().recruitOfficer(11, 1));
     expectSetsActed('recruitOfficer', 1, () => useGameStore.getState().recruitOfficer(11, 1));
 
-    expectRejectedWhenActed('searchOfficer', 1, () => useGameStore.getState().searchOfficer(1, 1));
-    expectSetsActed('searchOfficer', 1, () => useGameStore.getState().searchOfficer(1, 1));
+    expectRejectedWhenActed('enticeOfficer', 1, () => useGameStore.getState().enticeOfficer(13, 1));
+    expectSetsActed('enticeOfficer', 1, () => useGameStore.getState().enticeOfficer(13, 1));
 
     expectRejectedWhenActed('recruitPOW', 1, () => useGameStore.getState().recruitPOW(12, 1));
     expectSetsActed('recruitPOW', 1, () => useGameStore.getState().recruitPOW(12, 1));

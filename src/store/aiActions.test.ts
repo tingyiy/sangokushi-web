@@ -236,23 +236,26 @@ describe('AI Actions Mutate State', () => {
       expect(afterCity.gold).toBe(beforeCity.gold - 500);
     });
 
-    it('aiSearchOfficer recruits found officer into AI faction', () => {
-      // Add an unaffiliated officer in AI city 2
+    it('aiEnticeOfficer lures enemy officer into AI faction', () => {
+      // Add a non-ruler player officer with low loyalty in city 1 (adjacent to AI city 2)
       useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c =>
+          c.id === 1 ? { ...c, adjacentCityIds: [2] } : c.id === 2 ? { ...c, adjacentCityIds: [1] } : c
+        ),
         officers: [...useGameStore.getState().officers, createTestOfficer({
-          id: 99, name: '在野武將', factionId: null, cityId: 2, loyalty: 0, charisma: 50,
+          id: 99, name: '叛將', factionId: 1, cityId: 1, loyalty: 40, charisma: 50, isGovernor: false,
         })],
       });
 
-      // Mock random to guarantee search succeeds
+      // Mock random to guarantee entice succeeds
       const origRandom = Math.random;
       Math.random = () => 0.01;
       try {
-        useGameStore.getState().aiSearchOfficer(2);
+        useGameStore.getState().aiEnticeOfficer(99, 2);
         const found = useGameStore.getState().officers.find(o => o.id === 99)!;
-        // Officer should now belong to AI faction (id=2) with loyalty 60
+        // Officer should now belong to AI faction (id=2) with loyalty 50
         expect(found.factionId).toBe(2);
-        expect(found.loyalty).toBe(60);
+        expect(found.loyalty).toBe(50);
       } finally {
         Math.random = origRandom;
       }
