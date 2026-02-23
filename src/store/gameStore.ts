@@ -182,6 +182,8 @@ export interface GameState {
   battleResolved: boolean;
   /** Public war log — all battles between any factions (public knowledge) */
   warLog: WarLogEntry[];
+  /** Officers already rewarded this turn (reset each month) */
+  rewardedOfficerIds: number[];
 
   // ── Core Actions ──
   setPhase: (phase: GamePhase) => void;
@@ -292,9 +294,9 @@ export interface GameState {
   aiPlantMole: (officerId: number, targetFactionId: number) => void;
 
   // ── Save/Load Actions ──
-  saveGame: (slot: number) => boolean;
-  loadGame: (slot: number) => boolean;
-  getSaveSlots: () => { slot: number; date: string | null; version: string | null; scenarioName?: string; rulerName?: string; year?: number; month?: number }[];
+  saveGame: (slot: number | string) => boolean;
+  loadGame: (slot: number | string) => boolean;
+  getSaveSlots: () => { slot: number; date: string | null; version: string | null; scenarioName?: string; rulerName?: string; year?: number; month?: number; isAuto?: boolean }[];
   deleteSave: (slot: number) => boolean;
 }
 
@@ -341,6 +343,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   pendingEvents: [],
   battleResolved: false,
   warLog: [],
+  rewardedOfficerIds: [],
 
   // ── Core Actions ──
   setPhase: (phase) => set({ phase }),

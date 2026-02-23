@@ -31,8 +31,9 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
     }
   }, [isOpen, getSaveSlots]);
 
-  const handleSlotClick = (slot: number) => {
+  const handleSlotClick = (slot: number, isAuto?: boolean) => {
     if (mode === 'save') {
+      if (isAuto) return; // Cannot manually save to auto slot
       const success = saveGame(slot);
       if (success) {
         setMessage(t('save.saveSuccess', { slot }));
@@ -41,7 +42,7 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
         setMessage(t('save.saveFailed'));
       }
     } else {
-      const success = loadGame(slot);
+      const success = isAuto ? loadGame('auto') : loadGame(slot);
       if (success) {
         onClose();
       } else {
@@ -111,64 +112,69 @@ const SaveLoadMenu: React.FC<SaveLoadMenuProps> = ({ isOpen, onClose, mode }) =>
           </div>
         )}
 
-        <div style={{ marginBottom: '20px' }}>
-          {saveSlots.map((slot) => (
-            <div
-              key={slot.slot}
-              onClick={() => handleSlotClick(slot.slot)}
-              style={{
-                padding: '15px',
-                marginBottom: '10px',
-                background: slot.date ? '#3a3a4a' : '#2a2a3a',
-                border: '1px solid #555',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'background 0.2s',
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.background = '#4a4a5a')}
-              onMouseOut={(e) => (e.currentTarget.style.background = slot.date ? '#3a3a4a' : '#2a2a3a')}
-            >
-              <div>
-                <div style={{ color: '#fff', fontWeight: 'bold' }}>
-                  {t('save.slotLabel', { slot: slot.slot })}
-                </div>
-                {slot.date ? (
-                  <>
-                    <div style={{ color: '#ccc', fontSize: '0.9rem' }}>
-                      {slot.scenarioName ? localizedName(slot.scenarioName) : ''}
-                      {slot.rulerName ? ` · ${localizedName(slot.rulerName)}` : ''}
-                      {slot.year != null ? ` · ${t('save.slotDate', { year: slot.year, month: slot.month })}` : ''}
-                    </div>
-                    <div style={{ color: '#888', fontSize: '0.8rem' }}>
-                      {formatDate(slot.date)}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ color: '#888', fontSize: '0.9rem' }}>
-                    {t('save.emptySlot')}
+        <div style={{ marginBottom: '20px', maxHeight: '400px', overflowY: 'auto' }}>
+          {saveSlots.map((slot) => {
+            const isAuto = !!slot.isAuto;
+            const isDisabled = mode === 'save' && isAuto;
+            return (
+              <div
+                key={isAuto ? 'auto' : slot.slot}
+                onClick={() => !isDisabled && handleSlotClick(slot.slot, isAuto)}
+                style={{
+                  padding: '15px',
+                  marginBottom: '10px',
+                  background: slot.date ? '#3a3a4a' : '#2a2a3a',
+                  border: isAuto ? '1px solid #668' : '1px solid #555',
+                  borderRadius: '4px',
+                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  opacity: isDisabled && !slot.date ? 0.5 : 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={(e) => { if (!isDisabled) e.currentTarget.style.background = '#4a4a5a'; }}
+                onMouseOut={(e) => (e.currentTarget.style.background = slot.date ? '#3a3a4a' : '#2a2a3a')}
+              >
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 'bold' }}>
+                    {isAuto ? t('save.autoSlotLabel') : t('save.slotLabel', { slot: slot.slot })}
                   </div>
+                  {slot.date ? (
+                    <>
+                      <div style={{ color: '#ccc', fontSize: '0.9rem' }}>
+                        {slot.scenarioName ? localizedName(slot.scenarioName) : ''}
+                        {slot.rulerName ? ` · ${localizedName(slot.rulerName)}` : ''}
+                        {slot.year != null ? ` · ${t('save.slotDate', { year: slot.year, month: slot.month })}` : ''}
+                      </div>
+                      <div style={{ color: '#888', fontSize: '0.8rem' }}>
+                        {formatDate(slot.date)}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ color: '#888', fontSize: '0.9rem' }}>
+                      {t('save.emptySlot')}
+                    </div>
+                  )}
+                </div>
+                {mode === 'save' && slot.date && !isAuto && (
+                  <button
+                    onClick={(e) => handleDelete(slot.slot, e)}
+                    style={{
+                      padding: '5px 10px',
+                      background: '#600',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t('save.delete')}
+                  </button>
                 )}
               </div>
-              {mode === 'save' && slot.date && (
-                <button
-                  onClick={(e) => handleDelete(slot.slot, e)}
-                  style={{
-                    padding: '5px 10px',
-                    background: '#600',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t('save.delete')}
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div style={{ textAlign: 'center' }}>

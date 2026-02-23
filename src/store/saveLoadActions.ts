@@ -6,6 +6,8 @@ import { serializeMemory, restoreMemory } from '../llm/memory';
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
 
+export const MAX_SAVE_SLOTS = 10;
+
 interface SaveSlotInfo {
   slot: number;
   date: string | null;
@@ -14,6 +16,7 @@ interface SaveSlotInfo {
   rulerName?: string;
   year?: number;
   month?: number;
+  isAuto?: boolean;
 }
 
 export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'saveGame' | 'loadGame' | 'getSaveSlots' | 'deleteSave'> {
@@ -39,11 +42,16 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
         };
 
         localStorage.setItem(`rtk4_save_${slot}`, JSON.stringify(saveData));
-        get().addLog(i18next.t('logs:game.savedToSlot', { slot }));
+        // Auto-save is silent — no log entry
+        if (slot !== 'auto') {
+          get().addLog(i18next.t('logs:game.savedToSlot', { slot }));
+        }
         return true;
       } catch (e) {
         console.error('Save game failed:', e);
-        get().addLog(i18next.t('logs:game.saveFailed'));
+        if (slot !== 'auto') {
+          get().addLog(i18next.t('logs:game.saveFailed'));
+        }
         return false;
       }
     },
@@ -97,7 +105,35 @@ export function createSaveLoadActions(set: Set, get: Get): Pick<GameState, 'save
 
     getSaveSlots: (): SaveSlotInfo[] => {
       const slots: SaveSlotInfo[] = [];
-      for (let i = 1; i <= 3; i++) {
+
+      // Auto-save slot (slot 0, isAuto: true)
+      const autoDataStr = localStorage.getItem('rtk4_save_auto');
+      if (autoDataStr) {
+        try {
+          const autoData = JSON.parse(autoDataStr);
+          const playerFaction = autoData.factions?.find((f: Faction) => f.id === autoData.playerFactionId);
+          const ruler = playerFaction
+            ? autoData.officers?.find((o: Officer) => o.id === playerFaction.rulerId)
+            : null;
+          slots.push({
+            slot: 0,
+            date: autoData.timestamp,
+            version: autoData.version || 'unknown',
+            scenarioName: autoData.scenario?.name,
+            rulerName: ruler?.name ?? playerFaction?.name,
+            year: autoData.year,
+            month: autoData.month,
+            isAuto: true,
+          });
+        } catch {
+          slots.push({ slot: 0, date: null, version: null, isAuto: true });
+        }
+      } else {
+        slots.push({ slot: 0, date: null, version: null, isAuto: true });
+      }
+
+      // Manual save slots (1–MAX_SAVE_SLOTS)
+      for (let i = 1; i <= MAX_SAVE_SLOTS; i++) {
         const saveDataStr = localStorage.getItem(`rtk4_save_${i}`);
         if (saveDataStr) {
           try {

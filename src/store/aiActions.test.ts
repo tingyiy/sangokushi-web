@@ -188,8 +188,7 @@ describe('AI Actions Mutate State', () => {
   });
 
   describe('AI Military/Personnel Actions', () => {
-    it('aiDraftTroops increases troops and costs gold/food/population', () => {
-      // Set troops below the cap (pop * 0.12 = 12000) so there's room to draft
+    it('aiDraftTroops increases troops and costs gold/food/population, reduces loyalty', () => {
       useGameStore.setState({
         cities: useGameStore.getState().cities.map(c =>
           c.id === 2 ? { ...c, troops: 2000 } : c
@@ -202,6 +201,7 @@ describe('AI Actions Mutate State', () => {
       expect(after.gold).toBeLessThan(before.gold);
       expect(after.food).toBeLessThan(before.food);
       expect(after.population).toBeLessThan(before.population);
+      expect(after.peopleLoyalty).toBeLessThan(before.peopleLoyalty);
     });
 
     it('aiTransport moves troops between cities', () => {
@@ -236,7 +236,7 @@ describe('AI Actions Mutate State', () => {
       expect(afterCity.gold).toBe(beforeCity.gold - 500);
     });
 
-    it('aiEnticeOfficer lures enemy officer into AI faction', () => {
+    it('aiEnticeOfficer lures enemy officer into AI faction and logs to player', () => {
       // Add a non-ruler player officer with low loyalty in city 1 (adjacent to AI city 2)
       useGameStore.setState({
         cities: useGameStore.getState().cities.map(c =>
@@ -247,15 +247,49 @@ describe('AI Actions Mutate State', () => {
         })],
       });
 
-      // Mock random to guarantee entice succeeds
       const origRandom = Math.random;
-      Math.random = () => 0.01;
+      Math.random = () => 0;
+      const logBefore = useGameStore.getState().log.length;
       try {
         useGameStore.getState().aiEnticeOfficer(99, 2);
         const found = useGameStore.getState().officers.find(o => o.id === 99)!;
-        // Officer should now belong to AI faction (id=2) with loyalty 50
         expect(found.factionId).toBe(2);
         expect(found.loyalty).toBe(50);
+
+        // Ensure a log was generated for the player
+        const stateNow = useGameStore.getState();
+        expect(stateNow.log.length).toBeGreaterThan(logBefore);
+        expect(stateNow.log[stateNow.log.length - 1]).toContain('策反了');
+      } finally {
+        Math.random = origRandom;
+      }
+    });
+
+    it('aiEnticeOfficer lures enemy governor, flips city, and logs to player', () => {
+      // Add a non-ruler player governor with low loyalty in city 1
+      useGameStore.setState({
+        cities: useGameStore.getState().cities.map(c =>
+          c.id === 1 ? { ...c, adjacentCityIds: [2], factionId: 1 } : c.id === 2 ? { ...c, adjacentCityIds: [1] } : c
+        ),
+        officers: [...useGameStore.getState().officers, createTestOfficer({
+          id: 100, name: '叛將太守', factionId: 1, cityId: 1, loyalty: 40, charisma: 50, isGovernor: true,
+        })],
+      });
+
+      const origRandom = Math.random;
+      Math.random = () => 0;
+      const logBefore = useGameStore.getState().log.length;
+      try {
+        useGameStore.getState().aiEnticeOfficer(100, 2);
+
+        // City 1 should now belong to faction 2
+        const flippedCity = useGameStore.getState().cities.find(c => c.id === 1)!;
+        expect(flippedCity.factionId).toBe(2);
+
+        // Ensure a log was generated for the player about the city flip
+        const stateNow = useGameStore.getState();
+        expect(stateNow.log.length).toBeGreaterThan(logBefore);
+        expect(stateNow.log[stateNow.log.length - 1]).toContain('易幟');
       } finally {
         Math.random = origRandom;
       }

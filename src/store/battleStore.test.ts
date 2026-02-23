@@ -101,20 +101,23 @@ describe('Battle Store', () => {
   test('moveUnit updates unit position respecting range', () => {
     const { initBattle, moveUnit } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
-    
-    const unitId = useBattleStore.getState().units[0].id;
-    // Infantry range is 5.
-    // (1, 2) -> (3, 3) is dist 3. Valid.
-    moveUnit(unitId, 3, 3);
-    
-    const unit = useBattleStore.getState().units.find(u => u.id === unitId);
-    expect(unit?.x).toBe(3);
-    expect(unit?.y).toBe(3);
 
-    // Invalid move (too far)
-    moveUnit(unitId, 10, 10);
+    const unitId = useBattleStore.getState().units[0].id;
+    const startUnit = useBattleStore.getState().units.find(u => u.id === unitId)!;
+    // Infantry range is 5.
+    // Move a small distance from spawn — should be valid.
+    const targetQ = startUnit.x + 2;
+    const targetR = startUnit.y;
+    moveUnit(unitId, targetQ, targetR);
+
+    const unit = useBattleStore.getState().units.find(u => u.id === unitId);
+    expect(unit?.x).toBe(targetQ);
+    expect(unit?.y).toBe(targetR);
+
+    // Invalid move (too far from current position)
+    moveUnit(unitId, targetQ + 10, targetR + 10);
     const unit2 = useBattleStore.getState().units.find(u => u.id === unitId);
-    expect(unit2?.x).toBe(3); // Should not move
+    expect(unit2?.x).toBe(targetQ); // Should not move
   });
 
   test('attackUnit reduces troops and morale', () => {

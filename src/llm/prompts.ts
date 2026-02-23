@@ -127,7 +127,7 @@ KEY MECHANICS:
 - Gold and food income arrives EVERY month (not quarterly). Higher commerce → more gold, higher agriculture → more food. Developing these pays off immediately.
 - enticeOfficer convinces an enemy officer (not a ruler) in an adjacent city to defect. The enticer must be in YOUR city adjacent to the target's city. Success chance: min(60, enticer_CHA - target_loyalty - target_INT/5). High-loyalty and high-intelligence officers are very hard to entice. If target is a governor, extra -20 penalty but success flips the ENTIRE city. Officers with 'diplomacy' skill get +10 bonus. Only attempt when you can see the enemy city (use spy first).
 - recruitOfficer targets a KNOWN unaffiliated officer (visible in city data). The recruiter MUST be in the same city as the target. Use transferOfficer first if needed.
-- rewardOfficer gives gold to increase officer loyalty. Useful for newly recruited officers (loyalty 60).
+- rewardOfficer gives gold to increase officer loyalty. Each officer can only be rewarded ONCE per turn. Useful for newly recruited officers (loyalty 60).
 - transferOfficer and transport both relocate the officer. If you move the LAST officer out of a city, that city is ABANDONED (becomes unowned) and any remaining gold/food/troops are left behind. Any faction can then capture it for free. Plan carefully — count officers before moving!
 - transferOfficer / transport require a connected path of friendly cities between source and destination. Disconnected enclaves cannot send officers to each other.
 - spy reveals an enemy city's data (troops, officers, resources) for several turns. REQUIRES an officer with the 'intelligence' or 'espionage' skill — check skills=[...] in officer listings. Officers without these skills will always fail.

@@ -37,6 +37,27 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
   const battle = useBattleStore();
   const sensitivity = useGameStore(s => s.gameSettings.intelligenceSensitivity);
   const month = useGameStore(s => s.month);
+  const factions = useGameStore(s => s.factions);
+
+  // Identify ruler IDs for both sides so we can render special icons
+  const rulerIds = useMemo(() => {
+    const ids = new Set<number>();
+    const atkFaction = factions.find(f => f.id === battle.attackerId);
+    const defFaction = factions.find(f => f.id === battle.defenderId);
+    if (atkFaction) ids.add(atkFaction.rulerId);
+    if (defFaction) ids.add(defFaction.rulerId);
+    return ids;
+  }, [factions, battle.attackerId, battle.defenderId]);
+
+  // Commander = first unit of each faction (defeating them ends the battle)
+  const commanderIds = useMemo(() => {
+    const ids = new Set<string>();
+    const atkCmd = battle.units.find(u => u.factionId === battle.attackerId);
+    const defCmd = battle.units.find(u => u.factionId === battle.defenderId);
+    if (atkCmd) ids.add(atkCmd.id);
+    if (defCmd) ids.add(defCmd.id);
+    return ids;
+  }, [battle.units, battle.attackerId, battle.defenderId]);
   const season: Season = useMemo(() => getSeason(month), [month]);
   const terrainPalette = useMemo(() => BATTLE_TERRAIN_PALETTES[season], [season]);
   const activeUnit = battle.units.find(u => u.id === battle.activeUnitId);
@@ -322,7 +343,12 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         )}
 
         {/* Unit */}
-        {unit && (
+        {unit && (() => {
+          const isRuler = rulerIds.has(unit.officerId);
+          const isCommander = commanderIds.has(unit.id);
+          const isGov = unit.officer.isGovernor;
+          const unitOpacity = unit.status === 'done' ? 0.5 : unit.status === 'routed' ? 0.3 : 1;
+          return (
           <g>
             {/* Active unit pulsing ring */}
             {isActive && (
@@ -330,13 +356,25 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
                 <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.5s" repeatCount="indefinite" />
               </circle>
             )}
+            {/* Ruler/commander golden ring */}
+            {(isRuler || isCommander) && (
+              <circle r={HEX_SIZE * 0.5} fill="none" stroke="#d4af37" strokeWidth={2} opacity={unitOpacity} />
+            )}
             <circle
               r={HEX_SIZE * 0.45}
               fill={unit.factionId === playerFactionId ? '#2e7d32' : '#c62828'}
-              opacity={unit.status === 'done' ? 0.5 : unit.status === 'routed' ? 0.3 : 1}
+              opacity={unitOpacity}
               stroke={unit.status === 'confused' ? '#ff0' : 'none'}
               strokeWidth={unit.status === 'confused' ? 2 : 0}
             />
+            {/* Ruler star badge */}
+            {isRuler && (
+              <text x={HEX_SIZE * 0.3} y={-HEX_SIZE * 0.28} textAnchor="middle" fill="#ffd700" fontSize="10" fontWeight="bold" pointerEvents="none">&#9733;</text>
+            )}
+            {/* Governor badge */}
+            {isGov && !isRuler && (
+              <text x={HEX_SIZE * 0.3} y={-HEX_SIZE * 0.28} textAnchor="middle" fill="#7ecfff" fontSize="7" fontWeight="bold" pointerEvents="none">{t('city.governorBadge')}</text>
+            )}
             <text textAnchor="middle" dy="-.2em" fill="white" fontSize="10" fontWeight="bold" pointerEvents="none">
               {localizedName(unit.officer.name).substring(0, 3)}
             </text>
@@ -347,7 +385,8 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
             <rect x={-14} y={16} width={28} height={3} fill="#000" />
             <rect x={-14} y={16} width={28 * (unit.troops / unit.maxTroops)} height={3} fill="#0f0" />
           </g>
-        )}
+          );
+        })()}
       </g>
     );
   };

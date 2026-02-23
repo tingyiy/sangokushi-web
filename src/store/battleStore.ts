@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import i18next from 'i18next';
 import { localizedName } from '../i18n/dataNames';
-import type { BattleState, BattleUnit, BattleMode, UnitType, TerrainType } from '../types/battle';
+import type { BattleState, BattleUnit, BattleMode, UnitType, TerrainType, BattleTerrainType } from '../types/battle';
 import type { Officer } from '../types';
 import {
   getMovementRange,
@@ -41,6 +41,8 @@ interface BattleActions {
     attackDirection?: 'north' | 'south' | 'east' | 'west',
     attackerFood?: number,
     defenderFood?: number,
+    defenderTraining?: number,
+    battleTerrain?: BattleTerrainType,
   ) => void;
   selectUnit: (unitId: string | null) => void;
   setMode: (mode: BattleMode) => void;
@@ -63,8 +65,8 @@ interface BattleActions {
   triggerBetrayal: (unitId: string) => void;
 }
 
-const DEFAULT_MAP_WIDTH = 15;
-const DEFAULT_MAP_HEIGHT = 15;
+const DEFAULT_MAP_WIDTH = 21;
+const DEFAULT_MAP_HEIGHT = 21;
 
 export const useBattleStore = create<BattleState & BattleActions>((set, get) => ({
   units: [],
@@ -162,6 +164,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     attackDirection = 'west',
     attackerFood = 0,
     defenderFood = 0,
+    defenderTraining = 60,
+    battleTerrain = 'plains' as BattleTerrainType,
   ) => {
     const units: BattleUnit[] = [];
     const isSiege = isSiegeBattle(defenderCityId);
@@ -169,8 +173,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     const height = DEFAULT_MAP_HEIGHT;
 
     const battleMap = isSiege
-      ? generateSiegeMap(width, height)
-      : generateFieldBattleMap(width, height);
+      ? generateSiegeMap(width, height, battleTerrain)
+      : generateFieldBattleMap(width, height, battleTerrain);
 
     const gates = isSiege ? getGatePositions(battleMap).map(g => ({ ...g, hp: 3000, maxHp: 3000 })) : [];
 
@@ -182,8 +186,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       const centerY = Math.floor(height / 2);
 
       if (isDefenderSiege) {
-        // Defenders go inside the walls (rectangular: wallLeft=4, wallRight=11, wallTop=3, wallBottom=11)
-        const wallL = 4 + 1; // DEFAULT_WALL_MARGIN(3) + 1 + 1 = inside left wall
+        // Defenders go inside the walls (wall margin = 3)
+        const wallL = 3 + 1 + 1; // DEFAULT_WALL_MARGIN + 1 (wall) + 1 (inside)
         const wallR = width - 3 - 2 - 1;
         const cx = Math.floor((wallL + wallR) / 2);
         const cy = centerY;
@@ -266,7 +270,7 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         troops,
         maxTroops: troops,
         morale: defenderMorale,
-        training: 60,
+        training: defenderTraining,
         x: spawn.x,
         y: spawn.y,
         z: -spawn.x - spawn.y,
@@ -512,7 +516,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         if (u.factionId === state.defenderId && u.troops > 0) {
           const newMorale = Math.max(0, u.morale - 15);
           let newStatus = u.status;
-          if (newMorale < 20 && u.status !== 'routed' && u.status !== 'arriving' && u.status !== 'done') {
+          // Route any defender with morale < 20 (including 'done' units that already acted)
+          if (newMorale < 20 && u.status !== 'routed' && u.status !== 'arriving') {
             newStatus = 'routed';
           }
           return { ...u, morale: newMorale, status: newStatus };
@@ -530,6 +535,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       mode: 'idle',
       activeUnitId: null,
     });
+
+    get().checkBattleEnd();
   },
 
   executeTactic: (unitId, tactic, targetId, targetHex) => {
@@ -778,7 +785,28 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       return;
     }
 
-    const nearest = enemies.reduce((best, e) => {
+    // ── Ruler guard: non-commander units prioritize defending the commander ──
+    const commander = state.units.filter(u => u.factionId === activeUnit.factionId && u.troops > 0)[0];
+    const isActiveCommander = commander && commander.id === activeUnit.id;
+    let guardTarget: typeof enemies[0] | null = null;
+
+    if (commander && !isActiveCommander) {
+      // Find enemies threatening the commander (within 2 hexes)
+      const threats = enemies.filter(e =>
+        getDistance({ q: e.x, r: e.y }, { q: commander.x, r: commander.y }) <= 2
+      );
+      if (threats.length > 0) {
+        // Pick the closest threat to the commander
+        guardTarget = threats.reduce((best, e) => {
+          const d = getDistance({ q: e.x, r: e.y }, { q: commander.x, r: commander.y });
+          const bestD = getDistance({ q: best.x, r: best.y }, { q: commander.x, r: commander.y });
+          return d < bestD ? e : best;
+        });
+      }
+    }
+
+    // Use guard target if present, otherwise nearest enemy
+    const nearest = guardTarget ?? enemies.reduce((best, e) => {
       const d = getDistance({ q: e.x, r: e.y }, { q: activeUnit.x, r: activeUnit.y });
       const bestD = getDistance({ q: best.x, r: best.y }, { q: activeUnit.x, r: activeUnit.y });
       return d < bestD ? e : best;
@@ -922,51 +950,58 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       return;
     }
 
-    // Try to move closer
-    const moveRange = getMovementRange(activeUnit.type);
-    const directions = [
-      { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-      { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
-    ];
+    // Try to move closer using proper BFS pathfinding
+    const aiMoveRange = getMovementRange(activeUnit.type);
+    const isDefenderUnit = state.isSiege && activeUnit.factionId === state.defenderId;
 
     // Siege defender sortie decision: RTK IV defenders almost never leave the walls.
     // Staying behind walls forces the attacker to waste time breaking gates and risks
     // losing on the 30-day time limit. Only sortie with overwhelming troop advantage.
-    const isDefenderUnit = state.isSiege && activeUnit.factionId === state.defenderId;
     let shouldSortie = true;
     if (isDefenderUnit) {
       const allyTroops = state.units.filter(u => u.factionId === activeUnit.factionId && u.troops > 0 && u.status !== 'routed')
         .reduce((sum, u) => sum + u.troops, 0);
       const enemyTroops = enemies.reduce((sum, u) => sum + u.troops, 0);
-      // Only sortie if defender has >= 2x attacker troops (overwhelming advantage)
       shouldSortie = allyTroops >= enemyTroops * 2;
     }
 
+    // Build blocked/occupied sets (same logic as moveUnit validation)
+    const aiBlocked = new Set(
+      state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+        .map(u => `${u.x},${u.y}`)
+    );
+    if (!isDefenderUnit) {
+      state.gates.filter(g => g.hp > 0).forEach(g => aiBlocked.add(`${g.q},${g.r}`));
+    }
+    // Defenders that shouldn't sortie: block gate hexes to keep them inside
+    if (isDefenderUnit && !shouldSortie) {
+      state.gates.filter(g => g.hp > 0).forEach(g => aiBlocked.add(`${g.q},${g.r}`));
+    }
+    const aiOccupied = new Set(
+      state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+        .map(u => `${u.x},${u.y}`)
+    );
+
+    // For defenders, treat gate terrain as passable
+    const aiEffectiveTerrain = isDefenderUnit
+      ? state.battleMap.terrain.map(col => col.map(t => t === 'gate' ? 'plain' as const : t))
+      : state.battleMap.terrain;
+
+    const validMoves = getMoveRange(
+      { q: activeUnit.x, r: activeUnit.y }, aiMoveRange,
+      state.battleMap.width, state.battleMap.height,
+      aiEffectiveTerrain, aiBlocked, aiOccupied
+    );
+
+    // Pick the reachable hex closest to the nearest enemy
     let bestHex = { q: activeUnit.x, r: activeUnit.y };
     let bestDist = distToNearest;
-
-    for (const dir of directions) {
-      for (let step = 1; step <= moveRange; step++) {
-        const candidate = { q: activeUnit.x + dir.q * step, r: activeUnit.y + dir.r * step };
-        if (candidate.q < 0 || candidate.q >= state.battleMap.width || candidate.r < 0 || candidate.r >= state.battleMap.height) break;
-
-        const terrain = state.battleMap.terrain[candidate.q][candidate.r];
-        if (terrain === 'mountain' || terrain === 'city') break; // walls always block
-        if (state.units.some(u => u.id !== activeUnit.id && u.x === candidate.q && u.y === candidate.r && u.troops > 0 && u.status !== 'arriving')) break;
-        // Gates block the attacker; defenders pass through freely
-        const isAIDefender = activeUnit.factionId === state.defenderId;
-        if (!isAIDefender && state.gates.some(g => g.q === candidate.q && g.r === candidate.r && g.hp > 0)) break;
-        // Defenders treat gate terrain as passable — but only if they should sortie
-        if (terrain === 'gate' && (!isAIDefender || !shouldSortie)) break;
-
-        const hexDist = getDistance({ q: activeUnit.x, r: activeUnit.y }, candidate);
-        if (hexDist > moveRange) break;
-
-        const d = getDistance(candidate, { q: nearest.x, r: nearest.y });
-        if (d < bestDist) {
-          bestDist = d;
-          bestHex = candidate;
-        }
+    for (const [key] of validMoves) {
+      const [cq, cr] = key.split(',').map(Number);
+      const d = getDistance({ q: cq, r: cr }, { q: nearest.x, r: nearest.y });
+      if (d < bestDist) {
+        bestDist = d;
+        bestHex = { q: cq, r: cr };
       }
     }
 
@@ -1098,21 +1133,36 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       newDefenderStarveDays = 0;
     }
 
-    // Routed units
+    // Routed units flee toward map edge (check terrain to avoid walls)
     const routedCaptures: number[] = [];
+    const mapW = state.battleMap.width;
+    const mapH = state.battleMap.height;
     unitsWithFireDamage = unitsWithFireDamage.map(u => {
       if (u.status === 'routed') {
-        if (u.x <= 0 || u.x >= DEFAULT_MAP_WIDTH - 1 || u.y <= 0 || u.y >= DEFAULT_MAP_HEIGHT - 1) {
+        if (u.x <= 0 || u.x >= mapW - 1 || u.y <= 0 || u.y >= mapH - 1) {
           if (Math.random() < 0.2) {
             routedCaptures.push(u.officerId);
           }
           return { ...u, troops: 0 };
         }
         let newX = u.x;
-        if (u.x < DEFAULT_MAP_WIDTH / 2) {
+        if (u.x < mapW / 2) {
           newX = u.x - 1;
         } else {
           newX = u.x + 1;
+        }
+        // Don't move onto impassable terrain (walls/mountains)
+        if (newX >= 0 && newX < state.battleMap.width) {
+          const targetTerrain = state.battleMap.terrain[newX][u.y];
+          if (targetTerrain === 'city' || targetTerrain === 'mountain') {
+            // Stuck behind walls — lose troops gradually (attrition) and chance of capture
+            const attritionTroops = Math.max(0, u.troops - Math.floor(u.troops * 0.2));
+            if (attritionTroops <= 0) {
+              if (Math.random() < 0.3) routedCaptures.push(u.officerId);
+              return { ...u, troops: 0 };
+            }
+            return { ...u, troops: attritionTroops };
+          }
         }
         return { ...u, x: newX, y: u.y, z: -newX - u.y };
       }

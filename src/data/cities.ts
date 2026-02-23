@@ -102,110 +102,112 @@ export const cityBaseStats: Record<number, {
   /** 防守係數 — terrain/fortification multiplier for defenders.
    *  1.00 = flat plains, 1.15 = mountain, 1.25 = pass, 1.35 = natural fortress */
   defenseCoefficient: number;
+  /** 戰場地形 — controls battle map generation theme */
+  battleTerrain: import('../types/battle').BattleTerrainType;
 }> = {
   // ===== 東北 (Northeast — 遼東 & 幽州) =====
-  //  1 襄平: Remote Liaodong outpost, Gongsun family domain
-  1:  { population:  80000, commerce: 120, agriculture: 200, floodControl: 25, defenseCoefficient: 1.05 },
-  //  2 北平: Frontier garrison town (幽州), horse-trading post
-  2:  { population: 200000, commerce: 250, agriculture: 300, floodControl: 30, defenseCoefficient: 1.10 },
-  //  3 薊: Old Yan capital, northern trade hub
-  3:  { population: 180000, commerce: 320, agriculture: 350, floodControl: 35, defenseCoefficient: 1.05 },
+  //  1 襄平: Remote Liaodong outpost, Gongsun family domain — arid frontier
+  1:  { population:  80000, commerce: 120, agriculture: 200, floodControl: 25, defenseCoefficient: 1.05, battleTerrain: 'arid' },
+  //  2 北平: Frontier garrison town (幽州), horse-trading post — arid steppe
+  2:  { population: 200000, commerce: 250, agriculture: 300, floodControl: 30, defenseCoefficient: 1.10, battleTerrain: 'arid' },
+  //  3 薊: Old Yan capital, northern trade hub — arid northern plains
+  3:  { population: 180000, commerce: 320, agriculture: 350, floodControl: 35, defenseCoefficient: 1.05, battleTerrain: 'arid' },
 
   // ===== 西北 (Northwest — 涼州 & 并州) =====
-  //  4 晉陽: Taiyuan basin, important northern stronghold (并州治所)
-  4:  { population: 240000, commerce: 350, agriculture: 400, floodControl: 35, defenseCoefficient: 1.15 },
-  //  9 西涼: Far west Silk Road outpost, Qiang/Di frontier (≈武威)
-  9:  { population: 100000, commerce: 200, agriculture: 150, floodControl: 15, defenseCoefficient: 1.10 },
-  // 10 天水: Qinling gateway, Silk Road branch
-  10: { population: 160000, commerce: 280, agriculture: 300, floodControl: 25, defenseCoefficient: 1.20 },
+  //  4 晉陽: Taiyuan basin, important northern stronghold (并州治所) — highland
+  4:  { population: 240000, commerce: 350, agriculture: 400, floodControl: 35, defenseCoefficient: 1.15, battleTerrain: 'highland' },
+  //  9 西涼: Far west Silk Road outpost, Qiang/Di frontier (≈武威) — arid desert
+  9:  { population: 100000, commerce: 200, agriculture: 150, floodControl: 15, defenseCoefficient: 1.10, battleTerrain: 'arid' },
+  // 10 天水: Qinling gateway, Silk Road branch — highland mountain pass
+  10: { population: 160000, commerce: 280, agriculture: 300, floodControl: 25, defenseCoefficient: 1.20, battleTerrain: 'highland' },
 
   // ===== 北方 (North — 冀州 & 青州) =====
   //  5 南皮: Bohai commandery seat — flat plains
-  5:  { population: 180000, commerce: 280, agriculture: 420, floodControl: 50, defenseCoefficient: 0.90 },
+  5:  { population: 180000, commerce: 280, agriculture: 420, floodControl: 50, defenseCoefficient: 0.90, battleTerrain: 'plains' },
   //  6 平原: Flat farmland of the Yellow River delta
-  6:  { population: 200000, commerce: 250, agriculture: 550, floodControl: 60, defenseCoefficient: 0.90 },
+  6:  { population: 200000, commerce: 250, agriculture: 550, floodControl: 60, defenseCoefficient: 0.90, battleTerrain: 'plains' },
   //  7 北海: Shandong peninsula, Kong Rong's scholarly seat
-  7:  { population: 160000, commerce: 280, agriculture: 420, floodControl: 45, defenseCoefficient: 0.90 },
+  7:  { population: 160000, commerce: 280, agriculture: 420, floodControl: 45, defenseCoefficient: 0.90, battleTerrain: 'plains' },
   //  8 鄴: Ji Province capital (冀州治所), Yuan Shao's base, major city
-  8:  { population: 550000, commerce: 550, agriculture: 600, floodControl: 55, defenseCoefficient: 1.00 },
+  8:  { population: 550000, commerce: 550, agriculture: 600, floodControl: 55, defenseCoefficient: 1.00, battleTerrain: 'plains' },
 
   // ===== 中原核心 (Central Plains — 司隸 & 豫兗徐) =====
-  // 11 長安: Western Han capital, 關中 surrounded by passes
-  11: { population: 600000, commerce: 650, agriculture: 550, floodControl: 40, defenseCoefficient: 1.20 },
-  // 12 洛陽: Eastern Han capital, center of civilization — some natural barriers
-  12: { population: 800000, commerce: 750, agriculture: 550, floodControl: 55, defenseCoefficient: 1.05 },
-  // 13 弘農: Pass city between 長安 and 洛陽 (函谷關 area)
-  13: { population: 250000, commerce: 250, agriculture: 380, floodControl: 30, defenseCoefficient: 1.25 },
+  // 11 長安: Western Han capital, 關中 surrounded by passes — highland
+  11: { population: 600000, commerce: 650, agriculture: 550, floodControl: 40, defenseCoefficient: 1.20, battleTerrain: 'highland' },
+  // 12 洛陽: Eastern Han capital, center of civilization — plains
+  12: { population: 800000, commerce: 750, agriculture: 550, floodControl: 55, defenseCoefficient: 1.05, battleTerrain: 'plains' },
+  // 13 弘農: Pass city between 長安 and 洛陽 (函谷關 area) — highland
+  13: { population: 250000, commerce: 250, agriculture: 380, floodControl: 30, defenseCoefficient: 1.25, battleTerrain: 'highland' },
   // 14 許昌: Yingchuan heartland, flat plains
-  14: { population: 500000, commerce: 580, agriculture: 580, floodControl: 50, defenseCoefficient: 1.00 },
+  14: { population: 500000, commerce: 580, agriculture: 580, floodControl: 50, defenseCoefficient: 1.00, battleTerrain: 'plains' },
   // 15 陳留: Central Plains hub, flat
-  15: { population: 360000, commerce: 450, agriculture: 550, floodControl: 50, defenseCoefficient: 0.95 },
+  15: { population: 360000, commerce: 450, agriculture: 550, floodControl: 50, defenseCoefficient: 0.95, battleTerrain: 'plains' },
   // 16 濮陽: Yellow River city, flat, flood-prone
-  16: { population: 300000, commerce: 350, agriculture: 520, floodControl: 65, defenseCoefficient: 0.95 },
+  16: { population: 300000, commerce: 350, agriculture: 520, floodControl: 65, defenseCoefficient: 0.95, battleTerrain: 'plains' },
   // 17 譙: Cao Cao's hometown (沛國), flat
-  17: { population: 260000, commerce: 300, agriculture: 460, floodControl: 45, defenseCoefficient: 0.95 },
-  // 18 下邳: Xu Province city, river junction
-  18: { population: 280000, commerce: 350, agriculture: 470, floodControl: 55, defenseCoefficient: 1.00 },
+  17: { population: 260000, commerce: 300, agriculture: 460, floodControl: 45, defenseCoefficient: 0.95, battleTerrain: 'plains' },
+  // 18 下邳: Xu Province city, river junction — wetland
+  18: { population: 280000, commerce: 350, agriculture: 470, floodControl: 55, defenseCoefficient: 1.00, battleTerrain: 'wetland' },
   // 19 徐州: Xu Province capital, open terrain
-  19: { population: 250000, commerce: 420, agriculture: 480, floodControl: 50, defenseCoefficient: 0.95 },
+  19: { population: 250000, commerce: 420, agriculture: 480, floodControl: 50, defenseCoefficient: 0.95, battleTerrain: 'plains' },
 
   // ===== 東方 (Huainan — 淮南) =====
-  // 20 壽春: Huainan capital, river barrier
-  20: { population: 330000, commerce: 480, agriculture: 520, floodControl: 60, defenseCoefficient: 1.05 },
+  // 20 壽春: Huainan capital, river barrier — wetland
+  20: { population: 330000, commerce: 480, agriculture: 520, floodControl: 60, defenseCoefficient: 1.05, battleTerrain: 'wetland' },
 
   // ===== 益州 (Sichuan & Southwest) =====
-  // 21 武都: Remote mountain pass, Di/Qiang frontier
-  21: { population:  90000, commerce: 100, agriculture: 200, floodControl: 20, defenseCoefficient: 1.20 },
-  // 22 漢中: Han River valley, mountain-ringed basin
-  22: { population: 220000, commerce: 320, agriculture: 480, floodControl: 50, defenseCoefficient: 1.30 },
-  // 23 上庸: Remote mountain commandery
-  23: { population: 100000, commerce: 120, agriculture: 260, floodControl: 25, defenseCoefficient: 1.15 },
-  // 24 梓潼: Northern Sichuan gateway (劍閣 area)
-  24: { population: 180000, commerce: 220, agriculture: 380, floodControl: 30, defenseCoefficient: 1.30 },
-  // 25 成都: Yi Province capital, 天府之國 — basin fortress
-  25: { population: 450000, commerce: 580, agriculture: 680, floodControl: 60, defenseCoefficient: 1.35 },
-  // 26 江州 (巴郡): Ba region, Yangtze river trade
-  26: { population: 200000, commerce: 250, agriculture: 400, floodControl: 45, defenseCoefficient: 1.10 },
-  // 27 永安 (白帝城): Yangtze gorge fortress — Three Gorges chokepoint
-  27: { population:  80000, commerce: 100, agriculture: 220, floodControl: 35, defenseCoefficient: 1.30 },
-  // 28 建寧: Nanzhong region, mountain terrain
-  28: { population:  80000, commerce: 100, agriculture: 250, floodControl: 20, defenseCoefficient: 1.15 },
-  // 29 雲南: Far south frontier, tribal mountain lands
-  29: { population:  70000, commerce:  80, agriculture: 200, floodControl: 15, defenseCoefficient: 1.15 },
+  // 21 武都: Remote mountain pass, Di/Qiang frontier — highland
+  21: { population:  90000, commerce: 100, agriculture: 200, floodControl: 20, defenseCoefficient: 1.20, battleTerrain: 'highland' },
+  // 22 漢中: Han River valley, mountain-ringed basin — highland
+  22: { population: 220000, commerce: 320, agriculture: 480, floodControl: 50, defenseCoefficient: 1.30, battleTerrain: 'highland' },
+  // 23 上庸: Remote mountain commandery — highland
+  23: { population: 100000, commerce: 120, agriculture: 260, floodControl: 25, defenseCoefficient: 1.15, battleTerrain: 'highland' },
+  // 24 梓潼: Northern Sichuan gateway (劍閣 area) — highland
+  24: { population: 180000, commerce: 220, agriculture: 380, floodControl: 30, defenseCoefficient: 1.30, battleTerrain: 'highland' },
+  // 25 成都: Yi Province capital, 天府之國 — basin fortress — highland
+  25: { population: 450000, commerce: 580, agriculture: 680, floodControl: 60, defenseCoefficient: 1.35, battleTerrain: 'highland' },
+  // 26 江州 (巴郡): Ba region, Yangtze river trade — wetland
+  26: { population: 200000, commerce: 250, agriculture: 400, floodControl: 45, defenseCoefficient: 1.10, battleTerrain: 'wetland' },
+  // 27 永安 (白帝城): Yangtze gorge fortress — highland
+  27: { population:  80000, commerce: 100, agriculture: 220, floodControl: 35, defenseCoefficient: 1.30, battleTerrain: 'highland' },
+  // 28 建寧: Nanzhong region, mountain terrain — highland
+  28: { population:  80000, commerce: 100, agriculture: 250, floodControl: 20, defenseCoefficient: 1.15, battleTerrain: 'highland' },
+  // 29 雲南: Far south frontier, tribal mountain lands — highland
+  29: { population:  70000, commerce:  80, agriculture: 200, floodControl: 15, defenseCoefficient: 1.15, battleTerrain: 'highland' },
 
   // ===== 荊州 (Jing Province) =====
-  // 30 宛 (南陽): 南陽盆地, some natural barriers
-  30: { population: 300000, commerce: 450, agriculture: 540, floodControl: 45, defenseCoefficient: 1.05 },
-  // 31 新野: Small town, flat land between 宛 and 襄陽
-  31: { population: 140000, commerce: 180, agriculture: 380, floodControl: 35, defenseCoefficient: 0.95 },
-  // 32 襄陽: Jing Province capital, Han River fortress — historically very defensible
-  32: { population: 350000, commerce: 500, agriculture: 560, floodControl: 55, defenseCoefficient: 1.20 },
-  // 33 江陵: Yangtze port, strategic Jingzhou hub — river defense
-  33: { population: 320000, commerce: 460, agriculture: 520, floodControl: 65, defenseCoefficient: 1.15 },
-  // 34 江夏: Han-Yangtze river junction
-  34: { population: 260000, commerce: 350, agriculture: 440, floodControl: 60, defenseCoefficient: 1.05 },
+  // 30 宛 (南陽): 南陽盆地, some natural barriers — plains
+  30: { population: 300000, commerce: 450, agriculture: 540, floodControl: 45, defenseCoefficient: 1.05, battleTerrain: 'plains' },
+  // 31 新野: Small town, flat land between 宛 and 襄陽 — plains
+  31: { population: 140000, commerce: 180, agriculture: 380, floodControl: 35, defenseCoefficient: 0.95, battleTerrain: 'plains' },
+  // 32 襄陽: Jing Province capital, Han River fortress — wetland
+  32: { population: 350000, commerce: 500, agriculture: 560, floodControl: 55, defenseCoefficient: 1.20, battleTerrain: 'wetland' },
+  // 33 江陵: Yangtze port, strategic Jingzhou hub — wetland
+  33: { population: 320000, commerce: 460, agriculture: 520, floodControl: 65, defenseCoefficient: 1.15, battleTerrain: 'wetland' },
+  // 34 江夏: Han-Yangtze river junction — wetland
+  34: { population: 260000, commerce: 350, agriculture: 440, floodControl: 60, defenseCoefficient: 1.05, battleTerrain: 'wetland' },
 
   // ===== 長江下游 (Lower Yangtze — 揚州) =====
-  // 35 柴桑: Yangtze port — river barrier
-  35: { population: 210000, commerce: 320, agriculture: 420, floodControl: 65, defenseCoefficient: 1.10 },
-  // 36 武陵: Hunan interior, hilly terrain
-  36: { population: 180000, commerce: 180, agriculture: 340, floodControl: 40, defenseCoefficient: 1.05 },
-  // 37 長沙: Southern Jing hub
-  37: { population: 280000, commerce: 380, agriculture: 460, floodControl: 50, defenseCoefficient: 1.00 },
-  // 38 建業 (秣陵): Yangtze delta, river protection
-  38: { population: 400000, commerce: 550, agriculture: 480, floodControl: 60, defenseCoefficient: 1.10 },
-  // 39 廬江: River commandery
-  39: { population: 300000, commerce: 350, agriculture: 440, floodControl: 55, defenseCoefficient: 1.05 },
-  // 40 吳: Wu commandery (蘇州), flat water country
-  40: { population: 340000, commerce: 480, agriculture: 480, floodControl: 55, defenseCoefficient: 1.00 },
-  // 41 會稽: Southeastern coast
-  41: { population: 260000, commerce: 320, agriculture: 400, floodControl: 45, defenseCoefficient: 1.00 },
+  // 35 柴桑: Yangtze port — wetland
+  35: { population: 210000, commerce: 320, agriculture: 420, floodControl: 65, defenseCoefficient: 1.10, battleTerrain: 'wetland' },
+  // 36 武陵: Hunan interior, hilly terrain — arid
+  36: { population: 180000, commerce: 180, agriculture: 340, floodControl: 40, defenseCoefficient: 1.05, battleTerrain: 'arid' },
+  // 37 長沙: Southern Jing hub — plains
+  37: { population: 280000, commerce: 380, agriculture: 460, floodControl: 50, defenseCoefficient: 1.00, battleTerrain: 'plains' },
+  // 38 建業 (秣陵): Yangtze delta, river protection — wetland
+  38: { population: 400000, commerce: 550, agriculture: 480, floodControl: 60, defenseCoefficient: 1.10, battleTerrain: 'wetland' },
+  // 39 廬江: River commandery — wetland
+  39: { population: 300000, commerce: 350, agriculture: 440, floodControl: 55, defenseCoefficient: 1.05, battleTerrain: 'wetland' },
+  // 40 吳: Wu commandery (蘇州), flat water country — plains
+  40: { population: 340000, commerce: 480, agriculture: 480, floodControl: 55, defenseCoefficient: 1.00, battleTerrain: 'plains' },
+  // 41 會稽: Southeastern coast — plains
+  41: { population: 260000, commerce: 320, agriculture: 400, floodControl: 45, defenseCoefficient: 1.00, battleTerrain: 'plains' },
 
   // ===== 荊南 (Southern Jing) =====
-  // 42 零陵: Southern Hunan, hilly
-  42: { population: 200000, commerce: 180, agriculture: 360, floodControl: 35, defenseCoefficient: 1.05 },
-  // 43 桂陽: Southern Hunan frontier, mountainous
-  43: { population: 190000, commerce: 150, agriculture: 320, floodControl: 30, defenseCoefficient: 1.10 },
+  // 42 零陵: Southern Hunan, hilly — highland
+  42: { population: 200000, commerce: 180, agriculture: 360, floodControl: 35, defenseCoefficient: 1.05, battleTerrain: 'highland' },
+  // 43 桂陽: Southern Hunan frontier, mountainous — highland
+  43: { population: 190000, commerce: 150, agriculture: 320, floodControl: 30, defenseCoefficient: 1.10, battleTerrain: 'highland' },
 };
 
 /**

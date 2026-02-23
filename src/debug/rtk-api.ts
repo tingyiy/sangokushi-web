@@ -717,6 +717,7 @@ export const rtkApi = {
     const city = state.cities.find(c => c.id === officer.cityId);
     if (!city) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: 'Officer city not found' });
     if (city.gold < amount) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: `Insufficient gold in city ${city.name} (Current: ${city.gold}, Required: ${amount})` });
+    if (state.rewardedOfficerIds.includes(officerId)) return logCmd('👤', `rewardOfficer(${officer.name})`, { ok: false, error: 'Already rewarded this turn' });
 
     // Bug fix: store.rewardOfficer reads selectedCityId to deduct gold.
     // Auto-select the officer's city so the store can find it.

@@ -1,6 +1,9 @@
 import type { Officer } from './index';
 
-export type TerrainType = 'plain' | 'forest' | 'mountain' | 'river' | 'city' | 'gate' | 'bridge';
+export type TerrainType = 'plain' | 'forest' | 'mountain' | 'river' | 'city' | 'gate' | 'bridge' | 'swamp' | 'sand';
+
+/** Battle terrain theme — controls map generation style based on city geography */
+export type BattleTerrainType = 'plains' | 'wetland' | 'highland' | 'arid';
 
 export type UnitType = 'infantry' | 'cavalry' | 'archer';
 

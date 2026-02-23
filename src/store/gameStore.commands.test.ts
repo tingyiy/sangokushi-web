@@ -51,7 +51,7 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
         { id: 1, name: '曹操', rulerId: 1, color: '#3b82f6', isPlayer: true, relations: { 2: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null },
         { id: 2, name: '董卓', rulerId: 2, color: '#ff0000', isPlayer: false, relations: { 1: 60 }, allies: [], ceasefires: [], hostageOfficerIds: [], powOfficerIds: [], advisorId: null }
       ],
-      year: 190, month: 1, selectedCityId: 1, activeCommandCategory: null, log: [], duelState: null, battleFormation: null
+      year: 190, month: 1, selectedCityId: 1, activeCommandCategory: null, log: [], duelState: null, battleFormation: null, rewardedOfficerIds: []
     });
   });
 
@@ -1105,6 +1105,96 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       // Officer should have acted
       expect(actedAfter).toBe(true);
       mockRandom.mockRestore();
+    });
+  });
+
+  describe('Training/Morale Mechanics', () => {
+    beforeEach(() => {
+      // Add a second player city (id 3) with different training/morale and an extra escort officer
+      const state = useGameStore.getState();
+      useGameStore.setState({
+        cities: [
+          ...state.cities.map(c => c.id === 1 ? { ...c, adjacentCityIds: [2, 3] } : c),
+          {
+            id: 3, name: '南皮', x: 70, y: 50, factionId: 1, population: 100000, gold: 10000, food: 50000,
+            commerce: 50, agriculture: 50, defense: 30, troops: 5000, adjacentCityIds: [1],
+            floodControl: 50, technology: 50, peopleLoyalty: 70, morale: 40, training: 20,
+            crossbows: 0, warHorses: 0, batteringRams: 0, catapults: 0, taxRate: 'medium' as const
+          }
+        ],
+        officers: [
+          ...state.officers,
+          {
+            id: 10, name: '夏侯惇', leadership: 80, war: 85, intelligence: 50, politics: 60, charisma: 60,
+            skills: [] as RTK4Skill[], portraitId: 10, birthYear: 160, deathYear: 220, treasureId: null,
+            factionId: 1, cityId: 1, acted: false, loyalty: 100, isGovernor: false, rank: 'common' as const, relationships: []
+          }
+        ],
+      });
+    });
+
+    it('transport troops blends training/morale with weighted average', () => {
+      // City 1: training 60, morale 60, troops 10000
+      // City 3: training 20, morale 40, troops 5000
+      // Transport 5000 troops from city 1 to city 3
+      useGameStore.getState().transport(1, 3, { troops: 5000 }, 10);
+
+      const city3 = useGameStore.getState().cities.find(c => c.id === 3)!;
+      // Expected training: floor((60 * 5000 + 20 * 5000) / 10000) = floor(400000 / 10000) = 40
+      expect(city3.training).toBe(40);
+      // Expected morale: floor((60 * 5000 + 40 * 5000) / 10000) = floor(500000 / 10000) = 50
+      expect(city3.morale).toBe(50);
+      expect(city3.troops).toBe(10000);
+
+      // Source city training/morale unchanged
+      const city1 = useGameStore.getState().cities.find(c => c.id === 1)!;
+      expect(city1.training).toBe(60);
+      expect(city1.morale).toBe(60);
+    });
+
+    it('transport gold/food does NOT change training/morale', () => {
+      const city3Before = useGameStore.getState().cities.find(c => c.id === 3)!;
+      useGameStore.getState().transport(1, 3, { gold: 1000, food: 2000 }, 10);
+
+      const city3 = useGameStore.getState().cities.find(c => c.id === 3)!;
+      expect(city3.training).toBe(city3Before.training);
+      expect(city3.morale).toBe(city3Before.morale);
+    });
+
+    it('draftTroops dilutes training and morale', () => {
+      // City 1: training 60, morale 60, troops 10000, population 100000
+      // maxDraft = floor(100000 * 0.1) = 10000
+      // actual = min(5000, 10000) = 5000
+      // newTraining = floor(60 * 10000 / 15000) = 40
+      // newMorale = floor(60 * 10000 / 15000) = 40
+      useGameStore.getState().draftTroops(1, 5000);
+
+      const city = useGameStore.getState().cities.find(c => c.id === 1)!;
+      expect(city.training).toBe(40);
+      expect(city.morale).toBe(40);
+      expect(city.troops).toBe(15000);
+    });
+
+    it('draftTroops reduces peopleLoyalty scaled by draft ratio', () => {
+      // City 1: population 100000, peopleLoyalty 80
+      // Draft 5000 → loyaltyDrop = ceil(5000 / 100000 * 30) = ceil(1.5) = 2
+      const before = useGameStore.getState().cities.find(c => c.id === 1)!;
+      useGameStore.getState().draftTroops(1, 5000);
+      const after = useGameStore.getState().cities.find(c => c.id === 1)!;
+      expect(after.peopleLoyalty).toBe(before.peopleLoyalty - 2);
+    });
+
+    it('trainTroops log contains training and morale deltas', () => {
+      useGameStore.getState().trainTroops(1);
+
+      const logs = useGameStore.getState().log;
+      const trainLog = logs.find(l => l.includes('訓練') || l.includes('trained'));
+      expect(trainLog).toBeDefined();
+      // Officer leadership 85, bonus = floor(85/15) = 5
+      // trainingDelta = min(100, 60 + 8 + 5) - 60 = 73 - 60 = 13
+      // moraleDelta = min(100, 60 + 3) - 60 = 3
+      expect(trainLog).toMatch(/\+13/);
+      expect(trainLog).toMatch(/\+3/);
     });
   });
 });

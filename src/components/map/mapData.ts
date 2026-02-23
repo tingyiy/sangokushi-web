@@ -307,6 +307,8 @@ export const BATTLE_TERRAIN_PALETTES: Record<Season, Record<TerrainType, BattleT
     city:     { fill: '#d4a848', stroke: '#b08830', pattern: { detail1: '#e8c060', detail2: '#c09838' } },
     gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
     bridge:   { fill: '#90a098', stroke: '#708078', pattern: { detail1: '#a8b0a8', detail2: '#708078' } },
+    swamp:    { fill: '#5a7848', stroke: '#4a6838', pattern: { detail1: '#3a6030', detail2: '#6a8858' } },
+    sand:     { fill: '#d4c088', stroke: '#b8a468', pattern: { detail1: '#c8b478', detail2: '#e0cc98' } },
   },
   summer: {
     plain:    { fill: '#488a28', stroke: '#3a7018', pattern: { detail1: '#3a7818', detail2: '#448824' } },
@@ -316,6 +318,8 @@ export const BATTLE_TERRAIN_PALETTES: Record<Season, Record<TerrainType, BattleT
     city:     { fill: '#d4a848', stroke: '#b08830', pattern: { detail1: '#e8c060', detail2: '#c09838' } },
     gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
     bridge:   { fill: '#88988e', stroke: '#687868', pattern: { detail1: '#98a898', detail2: '#687868' } },
+    swamp:    { fill: '#4a6838', stroke: '#3a5828', pattern: { detail1: '#2e5020', detail2: '#5a7848' } },
+    sand:     { fill: '#d8c080', stroke: '#bca060', pattern: { detail1: '#ccb470', detail2: '#e4cc90' } },
   },
   autumn: {
     plain:    { fill: '#aa9830', stroke: '#8a7820', pattern: { detail1: '#9a8828', detail2: '#988828' } },
@@ -325,6 +329,8 @@ export const BATTLE_TERRAIN_PALETTES: Record<Season, Record<TerrainType, BattleT
     city:     { fill: '#d4a040', stroke: '#b08830', pattern: { detail1: '#e0b850', detail2: '#c09030' } },
     gate:     { fill: '#8d6e53', stroke: '#6e5540', pattern: { detail1: '#a08060', detail2: '#6e5540' } },
     bridge:   { fill: '#988878', stroke: '#786858', pattern: { detail1: '#a89888', detail2: '#786858' } },
+    swamp:    { fill: '#6a7038', stroke: '#5a6028', pattern: { detail1: '#4a5020', detail2: '#7a8048' } },
+    sand:     { fill: '#cca858', stroke: '#b09040', pattern: { detail1: '#c0a050', detail2: '#d8b868' } },
   },
   winter: {
     plain:    { fill: '#889890', stroke: '#708078', pattern: { detail1: '#788888', detail2: '#889890' } },
@@ -334,5 +340,7 @@ export const BATTLE_TERRAIN_PALETTES: Record<Season, Record<TerrainType, BattleT
     city:     { fill: '#c8b878', stroke: '#a89868', pattern: { detail1: '#d8c888', detail2: '#b0a070' } },
     gate:     { fill: '#908880', stroke: '#787068', pattern: { detail1: '#a09890', detail2: '#787068' } },
     bridge:   { fill: '#a0a8a0', stroke: '#889088', pattern: { detail1: '#b0b8b0', detail2: '#889088' } },
+    swamp:    { fill: '#788878', stroke: '#687868', pattern: { detail1: '#607060', detail2: '#889888' } },
+    sand:     { fill: '#b0a878', stroke: '#989070', pattern: { detail1: '#a89868', detail2: '#b8b088' } },
   },
 };

@@ -209,8 +209,7 @@
       "draftMax": "最大",
       "draftCost": "（每兵 2金+3糧）",
       "draftConfirm": "徵兵",
-      "draftCapInfo": "兵力上限 {{cap}} / 現有 {{current}} / 餘 {{room}}",
-      "draftAtCap": "兵力已達上限",
+      "draftInfo": "最多 {{max}} / 現有 {{current}}",
       "transferTransport": "移動 / 輸送",
       "transport": "輸送",
       "transportTo": "至 {{cityName}}",
@@ -224,7 +223,7 @@
       "handlePOW": "處置俘虜",
       "recruitPOW": "登用 {{name}}",
       "execute": "處斬",
-      "reward": "褒賞 (1000金)",
+      "reward": "褒賞",
       "officerLoyalty": "{{name}} (忠{{loyalty}})",
       "appointTransfer": "任命",
       "appointGovernor": "太守",
@@ -265,12 +264,18 @@
     "weaponsHeld": "持有武器：",
     "warHorseCount": "軍馬: {{count}}",
     "crossbowCount": "弩: {{count}}",
+    "foodSupply": "攜帶兵糧",
+    "foodDays": "（約{{days}}日份）",
     "confirmBattle": "確認出陣"
   },
   "unitType": {
     "infantry": "步兵",
     "cavalry": "騎兵",
     "archer": "弓兵"
+  },
+  "terrain": {
+    "swamp": "沼澤",
+    "sand": "沙漠"
   },
   "transport": {
     "title": "移動 / 輸送：至 {{cityName}}",
@@ -321,6 +326,7 @@
     "confirmDelete": "確定要刪除存檔 {{slot}} 嗎？",
     "deleted": "存檔 {{slot}} 已刪除",
     "emptySlot": "空存檔",
+    "autoSlotLabel": "自動存檔",
     "slotLabel": "存檔 {{slot}}",
     "slotDate": "{{year}}年{{month}}月",
     "delete": "刪除",

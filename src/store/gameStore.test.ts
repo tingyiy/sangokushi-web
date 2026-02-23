@@ -1745,12 +1745,15 @@ describe('Save/Load System', () => {
 
       const slots = useGameStore.getState().getSaveSlots();
 
-      expect(slots).toHaveLength(3);
-      expect(slots[0].slot).toBe(1);
-      expect(slots[0].date).toBe('2024-01-01T00:00:00.000Z');
-      expect(slots[0].version).toBe('1.0.0');
-      expect(slots[1].date).toBeNull();
+      expect(slots).toHaveLength(11); // 1 auto + 10 manual
+      expect(slots[0].slot).toBe(0);
+      expect(slots[0].isAuto).toBe(true);
+      expect(slots[0].date).toBeNull(); // no auto-save yet
+      expect(slots[1].slot).toBe(1);
+      expect(slots[1].date).toBe('2024-01-01T00:00:00.000Z');
+      expect(slots[1].version).toBe('1.0.0');
       expect(slots[2].date).toBeNull();
+      expect(slots[3].date).toBeNull();
     });
   });
 

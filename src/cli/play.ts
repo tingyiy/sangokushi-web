@@ -896,6 +896,7 @@ function handleCommand(input: string, factionId: number): boolean {
       const name = parts[1] || '';
       const officer = findOfficerByName(name, factionId);
       if (!officer) { log(t('error.officerNotInFaction', { name })); return false; }
+      if (game.getState().rewardedOfficerIds.includes(officer.id)) { log(t('error.alreadyRewarded', { name: officer.name })); return false; }
       const amount = parseInt(parts[2] || '1000', 10);
       game.getState().rewardOfficer(officer.id, 'gold', amount);
       return false;

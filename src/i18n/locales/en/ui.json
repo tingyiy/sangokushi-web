@@ -209,8 +209,7 @@
       "draftMax": "Max",
       "draftCost": "(2g + 3f per troop)",
       "draftConfirm": "Draft",
-      "draftCapInfo": "Cap {{cap}} / Current {{current}} / Room {{room}}",
-      "draftAtCap": "Garrison at capacity",
+      "draftInfo": "Max {{max}} / Current {{current}}",
       "transferTransport": "Transfer / Transport",
       "transport": "Transport",
       "transportTo": "To {{cityName}}",
@@ -224,7 +223,7 @@
       "handlePOW": "Handle POWs",
       "recruitPOW": "Enlist {{name}}",
       "execute": "Execute",
-      "reward": "Reward (1000g)",
+      "reward": "Reward",
       "officerLoyalty": "{{name}} (Loy {{loyalty}})",
       "appointTransfer": "Appoint",
       "appointGovernor": "Governor",
@@ -265,12 +264,18 @@
     "weaponsHeld": "Weapons:",
     "warHorseCount": "War Horses: {{count}}",
     "crossbowCount": "Crossbows: {{count}}",
+    "foodSupply": "Food Supply",
+    "foodDays": "(~{{days}} days)",
     "confirmBattle": "March!"
   },
   "unitType": {
     "infantry": "Infantry",
     "cavalry": "Cavalry",
     "archer": "Archer"
+  },
+  "terrain": {
+    "swamp": "Swamp",
+    "sand": "Desert"
   },
   "transport": {
     "title": "Transfer / Transport to {{cityName}}",
@@ -321,6 +326,7 @@
     "confirmDelete": "Delete save slot {{slot}}?",
     "deleted": "Slot {{slot}} deleted",
     "emptySlot": "Empty",
+    "autoSlotLabel": "Auto Save",
     "slotLabel": "Slot {{slot}}",
     "slotDate": "{{month}} / {{year}} AD",
     "delete": "Delete",

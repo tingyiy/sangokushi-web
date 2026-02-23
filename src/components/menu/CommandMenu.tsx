@@ -14,7 +14,7 @@ const categories: CommandCategory[] = ['domestic', 'military', 'personnel', 'dip
 export function CommandMenu() {
   const { t } = useTranslation();
   const {
-    selectedCityId, cities, officers, factions, playerFaction,
+    selectedCityId, cities, officers, factions, playerFaction, rewardedOfficerIds,
     activeCommandCategory, setActiveCommandCategory,
     developCommerce, developAgriculture, reinforceDefense,
     developFloodControl, developTechnology, trainTroops, manufacture, disasterRelief, buyFood,
@@ -177,59 +177,49 @@ export function CommandMenu() {
             <>
               {(() => {
                 const maxDraft = Math.floor(city.population * 0.1);
-                const troopCap = Math.floor(city.population * 0.12);
-                const room = Math.max(0, troopCap - city.troops);
-                const maxAllowed = Math.min(maxDraft, room);
                 const goldMax = Math.floor(city.gold / 2);
                 const foodMax = Math.floor(city.food / 3);
-                const effectiveMax = Math.max(0, Math.min(maxAllowed, goldMax, foodMax));
-                const atCap = room <= 0;
+                const effectiveMax = Math.max(0, Math.min(maxDraft, goldMax, foodMax));
                 const goldCost = draftAmount * 2;
                 const foodCost = draftAmount * 3;
                 return (
                   <div className="sub-menu">
                     <h5>{t('command.military.draft')}</h5>
                     <div style={{ fontSize: '0.75em', color: '#999', marginBottom: '4px' }}>
-                      {t('command.military.draftCapInfo', { cap: troopCap.toLocaleString(), current: city.troops.toLocaleString(), room: room.toLocaleString() })}
+                      {t('command.military.draftInfo', { max: maxDraft.toLocaleString(), current: city.troops.toLocaleString() })}
                     </div>
-                    {atCap ? (
-                      <div style={{ fontSize: '0.85em', color: '#ff6b6b' }}>{t('command.military.draftAtCap')}</div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="number"
-                            min={0}
-                            max={effectiveMax}
-                            step={1000}
-                            value={draftAmount}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setDraftAmount(isNaN(v) ? 0 : Math.max(0, Math.min(v, effectiveMax)));
-                            }}
-                            className="draft-input"
-                          />
-                          <button className="btn-tiny" onClick={() => setDraftAmount(effectiveMax)}>
-                            {t('command.military.draftMax')}
-                          </button>
-                        </div>
-                        <div style={{ fontSize: '0.7em', color: '#888', margin: '3px 0' }}>
-                          {t('command.military.draftCost')}
-                          {draftAmount > 0 && ` → ${goldCost.toLocaleString()}${t('city.gold')} ${foodCost.toLocaleString()}${t('city.food')}`}
-                        </div>
-                        <button
-                          className="btn btn-action"
-                          disabled={draftAmount <= 0}
-                          onClick={() => {
-                            const amount = draftAmount;
-                            executeWithOfficer(t('command.action.draft'), (oid) => draftTroops(city.id, amount, oid));
-                            setDraftAmount(0);
-                          }}
-                        >
-                          {t('command.military.draftConfirm')}{draftAmount > 0 ? ` ${draftAmount.toLocaleString()}` : ''}
-                        </button>
-                      </>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={effectiveMax}
+                        step={1000}
+                        value={draftAmount}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          setDraftAmount(isNaN(v) ? 0 : Math.max(0, Math.min(v, effectiveMax)));
+                        }}
+                        className="draft-input"
+                      />
+                      <button className="btn-tiny" onClick={() => setDraftAmount(effectiveMax)}>
+                        {t('command.military.draftMax')}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.7em', color: '#888', margin: '3px 0' }}>
+                      {t('command.military.draftCost')}
+                      {draftAmount > 0 && ` → ${goldCost.toLocaleString()}${t('city.gold')} ${foodCost.toLocaleString()}${t('city.food')}`}
+                    </div>
+                    <button
+                      className="btn btn-action"
+                      disabled={draftAmount <= 0}
+                      onClick={() => {
+                        const amount = draftAmount;
+                        executeWithOfficer(t('command.action.draft'), (oid) => draftTroops(city.id, amount, oid));
+                        setDraftAmount(0);
+                      }}
+                    >
+                      {t('command.military.draftConfirm')}{draftAmount > 0 ? ` ${draftAmount.toLocaleString()}` : ''}
+                    </button>
                   </div>
                 );
               })()}
@@ -289,7 +279,7 @@ export function CommandMenu() {
                   <h5>{t('command.personnel.handlePOW')}</h5>
                   {pows.map(o => (
                     <div key={o.id} style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-action btn-small" onClick={() => executeWithOfficer(t('command.personnel.recruitPOW', { name: localizedName(o.name) }), (oid) => recruitPOW(o.id, oid))}>{t('command.personnel.recruitPOW', { name: localizedName(o.name) })}</button>
+                      <button className="btn btn-action btn-small" onClick={() => recruitPOW(o.id)}>{t('command.personnel.recruitPOW', { name: localizedName(o.name) })}</button>
                       <button className="btn btn-action btn-small btn-danger" onClick={() => executeOfficer(o.id)}>{t('command.personnel.execute')}</button>
                     </div>
                   ))}
@@ -299,8 +289,15 @@ export function CommandMenu() {
               <div className="sub-menu">
                 <h5>{t('command.personnel.reward')}</h5>
                 <div className="scroll-box">
-                  {ownOfficers.filter(o => o.loyalty < 100).map(o => (
-                    <button key={o.id} className="btn btn-action btn-small" onClick={() => rewardOfficer(o.id, 'gold', 1000)}>{t('command.personnel.officerLoyalty', { name: localizedName(o.name), loyalty: o.loyalty })}</button>
+                  {ownOfficers.filter(o => o.loyalty < 100 && !rewardedOfficerIds.includes(o.id)).map(o => (
+                    <div key={o.id} style={{ marginBottom: '4px' }}>
+                      <div style={{ fontSize: '0.85em', marginBottom: '2px' }}>{t('command.personnel.officerLoyalty', { name: localizedName(o.name), loyalty: o.loyalty })}</div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {[500, 1000, 3000, 5000].map(amt => (
+                          <button key={amt} className="btn-tiny" disabled={!city || city.gold < amt} onClick={() => rewardOfficer(o.id, 'gold', amt)}>{amt}</button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

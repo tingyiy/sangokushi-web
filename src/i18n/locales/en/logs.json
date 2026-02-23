@@ -48,6 +48,7 @@
     "notOurFaction": "{{name}} is not in our faction and cannot be appointed governor.",
     "notInTargetCity": "{{name}} is not in {{city}} and cannot be appointed governor.",
     "rewardGoldInsufficient": "Not enough gold for reward. Need {{amount}} (have {{current}}).",
+    "alreadyRewarded": "{{name}} has already been rewarded this turn.",
     "treasureRewardNotImplemented": "Treasure rewards not yet implemented.",
     "noSkillRumor": "{{name}} does not have the Rumor skill.",
     "noSkillProvoke": "{{name}} does not have the Provoke skill.",
@@ -74,7 +75,7 @@
     "reinforceDefense": "{{city}}: {{officer}} reinforced defense +5 (cost 300 gold)",
     "developFlood": "{{city}}: {{officer}} developed flood control +{{bonus}} (cost 500 gold)",
     "developTech": "{{city}}: {{officer}} developed technology +{{bonus}} (cost 800 gold)",
-    "trainTroops": "{{city}}: {{officer}} trained troops (cost 500 food)",
+    "trainTroops": "{{city}}: {{officer}} trained troops, training +{{trainingBonus}}, morale +{{moraleBonus}} (cost 500 food)",
     "manufacture": "{{city}}: {{officer}} manufactured {{amount}} {{weapon}} (cost 1000 gold)",
     "relief": "{{city}}: {{officer}} provided relief, loyalty +{{bonus}} (cost 500 gold, 1000 food)",
     "conscript": "{{city}}: {{officer}} conscripted {{amount}} troops",
@@ -109,7 +110,9 @@
     "cityAbandoned": "{{city}} has been abandoned — no officers remain.",
     "enticeSuccess": "{{enticer}} convinced {{officer}} to defect!",
     "enticeFail": "{{enticer}} failed to convince {{officer}} to defect.",
-    "enticeCityFlip": "{{enticer}} convinced governor {{officer}} to defect! {{city}} has switched sides!"
+    "enticeCityFlip": "{{enticer}} convinced governor {{officer}} to defect! {{city}} has switched sides!",
+    "aiEnticePlayerOfficer": "[Strategy] Your officer {{officer}} was enticed to defect by {{enticer}}!",
+    "aiEnticePlayerCityFlip": "[Strategy] Your governor {{officer}} was enticed by {{enticer}}! {{city}} has changed factions!"
   },
   "military": {
     "captureEmptyCity": "{{city}} is undefended! {{commander}} captured {{city}}!",

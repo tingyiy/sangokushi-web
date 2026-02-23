@@ -188,11 +188,72 @@ describe('Acted Flag Enforcement (one action per turn)', () => {
     expectRejectedWhenActed('recruitOfficer', 1, () => useGameStore.getState().recruitOfficer(11, 1));
     expectSetsActed('recruitOfficer', 1, () => useGameStore.getState().recruitOfficer(11, 1));
 
+    it('recruitOfficer sets acted=true on the recruited officer', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success
+      useGameStore.getState().recruitOfficer(11, 1);
+      const recruited = useGameStore.getState().officers.find(o => o.id === 11);
+      expect(recruited?.factionId).toBe(1);
+      expect(recruited?.acted).toBe(true);
+    });
+
     expectRejectedWhenActed('enticeOfficer', 1, () => useGameStore.getState().enticeOfficer(13, 1));
     expectSetsActed('enticeOfficer', 1, () => useGameStore.getState().enticeOfficer(13, 1));
 
-    expectRejectedWhenActed('recruitPOW', 1, () => useGameStore.getState().recruitPOW(12, 1));
-    expectSetsActed('recruitPOW', 1, () => useGameStore.getState().recruitPOW(12, 1));
+    it('enticeOfficer sets acted=true on the enticed officer', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success
+      useGameStore.getState().enticeOfficer(13, 1);
+      const enticed = useGameStore.getState().officers.find(o => o.id === 13);
+      expect(enticed?.factionId).toBe(1);
+      expect(enticed?.acted).toBe(true);
+    });
+
+    // recruitPOW does NOT reject acted officers — after conquering a city,
+    // all battle participants have acted but should still handle POWs (RTK IV).
+    it('recruitPOW allows acted recruiter (post-battle POW handling)', () => {
+      markActed(1);
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success
+      useGameStore.getState().recruitPOW(12, 1);
+      const recruited = useGameStore.getState().officers.find(o => o.id === 12);
+      expect(recruited?.factionId).toBe(1);
+    });
+
+    it('recruitPOW does NOT set acted on recruited POW (can reward same turn)', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success
+      useGameStore.getState().recruitPOW(12, 1);
+      const recruited = useGameStore.getState().officers.find(o => o.id === 12);
+      expect(recruited?.factionId).toBe(1);
+      expect(recruited?.acted).toBe(false);
+    });
+
+    it('recruitPOW loyalty is random + ruler charisma bonus', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success + low random
+      useGameStore.getState().recruitPOW(12, 1);
+      const recruited = useGameStore.getState().officers.find(o => o.id === 12);
+      expect(recruited?.factionId).toBe(1);
+      // Loyalty = floor(random(0.01)*31) + 40 + floor(ruler_charisma/5)
+      // Ruler (officer 1) charisma = 95 → bonus = 19
+      // floor(0.01*31) = 0 → loyalty = 40 + 19 = 59
+      expect(recruited?.loyalty).toBe(59);
+    });
+
+    it('enticeOfficer governor flip sets acted=true on all flipped officers', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // guarantee success
+      // Make officer 13 the governor (not the ruler) so entice governor-flip can fire
+      useGameStore.setState({
+        officers: useGameStore.getState().officers.map(o => {
+          if (o.id === 13) return { ...o, isGovernor: true, loyalty: 10, intelligence: 10 };
+          if (o.id === 10) return { ...o, isGovernor: false };
+          return o;
+        }),
+      });
+      useGameStore.getState().enticeOfficer(13, 1);
+      const governor = useGameStore.getState().officers.find(o => o.id === 13);
+      const follower = useGameStore.getState().officers.find(o => o.id === 10);
+      expect(governor?.factionId).toBe(1);
+      expect(governor?.acted).toBe(true);
+      expect(follower?.factionId).toBe(1);
+      expect(follower?.acted).toBe(true);
+    });
 
     expectRejectedWhenActed('draftTroops', 1, () => useGameStore.getState().draftTroops(1, 1000, 1));
 

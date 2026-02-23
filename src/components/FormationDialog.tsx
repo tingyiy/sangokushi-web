@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore';
 import { localizedName } from '../i18n/dataNames';
@@ -28,6 +28,16 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   const [selectedOfficerIds, setSelectedOfficerIds] = useState<number[]>([]);
   const [unitTypes, setUnitTypes] = useState<Record<number, UnitType>>({});
   const [troopCounts, setTroopCounts] = useState<Record<number, number>>({});
+  const [foodAmount, setFoodAmount] = useState(0);
+  const userEditedFood = useRef(false);
+
+  /** Auto-update food supply when troop count changes (if user hasn't manually edited) */
+  const autoUpdateFood = useCallback((newTotal: number) => {
+    if (!userEditedFood.current) {
+      const cityFood = city?.food ?? 0;
+      setFoodAmount(Math.min(newTotal * 10, cityFood));
+    }
+  }, [city?.food]);
 
   /** Max troops an officer can lead (rank-based cap) */
   const maxTroopsForOfficer = useCallback((officerId: number) => {
@@ -45,47 +55,30 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   /** Remaining garrison after allocation */
   const remaining = (city?.troops ?? 0) - totalAllocated;
 
-  /** Recalculate default troop allocation: each officer gets their max, scaled down if garrison insufficient */
-  const recalcDefaults = useCallback((ids: number[]) => {
-    if (!city) return {};
-    if (ids.length === 0) return {};
-    // Start with each officer's individual max
-    const maxes: Record<number, number> = {};
-    let totalMax = 0;
-    for (const id of ids) {
-      const m = maxTroopsForOfficer(id);
-      maxes[id] = m;
-      totalMax += m;
-    }
-    const newCounts: Record<number, number> = {};
-    if (totalMax <= city.troops) {
-      // Garrison can cover everyone's max
-      for (const id of ids) {
-        newCounts[id] = maxes[id];
-      }
-    } else {
-      // Scale down proportionally to fit garrison
-      for (const id of ids) {
-        newCounts[id] = Math.floor(city.troops * (maxes[id] / totalMax));
-      }
-    }
-    return newCounts;
-  }, [city, maxTroopsForOfficer]);
-
   const toggleOfficer = (id: number) => {
     if (selectedOfficerIds.includes(id)) {
+      // Deselect: free troops back, leave others unchanged
       const newIds = selectedOfficerIds.filter(oid => oid !== id);
       setSelectedOfficerIds(newIds);
-      // Recalculate defaults for remaining officers
-      setTroopCounts(recalcDefaults(newIds));
+      const newCounts = { ...troopCounts };
+      delete newCounts[id];
+      setTroopCounts(newCounts);
+      const newTotal = newIds.reduce((sum, oid) => sum + (newCounts[oid] || 0), 0);
+      autoUpdateFood(newTotal);
     } else if (selectedOfficerIds.length < maxSelectable) {
+      // Select: assign min(max, remainingGarrison) to new officer only
       const newIds = [...selectedOfficerIds, id];
       setSelectedOfficerIds(newIds);
       if (!unitTypes[id]) {
         setUnitTypes({ ...unitTypes, [id]: 'infantry' });
       }
-      // Recalculate defaults for all officers including new one
-      setTroopCounts(recalcDefaults(newIds));
+      const garrison = city?.troops ?? 0;
+      const currentUsed = selectedOfficerIds.reduce((sum, oid) => sum + (troopCounts[oid] || 0), 0);
+      const availableForNew = Math.max(0, garrison - currentUsed);
+      const maxForOfficer = maxTroopsForOfficer(id);
+      const assigned = Math.min(maxForOfficer, availableForNew);
+      setTroopCounts({ ...troopCounts, [id]: assigned });
+      autoUpdateFood(currentUsed + assigned);
     }
   };
 
@@ -94,25 +87,66 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
   };
 
   const handleTroopChange = (officerId: number, value: string) => {
-    const num = parseInt(value, 10);
-    if (isNaN(num) || num < 0) {
-      setTroopCounts({ ...troopCounts, [officerId]: 0 });
+    if (value === '') {
+      const newCounts = { ...troopCounts, [officerId]: 0 };
+      setTroopCounts(newCounts);
+      const newTotal = selectedOfficerIds.reduce((sum, id) => sum + (newCounts[id] || 0), 0);
+      autoUpdateFood(newTotal);
       return;
     }
+    const num = parseInt(value, 10);
+    if (isNaN(num) || num < 0) return;
     const max = maxTroopsForOfficer(officerId);
-    setTroopCounts({ ...troopCounts, [officerId]: Math.min(num, max) });
+    const clamped = Math.min(num, max);
+    const garrison = city?.troops ?? 0;
+
+    // Calculate what others currently use
+    const newCounts = { ...troopCounts, [officerId]: clamped };
+    const newTotal = selectedOfficerIds.reduce((sum, id) => sum + (newCounts[id] || 0), 0);
+
+    if (newTotal > garrison) {
+      // Overflow: deduct from other officers, last-to-first (skip the one being edited)
+      let overflow = newTotal - garrison;
+      for (let i = selectedOfficerIds.length - 1; i >= 0 && overflow > 0; i--) {
+        const oid = selectedOfficerIds[i];
+        if (oid === officerId) continue;
+        const cur = newCounts[oid] || 0;
+        const deduct = Math.min(cur, overflow);
+        newCounts[oid] = cur - deduct;
+        overflow -= deduct;
+      }
+    }
+
+    setTroopCounts(newCounts);
+    const finalTotal = selectedOfficerIds.reduce((sum, id) => sum + (newCounts[id] || 0), 0);
+    autoUpdateFood(finalTotal);
   };
+
+  const handleFoodChange = (value: string) => {
+    userEditedFood.current = true;
+    if (value === '') {
+      setFoodAmount(0);
+      return;
+    }
+    const num = parseInt(value, 10);
+    if (isNaN(num) || num < 0) return;
+    const cityFood = city?.food ?? 0;
+    setFoodAmount(Math.min(num, cityFood));
+  };
+
+  const foodDays = totalAllocated > 0 ? Math.floor(foodAmount / totalAllocated) : 0;
 
   const handleStart = () => {
     if (selectedOfficerIds.length === 0) return;
     if (remaining < 0) return; // Over-allocated
-    
+
     setBattleFormation({
       officerIds: selectedOfficerIds,
       unitTypes: selectedOfficerIds.map(id => unitTypes[id] || 'infantry'),
       troops: selectedOfficerIds.map(id => troopCounts[id] || 0),
+      food: foodAmount,
     });
-    
+
     startBattle(targetCityId);
     onClose();
   };
@@ -153,7 +187,7 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
                         min={0}
                         max={maxTroop}
                         step={100}
-                        value={troopCounts[o.id] || 0}
+                        value={troopCounts[o.id] || ''}
                         onChange={(e) => handleTroopChange(o.id, e.target.value)}
                         className="troop-input"
                       />
@@ -177,6 +211,23 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
           <span>{t('formation.weaponsHeld')}</span>
           <span>{t('formation.warHorseCount', { count: city.warHorses })}</span>
           <span>{t('formation.crossbowCount', { count: city.crossbows })}</span>
+        </div>
+
+        <div className="resource-info food-supply-row">
+          <label>{t('formation.foodSupply')}</label>
+          <input
+            type="number"
+            min={0}
+            max={city.food}
+            step={1000}
+            value={foodAmount || ''}
+            onChange={(e) => handleFoodChange(e.target.value)}
+            className="food-input"
+          />
+          <span className="food-max">/ {city.food.toLocaleString()}</span>
+          {totalAllocated > 0 && (
+            <span className="food-days">{t('formation.foodDays', { days: foodDays })}</span>
+          )}
         </div>
 
         <div className="modal-actions">
@@ -269,6 +320,23 @@ export function FormationDialog({ targetCityId, onClose }: Props) {
           gap: 15px;
         }
         .over-allocated { color: #ff6b6b; font-weight: bold; }
+        .food-supply-row { align-items: center; }
+        .food-input {
+          width: 80px;
+          background: #333;
+          color: white;
+          border: 1px solid #666;
+          border-radius: 4px;
+          padding: 2px 4px;
+          text-align: right;
+          font-size: 0.85em;
+        }
+        .food-input::-webkit-inner-spin-button,
+        .food-input::-webkit-outer-spin-button {
+          opacity: 1;
+        }
+        .food-max { font-size: 0.75em; color: #999; }
+        .food-days { font-size: 0.85em; color: #8bc34a; }
         .modal-actions {
           display: flex;
           justify-content: flex-end;

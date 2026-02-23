@@ -13,31 +13,37 @@ export interface UnitModifiers {
 export const UNIT_TYPE_MODIFIERS: Record<UnitType, UnitModifiers> = {
   infantry: {
     movement: 5,
-    attackModifier: { 
-      plain: 1.0, forest: 1.0, mountain: 0.8, river: 0.7, city: 1.0, gate: 0.5, bridge: 0.9 
+    attackModifier: {
+      plain: 1.0, forest: 1.0, mountain: 0.8, river: 0.7, city: 1.0, gate: 0.5, bridge: 0.9,
+      swamp: 0.9, sand: 0.9,
     },
-    defenseModifier: { 
-      plain: 1.0, forest: 1.3, mountain: 1.5, river: 0.7, city: 1.5, gate: 2.0, bridge: 1.0 
+    defenseModifier: {
+      plain: 1.0, forest: 1.3, mountain: 1.5, river: 0.7, city: 1.5, gate: 2.0, bridge: 1.0,
+      swamp: 1.2, sand: 0.9,
     },
     attackRange: 1,
   },
   cavalry: {
     movement: 7,
-    attackModifier: { 
-      plain: 1.3, forest: 0.7, mountain: 0.5, river: 0.5, city: 0.8, gate: 0.3, bridge: 0.8 
+    attackModifier: {
+      plain: 1.3, forest: 0.7, mountain: 0.5, river: 0.5, city: 0.8, gate: 0.3, bridge: 0.8,
+      swamp: 0.4, sand: 1.2,
     },
-    defenseModifier: { 
-      plain: 1.0, forest: 0.8, mountain: 0.6, river: 0.5, city: 0.8, gate: 0.5, bridge: 0.8 
+    defenseModifier: {
+      plain: 1.0, forest: 0.8, mountain: 0.6, river: 0.5, city: 0.8, gate: 0.5, bridge: 0.8,
+      swamp: 0.4, sand: 1.0,
     },
     attackRange: 1,
   },
   archer: {
     movement: 4,
-    attackModifier: { 
-      plain: 1.0, forest: 0.8, mountain: 1.2, river: 0.8, city: 1.0, gate: 0.8, bridge: 1.0 
+    attackModifier: {
+      plain: 1.0, forest: 0.8, mountain: 1.2, river: 0.8, city: 1.0, gate: 0.8, bridge: 1.0,
+      swamp: 0.7, sand: 1.0,
     },
-    defenseModifier: { 
-      plain: 0.8, forest: 1.0, mountain: 1.3, river: 0.6, city: 1.2, gate: 1.5, bridge: 0.8 
+    defenseModifier: {
+      plain: 0.8, forest: 1.0, mountain: 1.3, river: 0.6, city: 1.2, gate: 1.5, bridge: 0.8,
+      swamp: 0.8, sand: 0.8,
     },
     attackRange: 2,
   },

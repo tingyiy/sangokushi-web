@@ -9,7 +9,9 @@ export const TERRAIN_COSTS: Record<TerrainType, number> = {
   river: 4,
   city: Infinity,
   gate: Infinity,
-  bridge: 1
+  bridge: 1,
+  swamp: 3,
+  sand: 2,
 };
 
 interface PathNode {

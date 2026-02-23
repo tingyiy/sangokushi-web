@@ -16,8 +16,8 @@ export function rollRandomEvents(state: GameState): GameEvent[] {
 
     const roll = Math.random() * 100;
     
-    // Flood (3% chance, reduced by floodControl)
-    if (roll < 3 * (1 - city.floodControl / 150)) {
+    // Flood (3% base chance, fully negated at floodControl = 100)
+    if (roll < 3 * (1 - city.floodControl / 100)) {
       events.push({
         id: `flood-${city.id}-${year}-${month}`,
         type: 'flood',

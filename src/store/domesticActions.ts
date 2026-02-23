@@ -260,6 +260,8 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
         return;
       }
       const trainingBonus = Math.floor(executor.leadership / 15);
+      const trainingDelta = Math.min(100, (city.training || 0) + 8 + trainingBonus) - (city.training || 0);
+      const moraleDelta = Math.min(100, (city.morale || 0) + 3) - (city.morale || 0);
       set({
         cities: state.cities.map(c =>
           c.id === cityId
@@ -277,7 +279,7 @@ export function createDomesticActions(set: Set, get: Get): Pick<GameState,
             : o
         ),
       });
-      get().addLog(i18next.t('logs:domestic.trainTroops', { city: localizedName(city.name), officer: localizedName(executor.name) }));
+      get().addLog(i18next.t('logs:domestic.trainTroops', { city: localizedName(city.name), officer: localizedName(executor.name), trainingBonus: trainingDelta, moraleBonus: moraleDelta }));
     },
 
     manufacture: (cityId, weaponType, officerId) => {

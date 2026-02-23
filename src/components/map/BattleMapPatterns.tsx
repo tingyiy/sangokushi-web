@@ -117,6 +117,58 @@ export function BattleMapPatterns({ season }: BattleMapPatternsProps) {
         <circle cx="6" cy="4" r="0.5" fill={p.bridge.pattern.detail1} opacity="0.2" />
       </pattern>
 
+      {/* ── Swamp: dark green-brown base, water ripples, reed strokes ── */}
+      <pattern id="bhex-swamp" patternUnits="userSpaceOnUse" width="16" height="16">
+        <rect width="16" height="16" fill={p.swamp.fill} />
+        {/* Water ripples */}
+        <path
+          d="M 0,5 Q 4,3.5 8,5 Q 12,6.5 16,5"
+          stroke={p.swamp.pattern.detail1}
+          strokeWidth="0.5"
+          fill="none"
+          opacity="0.35"
+        />
+        <path
+          d="M 0,11 Q 4,9.5 8,11 Q 12,12.5 16,11"
+          stroke={p.swamp.pattern.detail1}
+          strokeWidth="0.4"
+          fill="none"
+          opacity="0.3"
+        />
+        {/* Reed-like strokes */}
+        <line x1="3" y1="8" x2="3.4" y2="5.5" stroke={p.swamp.pattern.detail2} strokeWidth="0.5" opacity="0.35" />
+        <line x1="10" y1="14" x2="10.3" y2="11.5" stroke={p.swamp.pattern.detail2} strokeWidth="0.5" opacity="0.3" />
+        <line x1="14" y1="3" x2="14.2" y2="0.5" stroke={p.swamp.pattern.detail2} strokeWidth="0.4" opacity="0.25" />
+        {/* Murky patches */}
+        <circle cx="7" cy="3" r="1.2" fill={p.swamp.pattern.detail1} opacity="0.2" />
+        <circle cx="12" cy="9" r="1.0" fill={p.swamp.pattern.detail1} opacity="0.18" />
+      </pattern>
+
+      {/* ── Sand: tan base, dune wavy lines, scattered dots ── */}
+      <pattern id="bhex-sand" patternUnits="userSpaceOnUse" width="20" height="16">
+        <rect width="20" height="16" fill={p.sand.fill} />
+        {/* Dune-like wavy lines */}
+        <path
+          d="M 0,4 Q 5,2.5 10,4 Q 15,5.5 20,4"
+          stroke={p.sand.pattern.detail2}
+          strokeWidth="0.5"
+          fill="none"
+          opacity="0.3"
+        />
+        <path
+          d="M 0,10 Q 5,8.5 10,10 Q 15,11.5 20,10"
+          stroke={p.sand.pattern.detail2}
+          strokeWidth="0.4"
+          fill="none"
+          opacity="0.25"
+        />
+        {/* Scattered pebble dots */}
+        <circle cx="4" cy="7" r="0.6" fill={p.sand.pattern.detail1} opacity="0.2" />
+        <circle cx="12" cy="2" r="0.5" fill={p.sand.pattern.detail1} opacity="0.18" />
+        <circle cx="16" cy="12" r="0.7" fill={p.sand.pattern.detail1} opacity="0.15" />
+        <circle cx="8" cy="14" r="0.5" fill={p.sand.pattern.detail1} opacity="0.2" />
+      </pattern>
+
       {/* ── Winter snow overlay (applied additively on top in winter) ── */}
       <pattern id="bhex-snow" patternUnits="userSpaceOnUse" width="20" height="20">
         <rect width="20" height="20" fill="none" />

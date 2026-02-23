@@ -76,7 +76,15 @@ function processEconomy(state: GameState): GameState['cities'] {
         population: Math.floor(c.population * (1 + monthlyGrowthRate)),
       };
     }
-    return c;
+
+    // Unoccupied city: resources decay (no government → disorder and looting)
+    return {
+      ...c,
+      gold: Math.max(0, Math.floor(c.gold * 0.9)),
+      food: Math.max(0, Math.floor(c.food * 0.9)),
+      troops: 0,
+      peopleLoyalty: Math.max(0, c.peopleLoyalty - 3),
+    };
   });
 }
 
@@ -322,6 +330,12 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
         (msg) => get().addLog(msg),
       );
 
+      // Default to ruler's city at start of new month
+      const playerRuler = state.playerFaction
+        ? roamedOfficers.find(o => o.id === state.playerFaction!.rulerId)
+        : null;
+      const rulerCityId = playerRuler?.cityId ?? null;
+
       // Commit new month state
       set({
         month: newMonth,
@@ -329,12 +343,16 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
         cities: succCities,
         officers: roamedOfficers,
         factions: succFactions,
-        selectedCityId: null,
+        selectedCityId: rulerCityId,
         activeCommandCategory: null,
         pendingGovernorAssignmentCityId: null,
+        rewardedOfficerIds: [],
       });
 
       get().addLog(i18next.t('logs:game.turnHeader', { year: newYear, month: newMonth }));
+
+      // Auto-save at start of new month (silent)
+      get().saveGame('auto');
 
       // Auto-assign governors for player cities
       if (state.playerFaction) {
@@ -470,7 +488,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       set({
         officers: state.officers.map(o => {
           if (o.id === recruiter.id) return { ...o, acted: true };
-          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 60 };
+          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 60, acted: true };
           return o;
         }),
       });
@@ -497,7 +515,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       set({
         officers: state.officers.map(o => {
           if (o.id === recruiter.id) return { ...o, acted: true };
-          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 50, cityId: city.id };
+          if (o.id === officerId && success) return { ...o, factionId: factionId, loyalty: 50, cityId: city.id, acted: true };
           return o;
         })
       });
@@ -548,21 +566,31 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
           officers: state.officers.map(o => {
             if (o.id === enticer.id) return { ...o, acted: true };
             if (o.cityId === targetCity.id && o.factionId === oldFactionId) {
-              return { ...o, factionId: factionId, loyalty: 50 };
+              return { ...o, factionId: factionId, loyalty: 50, acted: true };
             }
             return o;
           }),
         });
+
+        // Log to player if their city flipped
+        if (oldFactionId === state.playerFaction?.id) {
+          get().addLog(i18next.t('logs:personnel.aiEnticePlayerCityFlip', { enticer: localizedName(enticer.name), city: localizedName(targetCity.name), officer: localizedName(target.name) }));
+        }
       } else if (success) {
         set({
           officers: state.officers.map(o => {
             if (o.id === enticer.id) return { ...o, acted: true };
             if (o.id === targetOfficerId) {
-              return { ...o, factionId: factionId, loyalty: 50, cityId: fromCityId, isGovernor: false };
+              return { ...o, factionId: factionId, loyalty: 50, cityId: fromCityId, isGovernor: false, acted: true };
             }
             return o;
           }),
         });
+
+        // Log to player if their officer was enticed
+        if (target.factionId === state.playerFaction?.id) {
+          get().addLog(i18next.t('logs:personnel.aiEnticePlayerOfficer', { enticer: localizedName(enticer.name), officer: localizedName(target.name) }));
+        }
       } else {
         set({
           officers: state.officers.map(o =>
@@ -793,10 +821,15 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const foodCost = amount * 3;
       if (city.gold < goldCost || city.food < foodCost) return;
       const maxDraft = Math.floor(city.population * 0.1);
-      const troopCap = Math.floor(city.population * 0.12);
-      const roomForTroops = Math.max(0, troopCap - city.troops);
-      const actual = Math.min(amount, maxDraft, roomForTroops);
+      const actual = Math.min(amount, maxDraft);
       if (actual <= 0) return;
+      // Draft dilutes training/morale: new recruits have training 0 and morale 0 (RTK IV)
+      const totalAfterDraft = city.troops + actual;
+      const newTraining = totalAfterDraft > 0 ? Math.floor((city.training || 0) * city.troops / totalAfterDraft) : 0;
+      const newMorale = totalAfterDraft > 0 ? Math.floor((city.morale || 0) * city.troops / totalAfterDraft) : 0;
+      // Drafting reduces people loyalty (RTK IV) — scaled by ratio of drafted to population
+      const loyaltyDrop = Math.ceil(actual / city.population * 30);
+      const newLoyalty = Math.max(0, (city.peopleLoyalty || 0) - loyaltyDrop);
       set({
         cities: state.cities.map(c => c.id === cityId ? {
           ...c,
@@ -804,6 +837,9 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
           gold: c.gold - actual * 2,
           food: c.food - actual * 3,
           population: c.population - actual,
+          training: newTraining,
+          morale: newMorale,
+          peopleLoyalty: newLoyalty,
         } : c),
         officers: state.officers.map(o => o.id === executor.id ? { ...o, acted: true } : o),
       });
@@ -823,10 +859,22 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const troops = resources.troops ?? 0;
       if (gold <= 0 && food <= 0 && troops <= 0) return;
       if (fromCity.gold < gold || fromCity.food < food || fromCity.troops < troops) return;
+      // Weighted-average blending of training/morale when troops are transferred (RTK IV)
+      let dstTraining = toCity.training || 0;
+      let dstMorale = toCity.morale || 0;
+      if (troops > 0) {
+        const srcTraining = fromCity.training || 0;
+        const srcMorale = fromCity.morale || 0;
+        const totalTroops = toCity.troops + troops;
+        if (totalTroops > 0) {
+          dstTraining = Math.floor((srcTraining * troops + (toCity.training || 0) * toCity.troops) / totalTroops);
+          dstMorale = Math.floor((srcMorale * troops + (toCity.morale || 0) * toCity.troops) / totalTroops);
+        }
+      }
       set({
         cities: state.cities.map(c => {
           if (c.id === fromCityId) return { ...c, gold: c.gold - gold, food: c.food - food, troops: c.troops - troops };
-          if (c.id === toCityId) return { ...c, gold: c.gold + gold, food: c.food + food, troops: c.troops + troops };
+          if (c.id === toCityId) return { ...c, gold: c.gold + gold, food: c.food + food, troops: c.troops + troops, training: dstTraining, morale: dstMorale };
           return c;
         }),
         officers: state.officers.map(o => o.id === executor.id ? { ...o, acted: true } : o),
@@ -837,6 +885,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const state = get();
       const officer = state.officers.find(o => o.id === officerId);
       if (!officer || officer.factionId === null) return;
+      if (state.rewardedOfficerIds.includes(officerId)) return;
       const city = state.cities.find(c => c.id === cityId);
       if (!city || city.factionId !== officer.factionId || city.gold < amount) return;
       set({
@@ -845,6 +894,7 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
           if (o.id === officerId) return { ...o, loyalty: Math.min(100, o.loyalty + 5 + Math.floor(amount / 500)) };
           return o;
         }),
+        rewardedOfficerIds: [...state.rewardedOfficerIds, officerId],
       });
     },
 

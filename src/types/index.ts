@@ -136,6 +136,8 @@ export interface City {
 
   /** 稅率 (Tax Rate) - Phase 6.7 */
   taxRate: TaxRate;
+  /** 戰場地形 (Battle Terrain) — controls battle map generation theme */
+  battleTerrain?: import('../types/battle').BattleTerrainType;
 }
 
 /** 勢力（Faction） */

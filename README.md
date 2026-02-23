@@ -182,6 +182,18 @@ The game supports **Traditional Chinese (繁體中文)** and **English**.
 - [BrowserAPI.md](./BrowserAPI.md) -- Client-side game automation API (`window.rtk`) / 客戶端遊戲自動化 API
 - **CLI:** See the [CLI section](#cli-terminal-edition--終端版) above, or run `npm run cli -- --help` / CLI 說明請見上方段落，或執行 `npm run cli -- --help`
 
+## RTK IV Reference Materials / 三國志IV 參考資料
+
+Game mechanics references used to verify faithful implementation:
+
+- [RTK IV — Wikipedia (JP)](https://ja.wikipedia.org/wiki/%E4%B8%89%E5%9C%8B%E5%BF%97IV) — Special abilities, battle mechanics, city management
+- [David Xu's RTK4 FAQ — Kongming's Archives](https://kongming.net/faqs/?section=r4&faq=rtk4_dxu.txt&version=Final&author=David+Xu&email=thedavidxu@yahoo.com) — Comprehensive English FAQ
+- [YoungPhoenix13's RTK4 FAQ — Kongming's Archives](https://kongming.net/faqs/romance-of-the-three-kingdoms-iv/three_kingdoms_iv_c.html) — Strategy guide and mechanics
+- [RTK4 Hints & Tips — Neoseeker](https://www.neoseeker.com/romance-of-the-three-kingdoms-iv/faqs/31154-romance-of-the-3-kingdoms-4.html) — Gameplay tips
+- [三國志IV 攻略 — Eikyuhozon](https://eikyuhozon.com/game/nintendo-switch-online/super-famicom/sangokushi-4-sfc-switch-online-scenario1.html) — Japanese strategy guide
+- [三國志IV 特殊能力 — Classic Game Tower](https://towerofclassicgame.com/sangoku4) — Skill details
+- [三國志四大地圖一覽 — PTT](https://www.ptt.cc/bbs/Koei/M.1577608357.A.75F.html) — Seasonal map screenshots
+
 ## License / 授權聲明
 
 This is a fan project for educational and preservation purposes. Romance of the Three Kingdoms is a trademark of Koei Tecmo. This project is not affiliated with or endorsed by Koei Tecmo.

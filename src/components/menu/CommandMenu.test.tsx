@@ -100,6 +100,7 @@ describe('CommandMenu', () => {
       rumor: vi.fn(),
       setTaxRate: vi.fn(),
       promoteOfficer: vi.fn(),
+      rewardedOfficerIds: [],
     });
   });
 

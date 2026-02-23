@@ -48,6 +48,7 @@
     "notOurFaction": "{{name}} 不屬於我方勢力，無法任命為太守。",
     "notInTargetCity": "{{name}} 不在 {{city}}，無法任命為太守。",
     "rewardGoldInsufficient": "金不足，無法賞賜。需要 {{amount}}（現有 {{current}}）。",
+    "alreadyRewarded": "{{name}} 本月已經獲得賞賜。",
     "treasureRewardNotImplemented": "寶物賞賜尚未實裝。",
     "noSkillRumor": "{{name}} 不具備流言技能，無法執行此計策。",
     "noSkillProvoke": "{{name}} 不具備做敵技能。",
@@ -74,7 +75,7 @@
     "reinforceDefense": "{{city}}：{{officer}} 城防強化 +5（花費 300 金）",
     "developFlood": "{{city}}：{{officer}} 治水發展 +{{bonus}}（花費 500 金）",
     "developTech": "{{city}}：{{officer}} 技術發展 +{{bonus}}（花費 800 金）",
-    "trainTroops": "{{city}}：{{officer}} 訓練部隊（花費 500 糧）",
+    "trainTroops": "{{city}}：{{officer}} 訓練部隊 訓練+{{trainingBonus}} 士氣+{{moraleBonus}}（花費 500 糧）",
     "manufacture": "{{city}}：{{officer}} 製造了 {{amount}} 單位 {{weapon}}（花費 1000 金）",
     "relief": "{{city}}：{{officer}} 賑災民心 +{{bonus}}（花費 500 金, 1000 糧）",
     "conscript": "{{city}}：{{officer}} 徵兵 {{amount}} 人",
@@ -109,7 +110,9 @@
     "cityAbandoned": "{{city}} 已被放棄——城中無武將駐守。",
     "enticeSuccess": "{{enticer}} 成功策反 {{officer}}！",
     "enticeFail": "{{enticer}} 策反 {{officer}} 失敗。",
-    "enticeCityFlip": "{{enticer}} 策反 {{city}} 太守 {{officer}} 成功！{{city}} 全城歸降！"
+    "enticeCityFlip": "{{enticer}} 策反 {{city}} 太守 {{officer}} 成功！{{city}} 全城歸降！",
+    "aiEnticePlayerOfficer": "【計略】您的武將 {{officer}} 被 {{enticer}} 策反了！",
+    "aiEnticePlayerCityFlip": "【計略】您的太守 {{officer}} 被 {{enticer}} 策反，{{city}} 宣告獨立或易幟！"
   },
   "military": {
     "captureEmptyCity": "{{city}} 是一座空城！{{commander}} 率軍佔領了 {{city}}！",

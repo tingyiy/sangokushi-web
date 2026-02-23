@@ -55,7 +55,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
             return { ...o, acted: true };
           }
           if (o.id === officerId && success) {
-            return { ...o, factionId: playerFaction.id, loyalty: 60 };
+            return { ...o, factionId: playerFaction.id, loyalty: 60, acted: true };
           }
           return o;
         }),
@@ -139,7 +139,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
           officers: state.officers.map(o => {
             if (o.id === enticer!.id) return { ...o, acted: true };
             if (o.cityId === targetCity.id && o.factionId === oldFactionId) {
-              return { ...o, factionId: playerFaction.id, loyalty: 50 };
+              return { ...o, factionId: playerFaction.id, loyalty: 50, acted: true };
             }
             return o;
           }),
@@ -162,7 +162,7 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
           officers: state.officers.map(o => {
             if (o.id === enticer!.id) return { ...o, acted: true };
             if (o.id === targetOfficerId) {
-              return { ...o, factionId: playerFaction.id, loyalty: 50, cityId: adjacentPlayerCity.id, isGovernor: false };
+              return { ...o, factionId: playerFaction.id, loyalty: 50, cityId: adjacentPlayerCity.id, isGovernor: false, acted: true };
             }
             return o;
           }),
@@ -189,11 +189,14 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city) return;
 
+      // POW recruitment does NOT require the recruiter to be un-acted.
+      // After conquering a city, all battle participants have acted but should
+      // still be able to handle POWs (RTK IV behaviour).
       let recruiter: Officer | undefined;
       if (recruiterId) {
         recruiter = state.officers.find(o => o.id === recruiterId && o.cityId === city.id && o.factionId === state.playerFaction?.id);
       } else {
-        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id && !o.acted);
+        const recruiters = state.officers.filter(o => o.cityId === city.id && o.factionId === state.playerFaction?.id);
         if (recruiters.length === 0) {
           get().addLog(i18next.t('logs:error.noOfficerForSurrender'));
           return;
@@ -206,18 +209,19 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
 
-      if (recruiter.acted) {
-        get().addLog(i18next.t('logs:error.officerActed', { name: localizedName(recruiter.name) }));
-        return;
-      }
-
       const chance = 40 + recruiter.charisma - officer.loyalty / 2;
       const success = Math.random() * 100 < chance;
+
+      // Loyalty = random(40–70) + ruler charisma / 5
+      const ruler = state.officers.find(o => o.id === state.playerFaction!.rulerId);
+      const rulerBonus = ruler ? Math.floor(ruler.charisma / 5) : 0;
+      const startLoyalty = Math.min(100, Math.floor(Math.random() * 31) + 40 + rulerBonus);
 
       set({
         officers: state.officers.map(o => {
           if (o.id === recruiter!.id) return { ...o, acted: true };
-          if (o.id === officerId && success) return { ...o, factionId: state.playerFaction!.id, loyalty: 50, cityId: city.id };
+          // Recruited POW is NOT marked acted — can be rewarded same turn
+          if (o.id === officerId && success) return { ...o, factionId: state.playerFaction!.id, loyalty: startLoyalty, cityId: city.id };
           return o;
         })
       });
@@ -233,6 +237,10 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
       const state = get();
       const rewardTarget = state.officers.find(o => o.id === officerId);
       if (!rewardTarget || rewardTarget.factionId !== state.playerFaction?.id) return;
+
+      // Each officer can only be rewarded once per turn
+      if (state.rewardedOfficerIds.includes(officerId)) return;
+
       const city = state.cities.find(c => c.id === state.selectedCityId);
       if (!city || city.factionId !== state.playerFaction?.id) return;
 
@@ -253,7 +261,8 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
             return { ...o, loyalty: Math.min(100, o.loyalty + 5 + Math.floor(amount / 500)) };
           }
           return o;
-        })
+        }),
+        rewardedOfficerIds: [...state.rewardedOfficerIds, officerId],
       });
       get().addLog(i18next.t('logs:personnel.reward', { officer: localizedName(rewardTarget.name), amount }));
     },
@@ -409,13 +418,18 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
         return;
       }
       const maxDraft = Math.floor(city.population * 0.1);
-      const troopCap = Math.floor(city.population * 0.12);
-      const roomForTroops = Math.max(0, troopCap - city.troops);
-      const actual = Math.min(amount, maxDraft, roomForTroops);
+      const actual = Math.min(amount, maxDraft);
       if (actual <= 0) {
         get().addLog(i18next.t('logs:error.troopCapReached'));
         return;
       }
+      // Draft dilutes training/morale: new recruits have training 0 and morale 0 (RTK IV)
+      const totalAfterDraft = city.troops + actual;
+      const newTraining = totalAfterDraft > 0 ? Math.floor((city.training || 0) * city.troops / totalAfterDraft) : 0;
+      const newMorale = totalAfterDraft > 0 ? Math.floor((city.morale || 0) * city.troops / totalAfterDraft) : 0;
+      // Drafting reduces people loyalty (RTK IV) — scaled by ratio of drafted to population
+      const loyaltyDrop = Math.ceil(actual / city.population * 30);
+      const newLoyalty = Math.max(0, (city.peopleLoyalty || 0) - loyaltyDrop);
       set({
         cities: state.cities.map(c =>
           c.id === cityId
@@ -425,6 +439,9 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
               gold: c.gold - actual * 2,
               food: c.food - actual * 3,
               population: c.population - actual,
+              training: newTraining,
+              morale: newMorale,
+              peopleLoyalty: newLoyalty,
             }
             : c
         ),
@@ -523,12 +540,24 @@ export function createPersonnelActions(set: Set, get: Get): Pick<GameState,
             let gold = c.gold;
             let food = c.food;
             let troops = c.troops;
+            let training = c.training || 0;
+            let morale = c.morale || 0;
             for (const [res, amt] of entries) {
               if (res === 'gold') gold += amt;
               else if (res === 'food') food += amt;
-              else if (res === 'troops') troops += amt;
+              else if (res === 'troops') {
+                // Weighted-average blending of training/morale (RTK IV)
+                const srcTraining = fromCity.training || 0;
+                const srcMorale = fromCity.morale || 0;
+                const totalTroops = troops + amt;
+                if (totalTroops > 0) {
+                  training = Math.floor((srcTraining * amt + training * troops) / totalTroops);
+                  morale = Math.floor((srcMorale * amt + morale * troops) / totalTroops);
+                }
+                troops += amt;
+              }
             }
-            return { ...c, gold, food, troops };
+            return { ...c, gold, food, troops, training, morale };
           }
           return c;
         }),

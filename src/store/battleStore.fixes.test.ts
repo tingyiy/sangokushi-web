@@ -109,10 +109,11 @@ describe('Battle Store Fixes', () => {
       initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
 
       const unitId = useBattleStore.getState().units[1].id;
-      
-      // Set unit to routed at x=13
+      const mapWidth = useBattleStore.getState().battleMap.width;
+
+      // Set unit to routed at x near right edge (mapWidth - 3)
       useBattleStore.setState(s => ({
-          units: s.units.map(u => u.id === unitId ? { ...u, status: 'routed', x: 13 } : u)
+          units: s.units.map(u => u.id === unitId ? { ...u, status: 'routed', x: mapWidth - 3 } : u)
       }));
 
       const initialX = useBattleStore.getState().units[1].x;
@@ -123,9 +124,9 @@ describe('Battle Store Fixes', () => {
 
       // Move to edge (right side)
       useBattleStore.setState(s => ({
-          units: s.units.map(u => u.id === unitId ? { ...u, x: 14 } : u) // At right edge
+          units: s.units.map(u => u.id === unitId ? { ...u, x: mapWidth - 1 } : u) // At right edge
       }));
-      
+
       nextDay();
       const removedUnit = useBattleStore.getState().units.find(u => u.id === unitId);
       // Logic sets troops to 0 for removal?
@@ -187,16 +188,18 @@ describe('Battle Store Fixes', () => {
        const { initBattle } = useBattleStore.getState();
        // City 2 -> Siege
        initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
-       
+
        const state = useBattleStore.getState();
        expect(state.isSiege).toBe(true);
-       
+
        const defender = state.units[1];
-       // Check collision with walls?
-       // Just check they are in center (7,7) range
-       // We forced (7,7) for first defender
-       expect(defender.x).toBe(7);
-       expect(defender.y).toBe(7);
+       // Defender should be inside the walls — center of 21×21 map interior
+       // wallLeft=4, wallRight=16, so interior x range is 5..15
+       // wallTop=3, wallBottom=17, so interior y range is 4..16
+       expect(defender.x).toBeGreaterThan(4);
+       expect(defender.x).toBeLessThan(16);
+       expect(defender.y).toBeGreaterThan(3);
+       expect(defender.y).toBeLessThan(17);
   });
 
   test('Bug #9: nextDay calls checkBattleEnd after routed units leave the map', () => {
@@ -266,20 +269,31 @@ describe('Battle Store Fixes', () => {
     expect(state.isSiege).toBe(true);
     expect(state.gates.length).toBeGreaterThan(0);
 
-    // Defender (faction 2) is inside the walls at (7,7)
+    // Defender (faction 2) is inside the walls
     const defender = state.units.find(u => u.factionId === 2)!;
-    expect(defender.x).toBe(7);
-    expect(defender.y).toBe(7);
+    expect(defender.x).toBeGreaterThan(4);
+    expect(defender.x).toBeLessThan(16);
 
-    // Find a gate position
+    // Find the north gate — closest to defender center (10,10) → gate (10,3)
+    // Distance = 7, too far for infantry (range 5). Place defender closer.
+    // Find any gate and place defender 2 hexes from it (inside the walls)
     const gate = state.gates[0];
     expect(gate.hp).toBeGreaterThan(0); // intact
 
+    // Place defender adjacent to gate (one hex inside the wall from the gate)
+    const insideOffset = gate.q === 4 ? 1 : gate.q === 16 ? -1 : 0;
+    const insideOffsetR = gate.r === 3 ? 1 : gate.r === 17 ? -1 : 0;
+    const dq = gate.q + insideOffset;
+    const dr = gate.r + insideOffsetR;
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === defender.id
+          ? { ...u, x: dq, y: dr, z: -dq - dr }
+          : u
+      ),
+    }));
+
     // Try to move defender onto the gate hex — should succeed for defenders
-    // Defender needs to be adjacent to the gate for this to work
-    // Gates are at wall midpoints: (4,7), (10,7), (7,3), (7,11)
-    // Defender at (7,7) can reach (7,3) if movement range allows (infantry = 5)
-    // Distance from (7,7) to (7,3) = 4 hexes — within infantry range of 5
     moveUnit(defender.id, gate.q, gate.r);
 
     const movedDefender = useBattleStore.getState().units.find(u => u.id === defender.id)!;
@@ -604,17 +618,18 @@ describe('Battle Store Fixes', () => {
     const state = useBattleStore.getState();
     expect(state.isSiege).toBe(true);
 
-    // Find the west gate (q=4, r=7) and breach it
-    const westGate = state.gates.find(g => g.q === 4 && g.r === 7);
+    // Find the west gate (q=4, r=10 on 21×21 map) and breach it
+    const centerY = Math.floor(state.battleMap.height / 2);
+    const westGate = state.gates.find(g => g.q === 4 && g.r === centerY);
     expect(westGate).toBeDefined();
 
     // Breach the west gate: remove from gates array, change terrain to plain
     useBattleStore.setState(s => ({
-      gates: s.gates.filter(g => !(g.q === 4 && g.r === 7)),
+      gates: s.gates.filter(g => !(g.q === 4 && g.r === centerY)),
       battleMap: {
         ...s.battleMap,
         terrain: s.battleMap.terrain.map((col, q) =>
-          q === 4 ? col.map((t, r) => r === 7 ? 'plain' as TerrainType : t) : col
+          q === 4 ? col.map((t, r) => r === centerY ? 'plain' as TerrainType : t) : col
         ),
       },
     }));
@@ -622,15 +637,15 @@ describe('Battle Store Fixes', () => {
     // Verify breach: 3 gates remaining
     expect(useBattleStore.getState().gates.length).toBe(3);
 
-    // Place attacker at (3,7) — just outside the breach at (4,7)
-    // Place defender at (5,7) — just inside the breach
+    // Place attacker at (3, centerY) — just outside the breach
+    // Place defender at (5, centerY) — just inside the breach
     useBattleStore.setState(s => ({
       units: s.units.map(u => {
         if (u.factionId === 1) {
-          return { ...u, x: 3, y: 7, z: -10, status: 'active' as const, hasMoved: false };
+          return { ...u, x: 3, y: centerY, z: -3 - centerY, status: 'active' as const, hasMoved: false };
         }
         if (u.factionId === 2) {
-          return { ...u, x: 5, y: 7, z: -12, status: 'active' as const };
+          return { ...u, x: 5, y: centerY, z: -5 - centerY, status: 'active' as const };
         }
         return u;
       }),

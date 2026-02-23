@@ -8,6 +8,7 @@ import { useBattleStore } from './battleStore';
 import { hasSkill } from '../utils/skills';
 import { autoAssignGovernorInPlace, getAttackDirection } from './storeHelpers';
 import { executeHostages } from './diplomacyActions';
+import { cityBaseStats } from '../data/cities';
 
 type Set = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void;
 type Get = () => GameState;
@@ -440,6 +441,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
 
       // Phase 1.2: Pass city morale and training to battle
       const defenderFood = targetCity.food;
+      const battleTerrain = cityBaseStats[targetCityId]?.battleTerrain ?? 'plains';
       useBattleStore.getState().initBattle(
         state.playerFaction.id,
         targetCity.factionId || 0,
@@ -457,6 +459,8 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         getAttackDirection(city, targetCity),
         attackerFood,
         defenderFood,
+        targetCity.training,
+        battleTerrain,
       );
 
       set({ phase: 'battle' });
@@ -675,6 +679,7 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         return;
       }
 
+      const aiBattleTerrain = cityBaseStats[targetCityId]?.battleTerrain ?? 'plains';
       useBattleStore.getState().initBattle(
         city.factionId || 0,
         targetCity.factionId || 0,
@@ -692,6 +697,8 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
         getAttackDirection(city, targetCity),
         aiAttackerFood,
         aiDefenderFood,
+        targetCity.training,
+        aiBattleTerrain,
       );
 
       set({ phase: 'battle' });
