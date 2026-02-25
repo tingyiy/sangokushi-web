@@ -1190,11 +1190,11 @@ describe('gameStore - New Commands Expansion (Phase 2)', () => {
       const logs = useGameStore.getState().log;
       const trainLog = logs.find(l => l.includes('訓練') || l.includes('trained'));
       expect(trainLog).toBeDefined();
-      // Officer leadership 85, bonus = floor(85/15) = 5
-      // trainingDelta = min(100, 60 + 8 + 5) - 60 = 73 - 60 = 13
-      // moraleDelta = min(100, 60 + 3) - 60 = 3
+      // Officer leadership 85, trainingBonus = floor(85/15) = 5, moraleBonus = floor(85/20) = 4
+      // trainingDelta = min(100, 60 + 8 + 5) - 60 = 13
+      // moraleDelta = min(100, 60 + 5 + 4) - 60 = 9
       expect(trainLog).toMatch(/\+13/);
-      expect(trainLog).toMatch(/\+3/);
+      expect(trainLog).toMatch(/\+9/);
     });
   });
 });

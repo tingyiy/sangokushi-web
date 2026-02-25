@@ -264,6 +264,7 @@
     "unitDestroyed": "{{name}}'s unit was annihilated!",
     "unitCaptured": "{{name}} was captured!",
     "commanderDefeated": "Commander defeated — {{name}}'s forces collapse!",
+    "duelRout": "{{name}} lost the duel — troops scatter and unit routs!",
     "unitRouted": "{{name}} routed!",
     "gateBroken": "The gate has been breached!",
     "gateBreach": "Gate breached! Defender morale -{{penalty}}.",

@@ -423,6 +423,15 @@ export function getGatePositions(map: BattleMap): { q: number; r: number }[] {
   return gates;
 }
 
+/** Check if a hex is inside the wall perimeter of a siege map */
+export function isInsideWalls(q: number, r: number, width: number, height: number): boolean {
+  const wallLeft = DEFAULT_WALL_MARGIN + 1;
+  const wallRight = width - DEFAULT_WALL_MARGIN - 2;
+  const wallTop = DEFAULT_WALL_MARGIN;
+  const wallBottom = height - DEFAULT_WALL_MARGIN - 1;
+  return q > wallLeft && q < wallRight && r > wallTop && r < wallBottom;
+}
+
 export function isSiegeBattle(defenderCityId: number): boolean {
   return defenderCityId > 0;
 }

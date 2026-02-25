@@ -739,8 +739,8 @@ export function createMilitaryActions(set: Set, get: Get): Pick<GameState, 'setB
       const city = state.cities.find(c => c.id === cityId);
       if (!city) return;
 
-      // Get surviving units for winner
-      const winnerUnits = battleUnits.filter(u => u.factionId === winnerFactionId && u.troops > 0 && u.status !== 'routed');
+      // Get surviving units for winner (routed winners still return with their troops)
+      const winnerUnits = battleUnits.filter(u => u.factionId === winnerFactionId && u.troops > 0);
 
       // Calculate surviving troops
       const totalSurvivingTroops = winnerUnits.reduce((sum, u) => sum + u.troops, 0);

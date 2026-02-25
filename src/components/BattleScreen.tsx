@@ -150,7 +150,7 @@ const BattleScreen: React.FC = () => {
   const canMove = activeUnit && activeUnit.status === 'active' && !activeUnit.hasMoved;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1a1a', color: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100dvh', backgroundColor: '#1a1a1a', color: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '8px 12px', background: '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div style={{ fontSize: '0.85rem' }}>
@@ -197,9 +197,9 @@ const BattleScreen: React.FC = () => {
       </div>
 
       {/* Main area: map + sidebar */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
         {/* Map */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
           <BattleMap playerFactionId={playerFactionId} />
           {/* Mode indicator overlay */}
           {battle.mode !== 'idle' && (
@@ -250,7 +250,7 @@ const BattleScreen: React.FC = () => {
       </div>
 
       {/* Footer: active unit + commands */}
-      <div style={{ height: 100, background: '#222', borderTop: '2px solid #444', display: 'flex', padding: '6px 10px', flexShrink: 0, gap: 12 }}>
+      <div style={{ height: 110, background: '#222', borderTop: '2px solid #444', display: 'flex', padding: '6px 10px', flexShrink: 0, gap: 12 }}>
         {activeUnit && activeUnit.factionId === playerFactionId && activeUnit.status === 'active' ? (
           <>
             <div style={{ width: 180, border: '1px solid #555', padding: '6px 8px', background: '#333', borderRadius: 4, fontSize: '0.8rem' }}>

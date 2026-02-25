@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useBattleStore } from '../../store/battleStore';
 import { hexToPixel, getDistance } from '../../utils/hex';
 import { getMoveRange } from '../../utils/pathfinding';
+import { isInsideWalls } from '../../utils/siegeMap';
 import { getMovementRange, getAttackRange, getUnitTypeLabel } from '../../utils/unitTypes';
 import type { TerrainType } from '../../types/battle';
 import { localizedName } from '../../i18n/dataNames';
@@ -78,18 +79,29 @@ const BattleMap: React.FC<BattleMapProps> = ({ playerFactionId }) => {
         battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId && u.status !== 'arriving')
           .map(u => `${u.x},${u.y}`)
       );
-      battle.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+      // Gates block attackers coming from outside the walls.
+      // Defenders always pass freely; attackers already inside can exit through gates.
+      const isDefender = activeUnit.factionId === battle.defenderId;
+      const unitInside = isInsideWalls(activeUnit.x, activeUnit.y, battle.battleMap.width, battle.battleMap.height);
+      if (!isDefender && !unitInside) {
+        battle.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
+      }
       // Friendly units are passable but not valid destinations
       const occupied = new Set(
         battle.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId && u.status !== 'arriving')
           .map(u => `${u.x},${u.y}`)
       );
+      // Gate terrain is passable for defenders and attackers inside the walls
+      const gatesPassable = isDefender || unitInside;
+      const effectiveTerrain = gatesPassable
+        ? battle.battleMap.terrain.map(col => col.map(t => t === 'gate' ? ('plain' as const) : t))
+        : battle.battleMap.terrain;
       return getMoveRange(
         { q: activeUnit.x, r: activeUnit.y },
         getMovementRange(activeUnit.type),
         battle.battleMap.width,
         battle.battleMap.height,
-        battle.battleMap.terrain,
+        effectiveTerrain,
         blocked,
         occupied
       );

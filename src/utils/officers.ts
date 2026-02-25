@@ -11,37 +11,34 @@ import { treasures } from '../data/treasures';
  * Rulers get a special bonus detected via faction.rulerId (not stored in rank).
  */
 const RANK_TROOP_MULTIPLIER: Record<OfficerRank, number> = {
-  governor:  1.10,  // 太守 — regional commander
-  viceroy:   1.20,  // 都督/丞相 — supreme commander
-  general:   1.00,  // 將軍 — standard officer
-  advisor:   0.80,  // 軍師 — strategist, not a field commander
-  attendant: 0.90,  // 侍中 — court official
-  common:    1.00,  // 一般 — baseline
+  governor:  1.30,  // 太守 — regional defence commander (關羽鎮荊州 ~30k)
+  viceroy:   1.50,  // 都督/丞相 — supreme field commander (陸遜 ~30-45k)
+  general:   1.00,  // 將軍 — standard field commander (張遼 ~20k)
+  advisor:   0.50,  // 軍師 — strategist, not a front-line leader (~10k)
+  attendant: 0.70,  // 侍中 — court official (~10-15k)
+  common:    0.80,  // 一般 — baseline (~5-15k)
 };
 
 /** Ruler multiplier (applied when officer is faction.rulerId) */
-const RULER_TROOP_MULTIPLIER = 1.30;
+const RULER_TROOP_MULTIPLIER = 3.00;
 
 /**
  * Calculate the maximum troops an officer can command in battle.
- * Formula: leadership × 1000 × rankMultiplier
+ * Quadratic formula: leadership² × 3 × rankMultiplier
  *
- * @param officer The officer
- * @param isRuler Whether this officer is the ruler of their faction
- * @returns Maximum troops (integer)
+ * Historically, troop limits in the Three Kingdoms era depended on rank:
+ *  - Top commanders (曹操, 陸遜): 50k–100k+
+ *  - Famous generals (關羽, 張遼): 10k–30k
+ *  - Regular officers: a few thousand
+ * The quadratic curve gives a wider spread that matches this distribution.
  */
-/**
- * Ruler floor: guarantees the ruler can always command more troops than any
- * other officer.  Highest non-ruler max = 100 ldr × 1000 × 1.20 (viceroy) = 120 000.
- * We set the floor above that so the ruler is always #1.
- */
-const RULER_TROOP_FLOOR = 150_000;
+const RULER_TROOP_CAP = 80_000;
 
 export function getMaxTroops(officer: Officer, isRuler = false): number {
   const stats = getEffectiveStats(officer);
   const multiplier = isRuler ? RULER_TROOP_MULTIPLIER : RANK_TROOP_MULTIPLIER[officer.rank];
-  const base = Math.floor(stats.leadership * 1000 * multiplier);
-  return isRuler ? Math.max(base, RULER_TROOP_FLOOR) : base;
+  const base = Math.floor(stats.leadership ** 2 * 3 * multiplier);
+  return isRuler ? Math.min(base, RULER_TROOP_CAP) : base;
 }
 
 /** Get officer stats with treasure bonuses applied */
@@ -124,7 +121,7 @@ export function getMentalStats(officer: Officer): number {
 export function getRankSlots(factionCityCount: number): Record<OfficerRank, number | null> {
   return {
     advisor:   1,
-    viceroy:   Math.max(1, Math.ceil(factionCityCount / 4)),
+    viceroy:   1,  // 都督 — one supreme field commander per faction
     governor:  0,  // auto-assigned only, not promotable
     general:   factionCityCount * 2,
     attendant: factionCityCount,

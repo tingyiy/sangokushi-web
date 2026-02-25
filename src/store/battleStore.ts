@@ -15,7 +15,8 @@ import {
   generateSiegeMap,
   generateFieldBattleMap,
   isSiegeBattle,
-  getGatePositions
+  getGatePositions,
+  isInsideWalls
 } from '../utils/siegeMap';
 import { getDistance } from '../utils/hex';
 import { hasSkill } from '../utils/skills';
@@ -346,9 +347,11 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       state.units.filter(u => u.troops > 0 && u.id !== unitId && u.factionId !== unit.factionId)
         .map(u => `${u.x},${u.y}`)
     );
-    // Gates only block the attacker faction; defenders pass through their own gates freely
+    // Gates block attackers coming from OUTSIDE the walls.
+    // Defenders always pass freely; attackers already inside can exit through gates.
     const isDefender = unit.factionId === state.defenderId;
-    if (!isDefender) {
+    const unitInside = isInsideWalls(unit.x, unit.y, state.battleMap.width, state.battleMap.height);
+    if (!isDefender && !unitInside) {
       state.gates.filter(g => g.hp > 0).forEach(g => blocked.add(`${g.q},${g.r}`));
     }
     const occupied = new Set(
@@ -356,8 +359,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         .map(u => `${u.x},${u.y}`)
     );
 
-    // For defenders, treat gate terrain as passable (plain)
-    const effectiveTerrain = isDefender
+    // Gate terrain is passable for defenders and attackers inside the walls
+    const gatesPassable = isDefender || unitInside;
+    const effectiveTerrain = gatesPassable
       ? state.battleMap.terrain.map(col => col.map(t => t === 'gate' ? 'plain' as const : t))
       : state.battleMap.terrain;
 
@@ -415,7 +419,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       counterDamage = Math.floor(damage * 0.3);
     }
 
-    const moraleDamage = Math.floor(damage / 100) + 2;
+    // Morale damage scales with troop loss ratio — losing 50 out of 100k is nothing,
+    // but losing 4000 out of 5000 is devastating (RTK IV style)
+    const moraleDamage = Math.floor((damage / target.troops) * 100);
 
     const newUnits = state.units.map(u => {
       if (u.id === targetUnitId) {
@@ -481,6 +487,30 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
     if (defeatedTarget && defeatedTarget.status === 'routed') {
       get().addBattleLog(i18next.t('logs:battle.unitRouted', { name: localizedName(target.officer.name) }));
       set(s => ({ routedOfficerIds: [...s.routedOfficerIds, defeatedTarget.officerId] }));
+
+      // RTK IV: Commander rout also ends the battle — same as commander killed
+      const isCommander = state.units.filter(u => u.factionId === defeatedTarget.factionId)[0].id === defeatedTarget.id;
+      if (isCommander) {
+        set(s => ({
+          units: s.units.map(u =>
+            u.factionId === defeatedTarget.factionId && u.troops > 0 && u.id !== defeatedTarget.id
+              ? { ...u, morale: Math.max(0, u.morale - 30), status: 'routed' as const }
+              : u
+          ),
+          routedOfficerIds: [
+            ...s.routedOfficerIds,
+            ...s.units
+              .filter(u => u.factionId === defeatedTarget.factionId && u.troops > 0 && u.id !== defeatedTarget.id)
+              .map(u => u.officerId),
+          ],
+        }));
+        get().addBattleLog(i18next.t('logs:battle.commanderDefeated', { name: localizedName(target.officer.name) }));
+
+        const loserFactionId = defeatedTarget.factionId;
+        const winnerFactionId = loserFactionId === state.attackerId ? state.defenderId : state.attackerId;
+        set({ isFinished: true, winnerFactionId });
+        return;
+      }
     }
 
     get().checkBattleEnd();
@@ -659,21 +689,59 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
   applyDuelResults: (winnerOfficerId, loserOfficerId) => {
     const state = get();
+    const loserUnit = state.units.find(u => u.officerId === loserOfficerId);
+
+    // RTK IV: losing a duel is devastating — unit routs and loses troops
     const newUnits = state.units.map(u => {
       if (u.officerId === winnerOfficerId) {
         return { ...u, morale: Math.min(100, u.morale + 20) };
       }
       if (u.officerId === loserOfficerId) {
-        const newMorale = Math.max(0, u.morale - 30);
+        // Loser: morale drops to 0, lose 50% troops, immediate rout
+        const newTroops = Math.floor(u.troops * 0.5);
         return {
           ...u,
-          morale: newMorale,
-          status: newMorale < 20 ? 'routed' as const : u.status
+          troops: newTroops,
+          morale: 0,
+          status: 'routed' as const,
         };
       }
       return u;
     });
-    set({ units: newUnits });
+    set(s => ({
+      units: newUnits,
+      routedOfficerIds: [...s.routedOfficerIds, loserOfficerId],
+    }));
+
+    if (loserUnit) {
+      get().addBattleLog(i18next.t('logs:battle.duelRout', { name: localizedName(loserUnit.officer.name) }));
+    }
+
+    // If the loser was the commander, the entire army collapses
+    if (loserUnit) {
+      const factionUnits = state.units.filter(u => u.factionId === loserUnit.factionId && u.troops > 0);
+      const isCommander = factionUnits[0]?.id === loserUnit.id;
+      if (isCommander) {
+        set(s => ({
+          units: s.units.map(u =>
+            u.factionId === loserUnit.factionId && u.troops > 0 && u.id !== loserUnit.id
+              ? { ...u, morale: Math.max(0, u.morale - 30), status: 'routed' as const }
+              : u
+          ),
+          routedOfficerIds: [
+            ...s.routedOfficerIds,
+            ...s.units
+              .filter(u => u.factionId === loserUnit.factionId && u.troops > 0 && u.id !== loserUnit.id)
+              .map(u => u.officerId),
+          ],
+        }));
+        get().addBattleLog(i18next.t('logs:battle.commanderDefeated', { name: localizedName(loserUnit.officer.name) }));
+        const winnerFactionId = loserUnit.factionId === state.attackerId ? state.defenderId : state.attackerId;
+        set({ isFinished: true, winnerFactionId });
+      }
+    }
+
+    get().checkBattleEnd();
   },
 
   /** Mark a single unit as done (player chose to skip this unit's remaining actions) */
@@ -814,6 +882,68 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
 
     const distToNearest = getDistance({ q: nearest.x, r: nearest.y }, { q: activeUnit.x, r: activeUnit.y });
     const atkRange = getAttackRange(activeUnit.type);
+
+    // ── Commander self-preservation: stay back, only fight defensively ──
+    const allies = state.units.filter(u => u.factionId === activeUnit.factionId && u.troops > 0 && u.id !== activeUnit.id && u.status !== 'routed');
+    const commanderShouldRetreat = isActiveCommander && allies.length > 0;
+
+    if (commanderShouldRetreat) {
+      // Attack only if enemy is already in attack range (defensive counter-attack)
+      if (distToNearest <= atkRange) {
+        get().attackUnit(activeUnit.id, nearest.id);
+        return;
+      }
+
+      // If enemies are close (within 4 hexes), retreat away from them
+      if (distToNearest <= 4) {
+        const cmdMoveRange = getMovementRange(activeUnit.type);
+        const cmdBlocked = new Set(
+          state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
+            .map(u => `${u.x},${u.y}`)
+        );
+        const cmdIsDefender = state.isSiege && activeUnit.factionId === state.defenderId;
+        const cmdInside = isInsideWalls(activeUnit.x, activeUnit.y, state.battleMap.width, state.battleMap.height);
+        if (!cmdIsDefender && !cmdInside) {
+          state.gates.filter(g => g.hp > 0).forEach(g => cmdBlocked.add(`${g.q},${g.r}`));
+        }
+        const cmdOccupied = new Set(
+          state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId === activeUnit.factionId)
+            .map(u => `${u.x},${u.y}`)
+        );
+        const cmdGatesPassable = cmdIsDefender || cmdInside;
+        const cmdTerrain = cmdGatesPassable
+          ? state.battleMap.terrain.map(col => col.map(t => t === 'gate' ? 'plain' as const : t))
+          : state.battleMap.terrain;
+
+        const cmdMoves = getMoveRange(
+          { q: activeUnit.x, r: activeUnit.y }, cmdMoveRange,
+          state.battleMap.width, state.battleMap.height,
+          cmdTerrain, cmdBlocked, cmdOccupied
+        );
+
+        // Pick hex that maximizes minimum distance from ALL enemies
+        let bestHex = { q: activeUnit.x, r: activeUnit.y };
+        let bestMinDist = Math.min(...enemies.map(e => getDistance({ q: activeUnit.x, r: activeUnit.y }, { q: e.x, r: e.y })));
+        for (const [key] of cmdMoves) {
+          const [cq, cr] = key.split(',').map(Number);
+          const minEnemyDist = Math.min(...enemies.map(e => getDistance({ q: cq, r: cr }, { q: e.x, r: e.y })));
+          if (minEnemyDist > bestMinDist) {
+            bestMinDist = minEnemyDist;
+            bestHex = { q: cq, r: cr };
+          }
+        }
+
+        if (bestHex.q !== activeUnit.x || bestHex.r !== activeUnit.y) {
+          get().moveUnit(activeUnit.id, bestHex.q, bestHex.r);
+        }
+      }
+
+      // Commander waits — never advance toward enemies
+      set(s => ({
+        units: s.units.map(u => u.id === activeUnit.id ? { ...u, status: 'done' as const } : u),
+      }));
+      return;
+    }
 
     // ── Siege attacker: PRIORITIZE gates over attacking enemies behind walls ──
     const isAttackerUnit = state.isSiege && activeUnit.factionId === state.attackerId;
@@ -970,7 +1100,8 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
       state.units.filter(u => u.troops > 0 && u.id !== activeUnit.id && u.factionId !== activeUnit.factionId)
         .map(u => `${u.x},${u.y}`)
     );
-    if (!isDefenderUnit) {
+    const aiUnitInside = isInsideWalls(activeUnit.x, activeUnit.y, state.battleMap.width, state.battleMap.height);
+    if (!isDefenderUnit && !aiUnitInside) {
       state.gates.filter(g => g.hp > 0).forEach(g => aiBlocked.add(`${g.q},${g.r}`));
     }
     // Defenders that shouldn't sortie: block gate hexes to keep them inside
@@ -982,8 +1113,9 @@ export const useBattleStore = create<BattleState & BattleActions>((set, get) => 
         .map(u => `${u.x},${u.y}`)
     );
 
-    // For defenders, treat gate terrain as passable
-    const aiEffectiveTerrain = isDefenderUnit
+    // Gate terrain is passable for defenders and attackers inside the walls
+    const aiGatesPassable = isDefenderUnit || aiUnitInside;
+    const aiEffectiveTerrain = aiGatesPassable
       ? state.battleMap.terrain.map(col => col.map(t => t === 'gate' ? 'plain' as const : t))
       : state.battleMap.terrain;
 

@@ -48,22 +48,22 @@ describe('FormationDialog', () => {
     expect(mockSetBattleFormation).toHaveBeenCalledWith({
       officerIds: [2],
       unitTypes: ['infantry'],
-      troops: [50000], // min(50000/1, 90*1000*1.0) = 50000 (garrison-limited)
-      food: 500000, // min(50000 * 10, 500000) = 500000
+      troops: [19440], // min(50000/1, 90²×3×0.80) = 19440 (maxTroops-limited)
+      food: 194400, // min(19440 * 10, 500000) = 194400
     });
     expect(mockStartBattle).toHaveBeenCalledWith(2);
   });
 
   it('defaults food to totalAllocated × 10, capped by city food', () => {
-    // City food is 500000, so for 50000 troops → min(500000, 500000) = 500000
+    // Officer maxTroops = 90²×3×0.80 = 19440, food = 19440×10 = 194400
     render(<FormationDialog targetCityId={2} onClose={() => {}} />);
 
-    // Select officer (gets 50000 troops auto-assigned)
+    // Select officer (gets 19440 troops auto-assigned, capped by maxTroops)
     fireEvent.click(screen.getByText('夏侯惇'));
 
     const foodInput = document.querySelector('.food-input') as HTMLInputElement;
     expect(foodInput).toBeTruthy();
-    expect(Number(foodInput.value)).toBe(500000);
+    expect(Number(foodInput.value)).toBe(194400);
   });
 
   it('passes manually edited food value through setBattleFormation', () => {

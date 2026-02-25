@@ -264,6 +264,7 @@
     "unitDestroyed": "{{name}} 全軍覆沒！",
     "unitCaptured": "{{name}} 被俘虜！",
     "commanderDefeated": "主將敗陣，{{name}} 方全軍崩潰！",
+    "duelRout": "{{name}} 單挑敗北，部隊潰散！",
     "unitRouted": "{{name}} 潰走！",
     "gateBroken": "城門被攻破！",
     "gateBreach": "城門陷落！守方全軍士氣 -{{penalty}}。",

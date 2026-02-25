@@ -716,4 +716,160 @@ describe('Battle Store Fixes', () => {
       expect(afterGate.hp).toBeLessThan(initialGateHp);
     }
   });
+
+  // ── Gate movement: units pass through gates based on position and faction ──
+
+  test('Siege: defender can move from inside to outside through intact gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    expect(state.isSiege).toBe(true);
+
+    // Use north gate (10,3). Inside = (10,4), Outside = (10,2)
+    const northGate = state.gates.find(g => g.r === 3);
+    expect(northGate).toBeDefined();
+    const gateQ = northGate!.q;
+
+    const defender = state.units.find(u => u.factionId === 2)!;
+
+    // Place defender inside the walls, one hex south of the gate
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === defender.id
+          ? { ...u, x: gateQ, y: 4, z: -gateQ - 4 }
+          : u
+      ),
+    }));
+
+    // Move defender to outside the wall (north of gate, y=2)
+    moveUnit(defender.id, gateQ, 2);
+
+    const moved = useBattleStore.getState().units.find(u => u.id === defender.id)!;
+    expect(moved.x).toBe(gateQ);
+    expect(moved.y).toBe(2);
+  });
+
+  test('Siege: defender can move from outside back inside through intact gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const northGate = state.gates.find(g => g.r === 3);
+    expect(northGate).toBeDefined();
+    const gateQ = northGate!.q;
+
+    const defender = state.units.find(u => u.factionId === 2)!;
+
+    // Place defender outside the walls, north of the gate
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === defender.id
+          ? { ...u, x: gateQ, y: 1, z: -gateQ - 1 }
+          : u
+      ),
+    }));
+
+    // Move defender back inside (south of gate, y=4)
+    moveUnit(defender.id, gateQ, 4);
+
+    const moved = useBattleStore.getState().units.find(u => u.id === defender.id)!;
+    expect(moved.x).toBe(gateQ);
+    expect(moved.y).toBe(4);
+  });
+
+  test('Siege: attacker INSIDE the walls CAN exit through intact gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const northGate = state.gates.find(g => g.r === 3);
+    expect(northGate).toBeDefined();
+    const gateQ = northGate!.q;
+
+    const attacker = state.units.find(u => u.factionId === 1)!;
+
+    // Place attacker inside the walls (e.g. breached another gate and got in)
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id
+          ? { ...u, x: gateQ, y: 4, z: -gateQ - 4 }
+          : u
+      ),
+    }));
+
+    // Move attacker out through the intact north gate to outside (y=2)
+    moveUnit(attacker.id, gateQ, 2);
+
+    const moved = useBattleStore.getState().units.find(u => u.id === attacker.id)!;
+    expect(moved.x).toBe(gateQ);
+    expect(moved.y).toBe(2);
+  });
+
+  test('Siege: attacker OUTSIDE the walls CANNOT enter through intact gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const northGate = state.gates.find(g => g.r === 3);
+    expect(northGate).toBeDefined();
+    const gateQ = northGate!.q;
+
+    const attacker = state.units.find(u => u.factionId === 1)!;
+
+    // Place attacker outside the wall
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id
+          ? { ...u, x: gateQ, y: 1, z: -gateQ - 1 }
+          : u
+      ),
+    }));
+
+    // Try to move through intact gate to inside — should be blocked
+    moveUnit(attacker.id, gateQ, 4);
+
+    const unmoved = useBattleStore.getState().units.find(u => u.id === attacker.id)!;
+    expect(unmoved.x).toBe(gateQ);
+    expect(unmoved.y).toBe(1);
+  });
+
+  test('Siege: attacker CAN move through a breached (destroyed) gate', () => {
+    const { initBattle, moveUnit } = useBattleStore.getState();
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const northGate = state.gates.find(g => g.r === 3);
+    expect(northGate).toBeDefined();
+    const gateQ = northGate!.q;
+
+    // Breach the north gate: remove from gates array and change terrain to plain
+    useBattleStore.setState(s => ({
+      gates: s.gates.filter(g => !(g.q === gateQ && g.r === 3)),
+      battleMap: {
+        ...s.battleMap,
+        terrain: s.battleMap.terrain.map((col, q) =>
+          q === gateQ ? col.map((t, r) => r === 3 ? 'plain' as TerrainType : t) : col
+        ),
+      },
+    }));
+
+    const attacker = state.units.find(u => u.factionId === 1)!;
+
+    // Place attacker outside the wall, north of the breached gate
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id
+          ? { ...u, x: gateQ, y: 1, z: -gateQ - 1 }
+          : u
+      ),
+    }));
+
+    // Move attacker through the breach to inside (y=4)
+    moveUnit(attacker.id, gateQ, 4);
+
+    const moved = useBattleStore.getState().units.find(u => u.id === attacker.id)!;
+    expect(moved.x).toBe(gateQ);
+    expect(moved.y).toBe(4);
+  });
 });

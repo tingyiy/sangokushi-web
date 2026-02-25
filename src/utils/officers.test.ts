@@ -183,76 +183,93 @@ describe('officers', () => {
     });
   });
 
-  describe('getMaxTroops', () => {
-    test('common rank: leadership × 1000 × 1.0', () => {
-      // leadership 80, rank common → 80 × 1000 × 1.0 = 80000
-      expect(getMaxTroops(baseOfficer)).toBe(80000);
+  describe('getMaxTroops (quadratic: ldr² × 3 × rankMult)', () => {
+    // baseOfficer: leadership 80, rank common (×0.80)
+    // 80² × 3 × 0.80 = 15360
+    test('common rank: ldr² × 3 × 0.80', () => {
+      expect(getMaxTroops(baseOfficer)).toBe(15360);
     });
 
-    test('ruler: guaranteed floor of 150000 (always highest)', () => {
-      // leadership 80, isRuler → max(80 × 1000 × 1.30, 150000) = 150000
-      expect(getMaxTroops(baseOfficer, true)).toBe(150000);
+    test('ruler: ldr² × 3 × 3.00, capped at 80000', () => {
+      // leadership 80, isRuler → min(80² × 3 × 3.00, 80000) = min(57600, 80000) = 57600
+      expect(getMaxTroops(baseOfficer, true)).toBe(57600);
     });
 
-    test('governor: leadership × 1000 × 1.10', () => {
+    test('governor: ldr² × 3 × 1.30', () => {
       const governor = { ...baseOfficer, rank: 'governor' as const };
-      // 80 × 1000 × 1.10 = 88000
-      expect(getMaxTroops(governor)).toBe(88000);
+      // 80² × 3 × 1.30 = 24960
+      expect(getMaxTroops(governor)).toBe(24960);
     });
 
-    test('viceroy: leadership × 1000 × 1.20', () => {
+    test('viceroy: ldr² × 3 × 1.50', () => {
       const viceroy = { ...baseOfficer, rank: 'viceroy' as const };
-      // 80 × 1000 × 1.20 = 96000
-      expect(getMaxTroops(viceroy)).toBe(96000);
+      // 80² × 3 × 1.50 = 28800
+      expect(getMaxTroops(viceroy)).toBe(28800);
     });
 
-    test('general: leadership × 1000 × 1.00', () => {
+    test('general: ldr² × 3 × 1.00', () => {
       const general = { ...baseOfficer, rank: 'general' as const };
-      expect(getMaxTroops(general)).toBe(80000);
+      // 80² × 3 × 1.00 = 19200
+      expect(getMaxTroops(general)).toBe(19200);
     });
 
-    test('advisor: leadership × 1000 × 0.80', () => {
+    test('advisor: ldr² × 3 × 0.50', () => {
       const advisor = { ...baseOfficer, rank: 'advisor' as const };
-      // 80 × 1000 × 0.80 = 64000
-      expect(getMaxTroops(advisor)).toBe(64000);
+      // 80² × 3 × 0.50 = 9600
+      expect(getMaxTroops(advisor)).toBe(9600);
     });
 
-    test('attendant: leadership × 1000 × 0.90', () => {
+    test('attendant: ldr² × 3 × 0.70', () => {
       const attendant = { ...baseOfficer, rank: 'attendant' as const };
-      // 80 × 1000 × 0.90 = 72000
-      expect(getMaxTroops(attendant)).toBe(72000);
+      // 80² × 3 × 0.70 = 13440
+      expect(getMaxTroops(attendant)).toBe(13440);
     });
 
-    test('ruler overrides any rank', () => {
-      // Even an advisor who is ruler gets the ruler floor
+    test('ruler cap applies to any rank', () => {
       const rulerAdvisor = { ...baseOfficer, rank: 'advisor' as const };
-      expect(getMaxTroops(rulerAdvisor, true)).toBe(150000);
+      // leadership 80 → 80² × 3 × 3.00 = 57600 (under cap)
+      expect(getMaxTroops(rulerAdvisor, true)).toBe(57600);
+    });
+
+    test('high-leadership ruler is capped at 80000', () => {
+      // leadership 100, ruler → min(100² × 3 × 3.00, 80000) = min(90000, 80000) = 80000
+      const strongRuler = { ...baseOfficer, leadership: 100 };
+      expect(getMaxTroops(strongRuler, true)).toBe(80000);
     });
 
     test('applies treasure leadership bonus', () => {
-      // Horse treasure (id=13) gives +leadership
       const withHorse = { ...baseOfficer, treasureId: 13 };
-      const maxNoHorse = getMaxTroops(baseOfficer);
-      const maxWithHorse = getMaxTroops(withHorse);
-      expect(maxWithHorse).toBeGreaterThan(maxNoHorse);
+      expect(getMaxTroops(withHorse)).toBeGreaterThan(getMaxTroops(baseOfficer));
     });
 
-    test('realistic example: 曹操 (leadership 95, ruler)', () => {
+    test('realistic: 曹操 (ldr 95, ruler) → 80k (capped)', () => {
       const caoCao = { ...baseOfficer, leadership: 95 };
-      // max(95 × 1000 × 1.30, 150000) = 150000 (floor applies)
-      expect(getMaxTroops(caoCao, true)).toBe(150000);
+      // min(95² × 3 × 3.00, 80000) = min(81225, 80000) = 80000
+      expect(getMaxTroops(caoCao, true)).toBe(80000);
     });
 
-    test('realistic example: 關羽 (leadership 96, governor)', () => {
+    test('realistic: 關羽 (ldr 96, governor) → ~36k', () => {
       const guanYu = { ...baseOfficer, leadership: 96, rank: 'governor' as const };
-      // 96 × 1000 × 1.10 = 105600
-      expect(getMaxTroops(guanYu)).toBe(105600);
+      // 96² × 3 × 1.30 = 35942
+      expect(getMaxTroops(guanYu)).toBe(35942);
     });
 
-    test('realistic example: 諸葛亮 (leadership 82, advisor)', () => {
+    test('realistic: 張飛 (ldr 75, general) → ~17k', () => {
+      const zhangFei = { ...baseOfficer, leadership: 75, rank: 'general' as const };
+      // 75² × 3 × 1.00 = 16875
+      expect(getMaxTroops(zhangFei)).toBe(16875);
+    });
+
+    test('realistic: 諸葛亮 (ldr 82, advisor) → ~10k', () => {
       const zhugeLiang = { ...baseOfficer, leadership: 82, rank: 'advisor' as const };
-      // 82 × 1000 × 0.80 = 65600
-      expect(getMaxTroops(zhugeLiang)).toBe(65600);
+      // 82² × 3 × 0.50 = 10086
+      expect(getMaxTroops(zhugeLiang)).toBe(10086);
+    });
+
+    test('realistic: weak officer (ldr 40, common) → ~4k', () => {
+      const weak = { ...baseOfficer, leadership: 40, rank: 'common' as const };
+      // 40² × 3 × 0.80 = 3840
+      expect(getMaxTroops(weak)).toBe(3840);
     });
   });
 
@@ -268,18 +285,18 @@ describe('officers', () => {
         expect(slots.common).toBeNull();
       });
 
-      test('5 cities: 1 advisor, 2 viceroy, 10 generals, 5 attendants', () => {
+      test('5 cities: 1 advisor, 1 viceroy, 10 generals, 5 attendants', () => {
         const slots = getRankSlots(5);
         expect(slots.advisor).toBe(1);
-        expect(slots.viceroy).toBe(2);
+        expect(slots.viceroy).toBe(1);
         expect(slots.general).toBe(10);
         expect(slots.attendant).toBe(5);
       });
 
-      test('12 cities: 1 advisor, 3 viceroy, 24 generals, 12 attendants', () => {
+      test('12 cities: 1 advisor, 1 viceroy, 24 generals, 12 attendants', () => {
         const slots = getRankSlots(12);
         expect(slots.advisor).toBe(1);
-        expect(slots.viceroy).toBe(3);
+        expect(slots.viceroy).toBe(1);
         expect(slots.general).toBe(24);
         expect(slots.attendant).toBe(12);
       });

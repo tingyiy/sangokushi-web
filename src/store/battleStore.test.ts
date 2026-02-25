@@ -142,6 +142,51 @@ describe('Battle Store', () => {
     expect(updatedDefender!.morale).toBeLessThan(defender.morale);
   });
 
+  test('morale damage scales with troop loss ratio — large army takes negligible morale hit', () => {
+    const { initBattle, attackUnit } = useBattleStore.getState();
+    // Weak attacker vs large defender army
+    const weakAttacker = { ...mockOfficer, id: 10, war: 10, leadership: 10 };
+    initBattle(1, 2, 2, [weakAttacker], [mockEnemy], 60, 60, 40, [], [], [1000], [100000]);
+
+    const attacker = useBattleStore.getState().units[0];
+    const defender = useBattleStore.getState().units[1];
+
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id ? { ...u, x: 5, y: 5, z: -10 } :
+        u.id === defender.id ? { ...u, x: 6, y: 5, z: -11 } : u
+      )
+    }));
+
+    attackUnit(attacker.id, defender.id);
+
+    const updatedDefender = useBattleStore.getState().units.find(u => u.id === defender.id)!;
+    // Tiny damage against 100k troops → morale should barely drop (0 or 1)
+    expect(updatedDefender.morale).toBeGreaterThanOrEqual(defender.morale - 1);
+  });
+
+  test('morale damage scales with troop loss ratio — small army takes heavy morale hit', () => {
+    const { initBattle, attackUnit } = useBattleStore.getState();
+    // Strong attacker vs tiny defender army
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy], 60, 60, 40, [], [], [50000], [500]);
+
+    const attacker = useBattleStore.getState().units[0];
+    const defender = useBattleStore.getState().units[1];
+
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === attacker.id ? { ...u, x: 5, y: 5, z: -10 } :
+        u.id === defender.id ? { ...u, x: 6, y: 5, z: -11 } : u
+      )
+    }));
+
+    attackUnit(attacker.id, defender.id);
+
+    const updatedDefender = useBattleStore.getState().units.find(u => u.id === defender.id)!;
+    // Massive damage against 500 troops → morale should plummet or unit routed
+    expect(updatedDefender.morale).toBeLessThan(30);
+  });
+
   test('attackUnit captures officer', () => {
     const { initBattle, attackUnit } = useBattleStore.getState();
     initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
@@ -306,6 +351,64 @@ describe('Battle Store', () => {
       expect(state2.fireHexes.length).toBe(0); // Expired
       
       spy.mockRestore();
+  });
+
+  test('AI commander retreats instead of charging toward enemies', () => {
+    const { initBattle } = useBattleStore.getState();
+    const subordinate = { ...mockEnemy, id: 3 };
+    // Enemy has commander (mockEnemy id:2) + subordinate (id:3)
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy, subordinate]);
+
+    const state = useBattleStore.getState();
+    // Commander is the first unit of the defender faction (index 0 among defenders)
+    const commanderUnit = state.units.find(u => u.factionId === 2 && u.officerId === mockEnemy.id)!;
+    const enemyUnit = state.units.find(u => u.factionId === 1)!;
+
+    // Place commander close (but not adjacent) to enemy — 3 hexes away
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === commanderUnit.id ? { ...u, x: 5, y: 5, z: -10, status: 'active' as const } :
+        u.id === enemyUnit.id ? { ...u, x: 5, y: 2, z: -7 } : u
+      ),
+      activeUnitId: commanderUnit.id,
+    }));
+
+    const startX = 5, startY = 5;
+    useBattleStore.getState().runEnemyTurn();
+
+    // Commander should NOT have moved closer to the enemy (y=2)
+    const updatedCommander = useBattleStore.getState().units.find(u => u.id === commanderUnit.id)!;
+    const distBefore = Math.abs(startY - 2); // 3
+    const distAfter = Math.abs(updatedCommander.y - 2);
+    expect(distAfter).toBeGreaterThanOrEqual(distBefore); // Should move away or stay
+    expect(updatedCommander.status).toBe('done');
+  });
+
+  test('AI commander fights normally when last unit standing', () => {
+    const { initBattle } = useBattleStore.getState();
+    // Enemy has only commander (1 unit)
+    initBattle(1, 2, 2, [mockOfficer], [mockEnemy]);
+
+    const state = useBattleStore.getState();
+    const commanderUnit = state.units.find(u => u.factionId === 2)!;
+    const enemyUnit = state.units.find(u => u.factionId === 1)!;
+
+    // Place commander away from enemy — should advance (no allies to hide behind)
+    useBattleStore.setState(s => ({
+      units: s.units.map(u =>
+        u.id === commanderUnit.id ? { ...u, x: 8, y: 8, z: -16, status: 'active' as const } :
+        u.id === enemyUnit.id ? { ...u, x: 2, y: 2, z: -4 } : u
+      ),
+      activeUnitId: commanderUnit.id,
+    }));
+
+    useBattleStore.getState().runEnemyTurn();
+
+    const updatedCommander = useBattleStore.getState().units.find(u => u.id === commanderUnit.id)!;
+    // Should have moved closer to the enemy (fighting normally)
+    const distBefore = Math.abs(8 - 2) + Math.abs(8 - 2); // rough
+    const distAfter = Math.abs(updatedCommander.x - 2) + Math.abs(updatedCommander.y - 2);
+    expect(distAfter).toBeLessThan(distBefore);
   });
 
   test('battle ends when all units of a faction are routed', () => {

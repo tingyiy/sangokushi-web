@@ -764,11 +764,12 @@ export function createTurnActions(set: Set, get: Get): Pick<GameState, 'endTurn'
       const executor = findAIExecutor(state, cityId, 'leadership');
       if (!executor) return;
       const trainingBonus = Math.floor(executor.leadership / 15);
+      const moraleBonus = Math.floor(executor.leadership / 20);
       set({
         cities: state.cities.map(c => c.id === cityId ? {
           ...c,
           training: Math.min(100, (c.training || 0) + 8 + trainingBonus),
-          morale: Math.min(100, (c.morale || 0) + 3),
+          morale: Math.min(100, (c.morale || 0) + 5 + moraleBonus),
           food: c.food - 500,
         } : c),
         officers: state.officers.map(o => o.id === executor.id ? { ...o, acted: true } : o),
